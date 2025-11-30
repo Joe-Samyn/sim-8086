@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#define byte unsigned char
+#include "types.h"
 
 /**
  * Reads a binary file and prints each byte to the console. 
