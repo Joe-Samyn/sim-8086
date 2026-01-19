@@ -4,7 +4,35 @@
 #include "sim8086.h"
 
 #include <fstream>
+#include <bitset>
+#include <format>
 #include <vector>
+
+const uint8_t OPCODE_MASK = 0b11111100;
+
+struct Instruction
+{
+	const char* description;
+	uint8_t length;
+	uint8_t opcode;
+	uint8_t d;
+	uint8_t w;
+};
+
+
+#define InstructionTable \
+	X("Register/memory to/from register/memory", 2, 0b10001000, 0, 0) \
+	X("Immediate to register/memory", 2, 0b11000100, 1, 0) \
+
+
+#define X(desc, length, opcode, d, w) { desc, length, opcode, d, w },
+std::vector<Instruction> instructionTable = {
+	InstructionTable
+};
+#undef X
+
+
+
 
 using namespace std;
 
@@ -54,6 +82,27 @@ int main(int argc, char* argv[])
 	}
 
 	// Parse bytes 
+	for (uint8_t byte : buffer)
+	{
+		// Get opcode 
+		uint8_t opcode = byte & OPCODE_MASK;
+		int instIndex = -1;
+		for (int i = 0; i < instructionTable.size(); i++)
+		{
+			if (instructionTable.at(i).opcode == opcode)
+			{
+				instIndex = i;
+				break;
+			}
+		}
+
+		if (instIndex != -1)
+		{
+			std::cout << std::format("Instruction: {}, {}", instructionTable.at(instIndex).description, std::bitset<8>(instructionTable.at(instIndex).opcode).to_string());
+		}
+
+	}
+
 
 	return 0;
 }
