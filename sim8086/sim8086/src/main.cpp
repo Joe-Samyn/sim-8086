@@ -8,7 +8,7 @@
 #include <format>
 #include <vector>
 
-struct Instruction
+struct InstructionEntry
 {
 	const char* description;
 	uint8_t length;
@@ -16,6 +16,13 @@ struct Instruction
 	uint8_t opcodeMask;
 	uint8_t dMask;
 	uint8_t wMask;
+};
+
+struct Instruction
+{
+	uint8_t opcode;
+	uint8_t direction;
+	uint8_t width;
 };
 
 
@@ -26,7 +33,7 @@ struct Instruction
 
 
 #define X(desc, length, opcode, opcodeMask, dMask, wMask) { desc, length, opcode, opcodeMask, dMask, wMask },
-std::vector<Instruction> instructionTable = {
+std::vector<InstructionEntry> instructionTable = {
 	InstructionTable
 };
 #undef X
@@ -81,15 +88,17 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	// Parse bytes 
+	// Parse bytes
 	for (uint8_t byte : buffer)
 	{
-		// Get opcode 
 		int instIndex = -1;
 		for (int i = 0; i < instructionTable.size(); i++)
 		{
-			Instruction inst = instructionTable.at(i);
+			// Get opcode from byte
+			InstructionEntry inst = instructionTable.at(i);
 			uint8_t b = byte & inst.opcodeMask;
+
+			// Check if opcode is matches current instruction entry
 			if ((b | inst.opcode) == inst.opcode)
 			{
 				instIndex = i;
@@ -97,11 +106,35 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		if (instIndex != -1)
+		// Check if an instruction was found
+		if (instIndex == -1)
 		{
-			std::cout << std::format("Instruction: {}, {}", instructionTable.at(instIndex).description, std::bitset<8>(instructionTable.at(instIndex).opcode).to_string());
+			std::cout << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(byte).to_string());
+			return 1;
 		}
 
+		InstructionEntry instructionEntry = instructionTable.at(instIndex);
+		std::cout << std::format("Instruction: {}, {}\n", instructionEntry.description, std::bitset<8>(instructionEntry.opcode).to_string());
+
+		// Begin filling in instruction details
+		Instruction instruction = { 0 };
+		instruction.opcode = instructionEntry.opcode;
+		
+
+		// Check if instruction contains Direction Mask
+		if (instructionEntry.dMask != 0)
+		{
+			instruction.direction = byte & instructionEntry.dMask;
+		}
+
+		// Check if instruction contains Direction Mask
+		if (instructionEntry.wMask != 0)
+		{
+			instruction.width = byte & instructionEntry.wMask;
+		}
+
+		// Print instruction 
+		std::cout << std::format("Opcode: {}\nDirection: {}\nWidth: {}\n", std::bitset<8>(instruction.opcode).to_string(), std::bitset<8>(instruction.direction).to_string(), std::bitset<8>(instruction.width).to_string());
 	}
 
 
