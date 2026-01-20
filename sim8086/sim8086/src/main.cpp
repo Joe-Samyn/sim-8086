@@ -8,24 +8,24 @@
 #include <format>
 #include <vector>
 
-const uint8_t OPCODE_MASK = 0b11111100;
-
 struct Instruction
 {
 	const char* description;
 	uint8_t length;
 	uint8_t opcode;
-	uint8_t d;
-	uint8_t w;
+	uint8_t opcodeMask;
+	uint8_t dMask;
+	uint8_t wMask;
 };
 
 
 #define InstructionTable \
-	X("Register/memory to/from register/memory", 2, 0b10001000, 0, 0) \
-	X("Immediate to register/memory", 2, 0b11000100, 1, 0) \
+	X("Register/memory to/from register/memory", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001) \
+	X("Immediate to register/memory", 2, 0b11000110, 0b11111110, 0, 0b00000001) \
+	X("Immediate to register/memory", 2, 0b10110000, 0b11110000, 0, 0b00000001) \
 
 
-#define X(desc, length, opcode, d, w) { desc, length, opcode, d, w },
+#define X(desc, length, opcode, opcodeMask, dMask, wMask) { desc, length, opcode, opcodeMask, dMask, wMask },
 std::vector<Instruction> instructionTable = {
 	InstructionTable
 };
@@ -85,11 +85,12 @@ int main(int argc, char* argv[])
 	for (uint8_t byte : buffer)
 	{
 		// Get opcode 
-		uint8_t opcode = byte & OPCODE_MASK;
 		int instIndex = -1;
 		for (int i = 0; i < instructionTable.size(); i++)
 		{
-			if (instructionTable.at(i).opcode == opcode)
+			Instruction inst = instructionTable.at(i);
+			uint8_t b = byte & inst.opcodeMask;
+			if ((b | inst.opcode) == inst.opcode)
 			{
 				instIndex = i;
 				break;
