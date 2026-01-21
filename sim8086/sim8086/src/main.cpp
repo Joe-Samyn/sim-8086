@@ -8,28 +8,34 @@
 #include <format>
 #include <vector>
 
+
+// TODO(joe): Trying to get MOD bits out of second byte. 
+
 struct InstructionEntry
 {
 	const char* description;
+	const char* mnemonic;
 	uint8_t length;
 	uint8_t opcode;
 	uint8_t opcodeMask;
 	uint8_t dMask;
 	uint8_t wMask;
+	uint8_t modMask;
 };
 
 struct Instruction
 {
 	uint8_t opcode;
+	const char* mnemonic;
 	uint8_t direction;
 	uint8_t width;
 };
 
 
 #define InstructionTable \
-	X("Register/memory to/from register/memory", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001) \
-	X("Immediate to register/memory", 2, 0b11000110, 0b11111110, 0, 0b00000001) \
-	X("Immediate to register/memory", 2, 0b10110000, 0b11110000, 0, 0b00000001) \
+	X("Register/memory to/from register/memory", "MOV", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001) \
+	X("Immediate to register/memory", "MOV", 2, 0b11000110, 0b11111110, 0, 0b00000001) \
+	X("Immediate to register/memory", "MOV", 2, 0b10110000, 0b11110000, 0, 0b00000001) \
 
 
 #define X(desc, length, opcode, opcodeMask, dMask, wMask) { desc, length, opcode, opcodeMask, dMask, wMask },
@@ -89,6 +95,7 @@ int main(int argc, char* argv[])
 	}
 
 	// Parse bytes
+	std::cout << "\n\nbits 16\n\n\n";
 	for (uint8_t byte : buffer)
 	{
 		int instIndex = -1;
@@ -114,11 +121,12 @@ int main(int argc, char* argv[])
 		}
 
 		InstructionEntry instructionEntry = instructionTable.at(instIndex);
-		std::cout << std::format("Instruction: {}, {}\n", instructionEntry.description, std::bitset<8>(instructionEntry.opcode).to_string());
+		//std::cout << std::format("Instruction: {}, {}\n", instructionEntry.description, std::bitset<8>(instructionEntry.opcode).to_string());
 
 		// Begin filling in instruction details
 		Instruction instruction = { 0 };
 		instruction.opcode = instructionEntry.opcode;
+		instruction.mnemonic = instructionEntry.mnemonic;
 		
 
 		// Check if instruction contains Direction Mask
@@ -134,7 +142,7 @@ int main(int argc, char* argv[])
 		}
 
 		// Print instruction 
-		std::cout << std::format("Opcode: {}\nDirection: {}\nWidth: {}\n", std::bitset<8>(instruction.opcode).to_string(), std::bitset<8>(instruction.direction).to_string(), std::bitset<8>(instruction.width).to_string());
+		std::cout << std::format("{} \n", instruction.mnemonic);
 	}
 
 
