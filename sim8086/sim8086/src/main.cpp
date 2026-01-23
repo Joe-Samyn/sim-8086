@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
 			uint8_t b = byte & inst.opcodeMask;
 
 			// Check if opcode is matches current instruction entry
-			if ((b | inst.opcode) == inst.opcode)
+			if (b == inst.opcode)
 			{
 				instIndex = i;
 				break;
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
 		instruction.opcode = instructionEntry.opcode;
 		instruction.mnemonic = instructionEntry.mnemonic;
 		
-
+		// TODO: Do we need to adjust length or do anything new if dMask or wMask are present? 
 		// Check if instruction contains Direction Mask
 		if (instructionEntry.dMask != 0)
 		{
@@ -140,6 +140,9 @@ int main(int argc, char* argv[])
 		{
 			instruction.width = byte & instructionEntry.wMask;
 		}
+
+		// check instruction length, if longer than 1, get second byte
+		// Need to determine what data to get from subsequent bytes
 
 		// Print instruction 
 		std::cout << std::format("{} \n", instruction.mnemonic);
