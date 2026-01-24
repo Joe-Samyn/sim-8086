@@ -7,6 +7,7 @@
 #include <bitset>
 #include <format>
 #include <vector>
+#include <unordered_map>
 
 
 // TODO(joe): Trying to get MOD bits out of second byte. 
@@ -21,6 +22,8 @@ struct InstructionEntry
 	uint8_t dMask;
 	uint8_t wMask;
 	uint8_t modMask;
+	uint8_t regMask;
+	uint8_t rmMask;
 };
 
 struct Instruction
@@ -29,18 +32,52 @@ struct Instruction
 	const char* mnemonic;
 	uint8_t direction;
 	uint8_t width;
+	uint8_t registerA;
+	const char* registerAName;
+	uint8_t registerB;
+	const char* registerBName;
 };
 
 
 #define InstructionTable \
-	X("Register/memory to/from register/memory", "MOV", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001) \
-	X("Immediate to register/memory", "MOV", 2, 0b11000110, 0b11111110, 0, 0b00000001) \
-	X("Immediate to register/memory", "MOV", 2, 0b10110000, 0b11110000, 0, 0b00000001) \
+	X("Register/memory to/from register/memory", "MOV", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001, 0b11000000, 0b00111000, 0b00000111) \
+	X("Immediate to register/memory", "MOV", 2, 0b11000110, 0b11111110, 0, 0b00000001, 0b00000000, 0b00000000, 0b00000000) \
+	X("Immediate to register/memory", "MOV", 2, 0b10110000, 0b11110000, 0, 0b00000001, 0b00000000, 0b00000000, 0b00000000) \
 
 
-#define X(desc, length, opcode, opcodeMask, dMask, wMask) { desc, length, opcode, opcodeMask, dMask, wMask },
+#define X(desc, mnemonic, length, opcode, opcodeMask, dMask, wMask, modMask, reg, rm) { desc, mnemonic, length, opcode, opcodeMask, dMask, wMask, modMask, reg, rm },
 std::vector<InstructionEntry> instructionTable = {
 	InstructionTable
+};
+#undef X
+
+#define RegistersWide8086 \
+	X(0b00000000, "AX") \
+	X(0b00000001, "CX") \
+	X(0b00000010, "DX") \
+	X(0b00000011, "BX") \
+	X(0b00000100, "SP") \
+	X(0b00000101, "BP") \
+	X(0b00000110, "SI") \
+	X(0b00000111, "DI") \
+
+#define Registers8086 \
+	X(0b00000000, "AL") \
+	X(0b00000001, "CL") \
+	X(0b00000010, "DL") \
+	X(0b00000011, "BL") \
+	X(0b00000100, "AH") \
+	X(0b00000101, "CH") \
+	X(0b00000110, "DH") \
+	X(0b00000111, "BH") \
+
+#define X(name, code) {name, code},
+std::unordered_map<uint8_t, const char*> registerWideTable = {
+	RegistersWide8086
+};
+
+std::unordered_map<uint8_t, const char*> registerTable = {
+	Registers8086
 };
 #undef X
 
@@ -96,14 +133,16 @@ int main(int argc, char* argv[])
 
 	// Parse bytes
 	std::cout << "\n\nbits 16\n\n\n";
-	for (uint8_t byte : buffer)
+	int currentByteIndex = 0;
+	while (currentByteIndex < buffer.size())
 	{
 		int instIndex = -1;
+		uint8_t currentByte = buffer.at(currentByteIndex);
 		for (int i = 0; i < instructionTable.size(); i++)
 		{
 			// Get opcode from byte
 			InstructionEntry inst = instructionTable.at(i);
-			uint8_t b = byte & inst.opcodeMask;
+			uint8_t b = buffer.at(currentByteIndex) & inst.opcodeMask;
 
 			// Check if opcode is matches current instruction entry
 			if (b == inst.opcode)
@@ -116,7 +155,7 @@ int main(int argc, char* argv[])
 		// Check if an instruction was found
 		if (instIndex == -1)
 		{
-			std::cout << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(byte).to_string());
+			std::cout << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
 			return 1;
 		}
 
@@ -132,20 +171,62 @@ int main(int argc, char* argv[])
 		// Check if instruction contains Direction Mask
 		if (instructionEntry.dMask != 0)
 		{
-			instruction.direction = byte & instructionEntry.dMask;
+			instruction.direction = currentByte & instructionEntry.dMask;
 		}
 
 		// Check if instruction contains Direction Mask
 		if (instructionEntry.wMask != 0)
 		{
-			instruction.width = byte & instructionEntry.wMask;
+			instruction.width = currentByte & instructionEntry.wMask;
 		}
 
-		// check instruction length, if longer than 1, get second byte
-		// Need to determine what data to get from subsequent bytes
+		if (instructionEntry.modMask != 0)
+		{
+			currentByteIndex++;
+			currentByte = buffer.at(currentByteIndex);
+			uint8_t mod = currentByte & instructionEntry.modMask;
+
+			switch (mod)
+			{
+				// Memory mode, no displacement
+				case 0b00000000:
+				{
+					// TODO
+				} break;
+
+				// Memory mode, 8-bit displacement
+				case 0b10000000:
+				{
+					// TODO
+				} break;
+
+				// Memory mode, 16-bit displacement
+				case 0b01000000:
+				{
+					// TODO
+				} break;
+
+				// Register mode, no displacement
+				case 0b11000000:
+				{
+					// Both operands are in registers, so decode the registers involved in the operation
+					uint8_t registerA = (currentByte & instructionEntry.regMask) >> 3;
+					uint8_t registerB = currentByte & instructionEntry.rmMask;
+
+					
+					instruction.registerA = instruction.direction ? registerA : registerB;
+					instruction.registerB = instruction.direction? registerB: registerA;
+					instruction.registerAName = instruction.width ? registerWideTable.at(instruction.registerA) : registerTable.at(instruction.registerA);
+					instruction.registerBName = instruction.width ? registerWideTable.at(instruction.registerB) : registerTable.at(instruction.registerB);
+
+				} break;
+			}
+
+			currentByteIndex++;
+		}
 
 		// Print instruction 
-		std::cout << std::format("{} \n", instruction.mnemonic);
+		std::cout << std::format("{} {}, {}\n", instruction.mnemonic, instruction.registerAName, instruction.registerBName);
 	}
 
 
