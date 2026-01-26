@@ -42,7 +42,6 @@ struct Instruction
 #define InstructionTable \
 	X("Register/memory to/from register/memory", "MOV", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001, 0b11000000, 0b00111000, 0b00000111) \
 	X("Immediate to register/memory", "MOV", 2, 0b11000110, 0b11111110, 0, 0b00000001, 0b00000000, 0b00000000, 0b00000000) \
-	X("Immediate to register/memory", "MOV", 2, 0b10110000, 0b11110000, 0, 0b00000001, 0b00000000, 0b00000000, 0b00000000) \
 
 
 #define X(desc, mnemonic, length, opcode, opcodeMask, dMask, wMask, modMask, reg, rm) { desc, mnemonic, length, opcode, opcodeMask, dMask, wMask, modMask, reg, rm },
