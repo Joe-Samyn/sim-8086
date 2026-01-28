@@ -38,10 +38,20 @@ struct Instruction
 	const char* mnemonic;
 	uint8_t direction;
 	uint8_t width;
+	uint8_t reg;
+	// The human readable name for the register (i.e. AX, BX, etc.)
+	const char* regMnemonic;
+	uint8_t rm;
+	// The human redable name for the register stored in R/M when R/M is used to hold register info 
+	const char* rmMnemonic;
+};
+
+struct EffectiveAddrCalculation
+{
 	uint8_t registerA;
-	const char* registerAName;
 	uint8_t registerB;
-	const char* registerBName;
+	uint8_t displacement;
+	const char* calcLiteral;
 };
 
 
@@ -83,6 +93,22 @@ std::unordered_map<uint8_t, const char*> registerWideTable = {
 
 std::unordered_map<uint8_t, const char*> registerTable = {
 	Registers8086
+};
+#undef X
+
+#define ModNoDisplacementCalculations \
+	X(/* R/M = 000*/ 0b00000000, /* BX */ 0b00000011, /* SI*/ 0b00000101, /* 0 */ 0b0, "[BX + SI]") \
+	X(/* R/M = 001*/ 0b00000001, /* BX */ 0b00000011, /* DI*/ 0b00000111, /* 0 */ 0b0, "[BX + DI]") \
+	X(/* R/M = 010*/ 0b00000010, /* BP */ 0b00000101, /* SI*/ 0b00000101, /* 0 */ 0b0, "[BP + SI]") \
+	X(/* R/M = 011*/ 0b00000011, /* BP */ 0b00000101, /* DI*/ 0b00000111, /* 0 */ 0b0, "[BP + DI]") \
+	X(/* R/M = 100*/ 0b00000100, /* SI */ 0b00000101, /* 0 */ 0b0,        /* 0 */ 0b0, "[SI]") \
+	X(/* R/M = 101*/ 0b00000101, /* DI */ 0b00000111, /* 0 */ 0b0,        /* 0 */ 0b0, "[DI]") \
+	X(/* R/M = 110*/ 0b00000110, /* DA */ 0b0,        /* SI*/ 0b0,        /* 0 */ 0b0, "[]") \
+	X(/* R/M = 111*/ 0b00000111, /* BX */ 0b00000011, /* 0 S*/ 0b0,       /* 0 */ 0b0, "[BX]") \
+
+#define X(code, regA, regB, displacement, calcLiteral) { code, {regA, regB, displacement, calcLiteral} },
+std::unordered_map<uint8_t, EffectiveAddrCalculation> modNoDisp = {
+	ModNoDisplacementCalculations
 };
 #undef X
 
@@ -177,7 +203,13 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 			// Memory mode, no displacement
 		case 0b00000000:
 		{
-			// TODO
+			EffectiveAddrCalculation calc = modNoDisp.at(instruction.rm);
+
+			// NOTE: When decoding for running a program, we would perform calculation here? 
+			instruction.reg = calc.registerA;
+			// Get register info
+			instruction.rmMnemonic = calc.calcLiteral;
+
 		} break;
 
 		// Memory mode, 8-bit displacement
@@ -200,10 +232,10 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 			uint8_t registerB = program.at(programIndex) & entry.rmMask;
 
 
-			instruction.registerA = instruction.direction ? registerA : registerB;
-			instruction.registerB = instruction.direction ? registerB : registerA;
-			instruction.registerAName = instruction.width ? registerWideTable.at(instruction.registerA) : registerTable.at(instruction.registerA);
-			instruction.registerBName = instruction.width ? registerWideTable.at(instruction.registerB) : registerTable.at(instruction.registerB);
+			instruction.reg = instruction.direction ? registerA : registerB;
+			instruction.rm = instruction.direction ? registerB : registerA;
+			instruction.regMnemonic = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
+			instruction.rmMnemonic = instruction.width ? registerWideTable.at(instruction.rm) : registerTable.at(instruction.rm);
 
 		} break;
 		}
@@ -257,7 +289,7 @@ int main(int argc, char* argv[])
 		decodeInstruction(instruction, instructionEntry, buffer, programIndex);
 
 		// Print instruction 
-		std::cout << std::format("{} {}, {}\n", instruction.mnemonic, instruction.registerAName, instruction.registerBName);
+		std::cout << std::format("{} {}, {}\n", instruction.mnemonic, instruction.regMnemonic, instruction.rmMnemonic);
 
 		programIndex++;
 	}
