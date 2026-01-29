@@ -117,6 +117,19 @@ std::unordered_map<uint8_t, EffectiveAddrCalculation> modNoDisp = {
 
 using namespace std;
 
+void printInstruction(Instruction &inst)
+{
+	// Destination is in reg field
+	if (inst.direction)
+	{
+		std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
+	}
+	else
+	{
+		std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
+	}
+}
+
 /**
  * @brief Reads binary file into memory
  * @param filePath 
@@ -169,6 +182,7 @@ int findInstruction(uint8_t byte)
 	return -1;
 }
 
+
 /**
  * @brief Decode instruction using entry in 8086 table
  * @param instruction 
@@ -200,13 +214,15 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 
 		switch (mod)
 		{
-			// Memory mode, no displacement
+		// Memory mode, no displacement
 		case 0b00000000:
 		{
 			EffectiveAddrCalculation calc = modNoDisp.at(instruction.rm);
 
 			// NOTE: When decoding for running a program, we would perform calculation here? 
-			instruction.reg = calc.registerA;
+			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
+			instruction.regMnemonic = registerWideTable.at(instruction.reg);
+
 			// Get register info
 			instruction.rmMnemonic = calc.calcLiteral;
 
@@ -228,12 +244,8 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 		case 0b11000000:
 		{
 			// Both operands are in registers, so decode the registers involved in the operation
-			uint8_t registerA = (program.at(programIndex) & entry.regMask) >> 3;
-			uint8_t registerB = program.at(programIndex) & entry.rmMask;
-
-
-			instruction.reg = instruction.direction ? registerA : registerB;
-			instruction.rm = instruction.direction ? registerB : registerA;
+			instruction.reg = (program.at(programIndex) & entry.regMask) >> 3;
+			instruction.rm = program.at(programIndex) & entry.rmMask;
 			instruction.regMnemonic = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
 			instruction.rmMnemonic = instruction.width ? registerWideTable.at(instruction.rm) : registerTable.at(instruction.rm);
 
@@ -289,7 +301,7 @@ int main(int argc, char* argv[])
 		decodeInstruction(instruction, instructionEntry, buffer, programIndex);
 
 		// Print instruction 
-		std::cout << std::format("{} {}, {}\n", instruction.mnemonic, instruction.regMnemonic, instruction.rmMnemonic);
+		printInstruction(instruction);
 
 		programIndex++;
 	}
