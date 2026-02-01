@@ -10,3 +10,7 @@
 bits 16
 
 mov cx, [bx + si]
+mov al, [bx + di]
+
+mov [bx + di], cx
+mov [bp + si], cl

@@ -217,11 +217,12 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 		// Memory mode, no displacement
 		case 0b00000000:
 		{
+			instruction.rm = entry.rmMask & program.at(programIndex);
 			EffectiveAddrCalculation calc = modNoDisp.at(instruction.rm);
 
 			// NOTE: When decoding for running a program, we would perform calculation here? 
 			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
-			instruction.regMnemonic = registerWideTable.at(instruction.reg);
+			instruction.regMnemonic = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
 
 			// Get register info
 			instruction.rmMnemonic = calc.calcLiteral;
