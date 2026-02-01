@@ -9,6 +9,9 @@
 
 bits 16
 
+mov cx, bx
+mov al, bl
+
 mov cx, [bx + si]
 mov al, [bx + di]
 
