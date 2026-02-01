@@ -98,7 +98,7 @@ std::unordered_map<uint8_t, const char*> registerTable = {
 };
 #undef X
 
-#define ModNoDisplacementCalculations \
+#define ModCalculations \
 	X(/* R/M = 000*/ 0b00000000, /* BX */ 0b00000011, /* SI*/ 0b00000101, /* 0 */ 0b0, "BX + SI") \
 	X(/* R/M = 001*/ 0b00000001, /* BX */ 0b00000011, /* DI*/ 0b00000111, /* 0 */ 0b0, "BX + DI") \
 	X(/* R/M = 010*/ 0b00000010, /* BP */ 0b00000101, /* SI*/ 0b00000101, /* 0 */ 0b0, "BP + SI") \
@@ -109,24 +109,8 @@ std::unordered_map<uint8_t, const char*> registerTable = {
 	X(/* R/M = 111*/ 0b00000111, /* BX */ 0b00000011, /* 0 S*/ 0b0,       /* 0 */ 0b0, "BX") \
 
 #define X(code, regA, regB, displacement, calcLiteral) { code, {regA, regB, displacement, calcLiteral} },
-std::unordered_map<uint8_t, EffectiveAddrCalculation> modNoDisp = {
-	ModNoDisplacementCalculations
-};
-#undef X
-
-#define ModWithDisplacementCalculations \
-	X(/* R/M = 000*/ 0b00000000, /* BX */ 0b00000011, /* SI*/ 0b00000101, /* 0 */ 0b0, "[BX + SI + ]") \
-	X(/* R/M = 001*/ 0b00000001, /* BX */ 0b00000011, /* DI*/ 0b00000111, /* 0 */ 0b0, "[BX + DI]") \
-	X(/* R/M = 010*/ 0b00000010, /* BP */ 0b00000101, /* SI*/ 0b00000101, /* 0 */ 0b0, "[BP + SI]") \
-	X(/* R/M = 011*/ 0b00000011, /* BP */ 0b00000101, /* DI*/ 0b00000111, /* 0 */ 0b0, "[BP + DI]") \
-	X(/* R/M = 100*/ 0b00000100, /* SI */ 0b00000101, /* 0 */ 0b0,        /* 0 */ 0b0, "[SI]") \
-	X(/* R/M = 101*/ 0b00000101, /* DI */ 0b00000111, /* 0 */ 0b0,        /* 0 */ 0b0, "[DI]") \
-	X(/* R/M = 110*/ 0b00000110, /* DA */ 0b0,        /* SI*/ 0b0,        /* 0 */ 0b0, "[]") \
-	X(/* R/M = 111*/ 0b00000111, /* BX */ 0b00000011, /* 0 S*/ 0b0,       /* 0 */ 0b0, "[BX]") \
-
-#define X(code, regA, regB, displacement, calcLiteral) { code, {regA, regB, displacement, calcLiteral} },
-std::unordered_map<uint8_t, EffectiveAddrCalculation> modDisp = {
-	ModWithDisplacementCalculations
+std::unordered_map<uint8_t, EffectiveAddrCalculation> modEffectiveAddressTable = {
+	ModCalculations
 };
 #undef X
 
@@ -230,13 +214,16 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 		programIndex++;
 		uint8_t mod = program.at(programIndex) & entry.modMask;
 
+		// TODO: Most of the logic for determing reg, rm, etc. seems to be the same for MOD != 11. Only difference is displacement
+		// There should be a way to reuse this logic. 
 		switch (mod)
 		{
 		// Memory mode, no displacement
 		case 0b00000000:
 		{
+
 			instruction.rm = entry.rmMask & program.at(programIndex);
-			EffectiveAddrCalculation calc = modNoDisp.at(instruction.rm);
+			EffectiveAddrCalculation calc = modEffectiveAddressTable.at(instruction.rm);
 
 			// NOTE: When decoding for running a program, we would perform calculation here? 
 			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
@@ -249,20 +236,50 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 		} break;
 
 		// Memory mode, 8-bit displacement
-		case 0b10000000:
+		case 0b01000000:
 		{
-			// TODO
+			instruction.rm = entry.rmMask & program.at(programIndex);
+			EffectiveAddrCalculation calc = modEffectiveAddressTable.at(instruction.rm);
+
+			// NOTE: When decoding for running a program, we would perform calculation here? 
+			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
+			const char* reg = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
+			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
+
+			// Get displacement bytes
+			programIndex++;
+			uint8_t displacement = program.at(programIndex);
+
+			// Get register info
+			snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
 		} break;
 
 		// Memory mode, 16-bit displacement
-		case 0b01000000:
+		case 0b10000000:
 		{
-			// TODO
+			instruction.rm = entry.rmMask & program.at(programIndex);
+			EffectiveAddrCalculation calc = modEffectiveAddressTable.at(instruction.rm);
+
+			// NOTE: When decoding for running a program, we would perform calculation here? 
+			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
+			const char* reg = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
+			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
+
+			// Get displacement bytes
+			programIndex++;
+			uint8_t displacementLow = program.at(programIndex);
+			programIndex++;
+			uint16_t displacementHigh = program.at(programIndex);
+			uint16_t displacement = (displacementHigh << 8) | displacementLow;
+
+			// Get register info
+			snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
 		} break;
 
 		// Register mode, no displacement
 		case 0b11000000:
 		{
+
 			// Both operands are in registers, so decode the registers involved in the operation
 			instruction.reg = (program.at(programIndex) & entry.regMask) >> 3;
 			instruction.rm = program.at(programIndex) & entry.rmMask;
