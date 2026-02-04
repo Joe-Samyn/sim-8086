@@ -24,7 +24,7 @@ struct InstructionEntry
 {
 	const char* description;
 	const char* mnemonic;
-	uint8_t length;
+	uint8_t size;
 	uint8_t opcode;
 	uint8_t opcodeMask;
 	uint8_t dMask;
@@ -62,7 +62,7 @@ struct EffectiveAddrCalculation
 	X("Immediate to register/memory", "MOV", 2, 0b11000110, 0b11111110, 0, 0b00000001, 0b00000000, 0b00000000, 0b00000000) \
 
 
-#define X(desc, mnemonic, length, opcode, opcodeMask, dMask, wMask, modMask, reg, rm) { desc, mnemonic, length, opcode, opcodeMask, dMask, wMask, modMask, reg, rm },
+#define X(desc, mnemonic, size, opcode, opcodeMask, dMask, wMask, modMask, reg, rm) { desc, mnemonic, size, opcode, opcodeMask, dMask, wMask, modMask, reg, rm },
 std::vector<InstructionEntry> instructionTable = {
 	InstructionTable
 };
@@ -184,31 +184,8 @@ int findInstruction(uint8_t byte)
 	return -1;
 }
 
-
-/**
- * @brief Decode instruction using entry in 8086 table
- * @param instruction 
- * @param entry 
- */
-void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::vector<uint8_t> program, int &programIndex)
+void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry, std::vector<uint8_t> program, int& programIndex)
 {
-	// Begin filling in instruction details
-	instruction.opcode = entry.opcode;
-	snprintf(instruction.mnemonic, BUFFER_SIZE, "%s", entry.mnemonic);
-
-	// TODO: Do we need to adjust length or do anything new if dMask or wMask are present? 
-	// Check if instruction contains Direction Mask
-	if (entry.dMask != 0)
-	{
-		instruction.direction = program.at(programIndex) & entry.dMask;
-	}
-
-	// Check if instruction contains Direction Mask
-	if (entry.wMask != 0)
-	{
-		instruction.width = program.at(programIndex) & entry.wMask;
-	}
-
 	if (entry.modMask != 0)
 	{
 		programIndex++;
@@ -218,7 +195,7 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 		// There should be a way to reuse this logic. 
 		switch (mod)
 		{
-		// Memory mode, no displacement
+			// Memory mode, no displacement
 		case 0b00000000:
 		{
 
@@ -291,6 +268,44 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 
 		} break;
 		}
+	}
+}
+
+
+/**
+ * @brief Decode instruction using entry in 8086 table
+ * @param instruction 
+ * @param entry 
+ */
+void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::vector<uint8_t> program, int &programIndex)
+{
+	// Begin filling in instruction details
+	instruction.opcode = entry.opcode;
+	snprintf(instruction.mnemonic, BUFFER_SIZE, "%s", entry.mnemonic);
+
+	// TODO: Do we need to adjust length or do anything new if dMask or wMask are present? 
+	// Check if instruction contains Direction Mask
+	if (entry.dMask != 0)
+	{
+		instruction.direction = program.at(programIndex) & entry.dMask;
+	}
+
+	// Check if instruction contains Direction Mask
+	if (entry.wMask != 0)
+	{
+		instruction.width = program.at(programIndex) & entry.wMask;
+	}
+
+	switch (entry.size)
+	{
+	case 1:
+	{
+		// TODO: Implement 1 byte instruction parsing
+	} break;
+	case 2:
+	{
+		decodeTwoByteInstruction(instruction, entry, program, programIndex);
+	} break;
 	}
 }
 
