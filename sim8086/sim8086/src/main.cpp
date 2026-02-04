@@ -59,7 +59,7 @@ struct EffectiveAddrCalculation
 
 #define InstructionTable \
 	X("Register/memory to/from register/memory", "MOV", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001, 0b11000000, 0b00111000, 0b00000111) \
-	X("Immediate to register/memory", "MOV", 2, 0b11000110, 0b11111110, 0, 0b00000001, 0b00000000, 0b00000000, 0b00000000) \
+	X("Immediate to register/memory", "MOV", 1, 0b10110000, 0b11110000, 0, 0b00001000, 0b00000000, 0b00000111, 0b00000000) \
 
 
 #define X(desc, mnemonic, size, opcode, opcodeMask, dMask, wMask, modMask, reg, rm) { desc, mnemonic, size, opcode, opcodeMask, dMask, wMask, modMask, reg, rm },
@@ -271,6 +271,11 @@ void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry,
 	}
 }
 
+void decodeOneByteInstruction(Instruction& instruction, InstructionEntry& entry, std::vector<uint8_t>& program, int& programIndex)
+{
+	std::cout << "Decoding one byte instruction.." << std::endl;
+}
+
 
 /**
  * @brief Decode instruction using entry in 8086 table
@@ -300,7 +305,7 @@ void decodeInstruction(Instruction &instruction, InstructionEntry &entry, std::v
 	{
 	case 1:
 	{
-		// TODO: Implement 1 byte instruction parsing
+		decodeOneByteInstruction(instruction, entry, program, programIndex);
 	} break;
 	case 2:
 	{
