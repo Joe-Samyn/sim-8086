@@ -46,6 +46,7 @@ struct Instruction
 	uint8_t rm;
 	// The human redable name for the register stored in R/M when R/M is used to hold register info 
 	char rmMnemonic[BUFFER_SIZE];
+	uint16_t immediate;
 };
 
 struct EffectiveAddrCalculation
@@ -119,16 +120,34 @@ std::unordered_map<uint8_t, EffectiveAddrCalculation> modEffectiveAddressTable =
 
 using namespace std;
 
+uint16_t loadWideData(std::vector<uint8_t> &program, int &programIndex)
+{
+	programIndex++;
+	uint8_t lowByte = program.at(programIndex);
+	programIndex++;
+	uint16_t highByte = program.at(programIndex);
+	uint16_t wideValue = (highByte << 8) | lowByte;
+	return wideValue;
+}
+
 void printInstruction(Instruction &inst)
 {
 	// Destination is in reg field
-	if (inst.direction)
+	if (inst.rm)
 	{
-		std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
+		if (inst.direction)
+		{
+			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
+		}
+		else
+		{
+			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
+		}
 	}
-	else
+
+	else if (inst.immediate)
 	{
-		std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
+		std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
 	}
 }
 
@@ -243,11 +262,7 @@ void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry,
 			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
 
 			// Get displacement bytes
-			programIndex++;
-			uint8_t displacementLow = program.at(programIndex);
-			programIndex++;
-			uint16_t displacementHigh = program.at(programIndex);
-			uint16_t displacement = (displacementHigh << 8) | displacementLow;
+			uint16_t displacement = loadWideData(program, programIndex);
 
 			// Get register info
 			snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
@@ -273,7 +288,28 @@ void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry,
 
 void decodeOneByteInstruction(Instruction& instruction, InstructionEntry& entry, std::vector<uint8_t>& program, int& programIndex)
 {
-	std::cout << "Decoding one byte instruction.." << std::endl;
+	// Check if register encoding present, if not it could be an accumulator instruction 
+	if (entry.regMask)
+	{
+		instruction.reg = (program.at(programIndex) & entry.regMask);
+	}
+
+	// Check if instruction is a data operation and what size data is being operated on
+	if (entry.wMask != 0)
+	{
+		if (instruction.width == 0)// Load single byte
+		{
+			programIndex++;
+			instruction.immediate = program.at(programIndex);
+			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerTable.at(instruction.reg));
+		} 
+		else
+		{
+			// load wide bytes
+			instruction.immediate = loadWideData(program, programIndex);
+			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerWideTable.at(instruction.reg));
+		}
+	}
 }
 
 
