@@ -132,8 +132,11 @@ uint16_t loadWideData(std::vector<uint8_t> &program, int &programIndex)
 
 void printInstruction(Instruction &inst)
 {
-	// Destination is in reg field
-	if (inst.rm)
+	if (inst.immediate)
+	{
+		std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
+	}
+	else
 	{
 		if (inst.direction)
 		{
@@ -143,11 +146,6 @@ void printInstruction(Instruction &inst)
 		{
 			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
 		}
-	}
-
-	else if (inst.immediate)
-	{
-		std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
 	}
 }
 
@@ -219,15 +217,21 @@ void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry,
 		{
 
 			instruction.rm = entry.rmMask & program.at(programIndex);
-			EffectiveAddrCalculation calc = modEffectiveAddressTable.at(instruction.rm);
+			if (instruction.rm == 0b00000110)
+			{
+				uint16_t directAddr = loadWideData(program, programIndex);
+				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%d]", directAddr);
+			}
+			else {
+				EffectiveAddrCalculation calc = modEffectiveAddressTable.at(instruction.rm);
+				// NOTE: When decoding for running a program, we would perform calculation here? 
+				instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
+				const char* reg = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
+				snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
 
-			// NOTE: When decoding for running a program, we would perform calculation here? 
-			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
-			const char* reg = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
-			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
-
-			// Get register info
-			snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s]", calc.calcLiteral);
+				// Get register info
+				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s]", calc.calcLiteral);
+			}
 
 		} break;
 
