@@ -5,5 +5,6 @@
 
 #include <iostream>
 #include "decoder.h"
+#include "InstructionTable.h"
 
 // TODO: Reference additional headers your program requires here.
