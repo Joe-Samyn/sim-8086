@@ -20,7 +20,7 @@ struct Instruction
 	uint8_t rm;
 	// The human redable name for the register stored in R/M when R/M is used to hold register info 
 	char rmMnemonic[BUFFER_SIZE];
-	uint16_t immediate;
+	int16_t immediate;
 };
 
 

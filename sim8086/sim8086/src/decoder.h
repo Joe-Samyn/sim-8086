@@ -107,10 +107,18 @@ void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry,
 
 			// Get displacement bytes
 			programIndex++;
-			uint8_t displacement = program.at(programIndex);
+			int8_t displacement = static_cast<int8_t>(program.at(programIndex));
 
 			// Get register info
-			snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
+			if (displacement < 0)
+			{
+				displacement = (~displacement) + 1;
+				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s - %d]", calc.calcLiteral, displacement);
+			}
+			else
+			{
+				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
+			}
 		} break;
 
 		// Memory mode, 16-bit displacement
@@ -125,10 +133,18 @@ void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry,
 			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
 
 			// Get displacement bytes
-			uint16_t displacement = loadWideData(program, programIndex);
+			int16_t displacement = static_cast<int16_t>(loadWideData(program, programIndex));
 
 			// Get register info
-			snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
+			if (displacement < 0)
+			{
+				displacement = (~displacement) + 1;
+				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s - %d]", calc.calcLiteral, displacement);
+			}
+			else
+			{
+				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
+			}
 		} break;
 
 		// Register mode, no displacement

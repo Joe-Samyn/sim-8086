@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
 	}
 
 	// Begin decoding bytes one at a time
-	std::cout << "\n\nbits 16\n\n\n";
+ 	std::cout << "\n\nbits 16\n\n\n";
 	int programIndex = 0;
 	while (programIndex < buffer.size())
 	{
