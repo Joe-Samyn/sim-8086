@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# TODO: Plan out how tests are going to work via steps
-
 import subprocess
 import sys
 from pathlib import Path
