@@ -56,6 +56,39 @@ void readBinaryFile(char* filePath, std::vector<uint8_t> &buffer)
 	std::cout << "File read successfully.\n";
 }
 
+std::vector<Instruction> beginDecode(std::vector<uint8_t>& buffer)
+{
+	std::vector<Instruction> decodedInstructions = {};
+	int programIndex = 0;
+	while (programIndex < buffer.size())
+	{
+
+		uint8_t currentByte = buffer.at(programIndex);
+		int instructionIndex = findInstruction(currentByte);
+
+		// Check if an instruction was found
+		if (instructionIndex == -1)
+		{
+			std::cout << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
+			return {};
+		}
+
+		InstructionEntry instructionEntry = instructionTable.at(instructionIndex);
+		//std::cout << std::format("Instruction: {}, {}\n", instructionEntry.description, std::bitset<8>(instructionEntry.opcode).to_string());
+
+		// Begin filling in instruction details
+		Instruction instruction = { 0 };
+		decodeInstruction(instruction, instructionEntry, buffer, programIndex);
+
+		// Print instruction 
+		decodedInstructions.push_back(instruction);
+
+		programIndex++;
+	}
+
+	return decodedInstructions;
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -79,35 +112,27 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
+	// Only used to prevent the loop from being optimized out when profiling without console/file output
+	volatile int sink = 0;
+
+
 	// Begin decoding bytes one at a time
  	std::cout << "\n\nbits 16\n\n\n";
-	int programIndex = 0;
-	while (programIndex < buffer.size())
+	std::vector<Instruction> instructions;
+	int result = 0;
+	for (int i = 0; i < 100000; i++)
 	{
-		
-		uint8_t currentByte = buffer.at(programIndex);
-		int instructionIndex = findInstruction(currentByte);
-
-		// Check if an instruction was found
-		if (instructionIndex == -1)
-		{
-			std::cout << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
-			return 1;
-		}
-
-		InstructionEntry instructionEntry = instructionTable.at(instructionIndex);
-		//std::cout << std::format("Instruction: {}, {}\n", instructionEntry.description, std::bitset<8>(instructionEntry.opcode).to_string());
-
-		// Begin filling in instruction details
-		Instruction instruction = { 0 };
-		decodeInstruction(instruction, instructionEntry, buffer, programIndex);
-
-		// Print instruction 
-		printInstruction(instruction);
-
-		programIndex++;
+		std::vector<Instruction> inst = beginDecode(buffer);
+		instructions.insert(instructions.end(), inst.begin(), inst.end());
+		sink += inst.at(0).opcode;
 	}
 
+#ifdef CONSOLE_OUT
+	for (auto inst : instructions)
+	{
+		printInstruction(inst);
+	}
+#endif 
 
-	return 0;
+	return result;
 }
