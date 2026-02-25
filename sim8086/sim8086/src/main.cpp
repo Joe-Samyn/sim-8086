@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
  	std::cout << "\n\nbits 16\n\n\n";
 	std::vector<Instruction> instructions;
 	int result = 0;
-	for (int i = 0; i < 100000; i++)
+	for (int i = 0; i < 500000; i++)
 	{
 		std::vector<Instruction> inst = beginDecode(buffer);
 		instructions.insert(instructions.end(), inst.begin(), inst.end());
