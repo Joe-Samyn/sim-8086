@@ -9,7 +9,7 @@
  * @param programIndex 
  * @return 
  */
-uint16_t loadWideData(std::vector<uint8_t>& program, int& programIndex)
+uint16_t loadWordData(std::vector<uint8_t>& program, int& programIndex)
 {
 	programIndex++;
 	uint8_t lowByte = program.at(programIndex);
@@ -17,6 +17,13 @@ uint16_t loadWideData(std::vector<uint8_t>& program, int& programIndex)
 	uint16_t highByte = program.at(programIndex);
 	uint16_t wideValue = (highByte << 8) | lowByte;
 	return wideValue;
+}
+
+
+uint8_t loadByteData(std::vector<uint8_t>& program, int& programIndex)
+{
+	programIndex++;
+	return program.at(programIndex);
 }
 
 /**
@@ -34,22 +41,31 @@ void decodeOneByteInstruction(Instruction& instruction, InstructionEntry& entry,
 		instruction.reg = (program.at(programIndex) & entry.regMask);
 	}
 
-	// Check if instruction is a data operation and what size data is being operated on
-	if (entry.wMask != 0)
+	switch (instruction.opcode)
 	{
-		if (instruction.width == 0)// Load single byte
+		// MOV mem/reg to/from mem/reg
+		case 0b10110000:
 		{
-			programIndex++;
-			instruction.immediate = program.at(programIndex);
-			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerTable.at(instruction.reg));
-		}
-		else
-		{
-			// load wide bytes
-			instruction.immediate = loadWideData(program, programIndex);
+			if (instruction.width == 0)// Load single byte
+			{
+				instruction.immediate = loadByteData(program, programIndex);
+				snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerTable.at(instruction.reg));
+			}
+			else
+			{
+				// load wide bytes
+				instruction.immediate = loadWordData(program, programIndex);
+				snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerWideTable.at(instruction.reg));
+			}
+		} break;
+		// MOV memory/accumulator to/from memory/accumulator
+		case 0b10100000:
+		{	
+			// Load word because all these type of operations encode a full word, even if displacement is 1 byte
+			instruction.immediate = loadWordData(program, programIndex);
 			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerWideTable.at(instruction.reg));
-		}
-	}
+		} break;
+	}  
 }
 
 /**
@@ -82,7 +98,7 @@ void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry,
 			// Handle direct address loading 
 			if (instruction.rm == 0b00000110)
 			{
-				uint16_t directAddr = loadWideData(program, programIndex);
+				uint16_t directAddr = loadWordData(program, programIndex);
 				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%d]", directAddr);
 			}
 			else {
@@ -133,7 +149,7 @@ void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry,
 			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
 
 			// Get displacement bytes
-			int16_t displacement = static_cast<int16_t>(loadWideData(program, programIndex));
+			int16_t displacement = static_cast<int16_t>(loadWordData(program, programIndex));
 
 			// Get register info
 			if (displacement < 0)

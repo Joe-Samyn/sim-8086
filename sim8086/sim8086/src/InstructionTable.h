@@ -36,6 +36,7 @@ struct InstructionEntry
 	const char* description;
 	const char* mnemonic;
 	uint8_t size;
+	// TODO: I think opcode and opcode mask can do the same thing? No need for 2 entries?
 	uint8_t opcode;
 	uint8_t opcodeMask;
 	uint8_t dMask;
@@ -48,7 +49,7 @@ struct InstructionEntry
 #define InstructionTable \
 	X("Register/memory to/from register/memory", "MOV", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001, 0b11000000, 0b00111000, 0b00000111) \
 	X("Immediate to register/memory", "MOV", 1, 0b10110000, 0b11110000, 0, 0b00001000, 0b00000000, 0b00000111, 0b00000000) \
-
+	X("Memory to accumulator", "MOV", 1, 0b10100000, 0b10100000, 0b00000000, 0b00000001, 0, 0, 0) \
 
 #define X(desc, mnemonic, size, opcode, opcodeMask, dMask, wMask, modMask, reg, rm) { desc, mnemonic, size, opcode, opcodeMask, dMask, wMask, modMask, reg, rm },
 std::vector<InstructionEntry> instructionTable = {

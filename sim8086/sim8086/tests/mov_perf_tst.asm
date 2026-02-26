@@ -99,6 +99,12 @@ mov dx, [bp + di]
 mov si, [si]
 mov di, [di]
 
+; --- Memory to Accumulator --- 
+mov ax, [7]
+mov al, [1234]
+mov ax, [243]
+mov al, [2]
+
 ; --- Direct Address (no AX/AL - those use accumulator short form) ---
 mov bx, [1234]
 mov cx, [100]

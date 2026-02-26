@@ -112,27 +112,19 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	// Only used to prevent the loop from being optimized out when profiling without console/file output
-	volatile int sink = 0;
-
-
 	// Begin decoding bytes one at a time
  	std::cout << "\n\nbits 16\n\n\n";
 	std::vector<Instruction> instructions;
-	int result = 0;
-	for (int i = 0; i < 500000; i++)
-	{
-		std::vector<Instruction> inst = beginDecode(buffer);
-		instructions.insert(instructions.end(), inst.begin(), inst.end());
-		sink += inst.at(0).opcode;
-	}
+	std::vector<Instruction> inst = beginDecode(buffer);
+	instructions.insert(instructions.end(), inst.begin(), inst.end());
+		
 
-#ifdef CONSOLE_OUT
+#ifdef DEBUG
 	for (auto inst : instructions)
 	{
 		printInstruction(inst);
 	}
 #endif 
 
-	return result;
+	return 0;
 }
