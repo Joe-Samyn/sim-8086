@@ -14,8 +14,11 @@ bits 16
 mov cx, [bx + si]
 mov al, [bx + di]
 
+; No displacement, direct address
+mov bx, [1234] 
+
 ; 8-bit displacement
-; mov cx, [bx + si + 4]
+;mov cx, [bx + si + 4]
 
 ; 16-bit displacement
 ; mov ax, [bx + di + 3254]
