@@ -1,25 +1,38 @@
 #pragma once
-
-#include <vector>
 #include "InstructionTable.h"
 
+#include <vector>
+#include <optional>
+
 /**
- * @brief Decode 2 bytes of data from the program
- * @param program 
- * @param programIndex 
- * @return 
+ * @brief Read a 16-bit little-endian word from `memory` starting at address `PC`.
+ *
+ * The byte at `memory[PC]` is treated as the low byte and the byte at
+ * `memory[PC + 1]` is treated as the high byte. These are combined into a
+ * 16-bit value `(high_byte << 8) | low_byte` which is returned.
+ *
+ * Note: `PC` is passed by reference and is modified by this function.
+ *
+ * @param memory Array representing emulator memory.
+ * @param PC Address of the low byte to read.
+ * @return 16-bit unsigned integer composed as `(high_byte << 8) | low_byte`.
+ * @note Accessing `memory[PC]` or `memory[PC + 1]` out of bounds is undefined
+ *       behavior; callers must ensure `PC` and `PC + 1` are valid addresses.
  */
-uint16_t loadWordData(std::vector<uint8_t>& program, int& programIndex)
+uint16_t loadWordData(uint8_t memory[], uint16_t& PC)
 {
-	programIndex++;
-	uint8_t lowByte = program.at(programIndex);
-	programIndex++;
-	uint16_t highByte = program.at(programIndex);
+	uint8_t lowByte = memory[PC];
+	uint16_t highByte = memory[++PC];
 	uint16_t wideValue = (highByte << 8) | lowByte;
 	return wideValue;
 }
 
-
+/**
+ * @brief Read one byte of data from emulator memory
+ * @param program 
+ * @param programIndex 
+ * @return The data loaded from memory converted to an unsigned 8-bit integer
+ */
 uint8_t loadByteData(std::vector<uint8_t>& program, int& programIndex)
 {
 	programIndex++;
@@ -27,193 +40,91 @@ uint8_t loadByteData(std::vector<uint8_t>& program, int& programIndex)
 }
 
 /**
- * @brief Decode an Intel 8086 one byte instruction
- * @param instruction The instruction struct to hold decoded data
- * @param entry The instruction entry in the Intel 8086 instruction table
- * @param program Data structure representing the encoded program data (array or vector or bytes)
- * @param programIndex Current index into the program
+ * @brief Decode the MOD data to determine value for RM field in assembly. 
+ * The intel 8086 decoding syntax uses the MOD field to determine if the instruction is
+ *	- Memory Mode w/ No Displcement:      0x00
+ *  - Memory Mode w/ 8-bit Displacement:  0x01
+ *  - Memory Mode w/ 16-bit Displacement: 0x02
+ *  - Register mode w/ No Displacement:   0x03
+ * @param instruction The instruction struct to add MOD and RM information too
+ * @param entry The InstructionEntry that matches the opcode. This determines how an instruction is decoded. 
+ * @param memory A reference to the emulator memory
+ * @param PC A reference to the program counter
+ * @return The number of bytes read from memory to decode the MOD and RM fields. This is used to update the program counter in the caller function.
  */
-void decodeOneByteInstruction(Instruction& instruction, InstructionEntry& entry, std::vector<uint8_t>& program, int& programIndex)
+uint16_t getModRm(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t PC)
 {
-	// Check if register encoding present, if not it could be an accumulator instruction 
-	if (entry.regMask)
+	uint16_t tempPC = PC + 1;
+	uint8_t mod = (memory[tempPC] & entry.modMask) >> 6;
+	uint8_t rm = (memory[tempPC] & entry.rmMask);
+
+	switch (mod)
 	{
-		instruction.reg = (program.at(programIndex) & entry.regMask);
+	case 0x00:
+	{	
+		sprintf(instruction.rmMnemonic, "[%s]", modEffectiveAddressTable.at(rm));
+	} break;
+	case 0x01:
+	{
+		// decode
+	} break;
+	case 0x02:
+	{
+		// decode
+	} break;
+	case 0x03:
+	{
+		// decode
+	} break;
 	}
 
-	switch (instruction.opcode)
-	{
-		// MOV mem/reg to/from mem/reg
-		case 0b10110000:
-		{
-			if (instruction.width == 0)// Load single byte
-			{
-				instruction.immediate = loadByteData(program, programIndex);
-				snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerTable.at(instruction.reg));
-			}
-			else
-			{
-				// load wide bytes
-				instruction.immediate = loadWordData(program, programIndex);
-				snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerWideTable.at(instruction.reg));
-			}
-		} break;
-		// MOV memory/accumulator to/from memory/accumulator
-		case 0b10100000:
-		{	
-			// Load word because all these type of operations encode a full word, even if displacement is 1 byte
-			instruction.immediate = loadWordData(program, programIndex);
-			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", registerWideTable.at(instruction.reg));
-		} break;
-	}  
+	return tempPC;
+}
+
+void getReg(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t PC)
+{
+	uint8_t reg = (memory[PC] & entry.regMask) >> entry.regShift;
+	sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
 }
 
 /**
- * @brief Decode an Intel 8086 two byte instruction 
- * @param instruction The instruction struct to hold decoded data
- * @param entry The instruction entry in the Intel 8086 instruction table
- * @param program Data structure representing the encoded program data (array or vector or bytes)
- * @param programIndex Current index into the program
- */
-void decodeTwoByteInstruction(Instruction& instruction, InstructionEntry& entry, std::vector<uint8_t> program, int& programIndex)
-{
-	if (entry.modMask != 0)
-	{
-		programIndex++;
-		uint8_t mod = program.at(programIndex) & entry.modMask;
-
-		// TODO: Most of the logic for determing reg, rm, etc. seems to be the same for MOD != 11. Only difference is displacement
-		// There should be a way to reuse this logic. 
-		switch (mod)
-		{
-			// Memory mode, no displacement
-		case 0b00000000:
-		{
-
-			instruction.rm = entry.rmMask & program.at(programIndex);
-			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
-			const char* reg = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
-			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
-
-			// Handle direct address loading 
-			if (instruction.rm == 0b00000110)
-			{
-				uint16_t directAddr = loadWordData(program, programIndex);
-				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%d]", directAddr);
-			}
-			else {
-				EffectiveAddrCalculation calc = modEffectiveAddressTable.at(instruction.rm);
-				// NOTE: When decoding for running a program, we would perform calculation here? 
-				// Get register info
-				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s]", calc.calcLiteral);
-			}
-
-		} break;
-
-		// Memory mode, 8-bit displacement
-		case 0b01000000:
-		{
-			instruction.rm = entry.rmMask & program.at(programIndex);
-			EffectiveAddrCalculation calc = modEffectiveAddressTable.at(instruction.rm);
-
-			// NOTE: When decoding for running a program, we would perform calculation here? 
-			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
-			const char* reg = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
-			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
-
-			// Get displacement bytes
-			programIndex++;
-			int8_t displacement = static_cast<int8_t>(program.at(programIndex));
-
-			// Get register info
-			if (displacement < 0)
-			{
-				displacement = (~displacement) + 1;
-				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s - %d]", calc.calcLiteral, displacement);
-			}
-			else
-			{
-				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
-			}
-		} break;
-
-		// Memory mode, 16-bit displacement
-		case 0b10000000:
-		{
-			instruction.rm = entry.rmMask & program.at(programIndex);
-			EffectiveAddrCalculation calc = modEffectiveAddressTable.at(instruction.rm);
-
-			// NOTE: When decoding for running a program, we would perform calculation here? 
-			instruction.reg = (entry.regMask & program.at(programIndex)) >> 3;
-			const char* reg = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
-			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
-
-			// Get displacement bytes
-			int16_t displacement = static_cast<int16_t>(loadWordData(program, programIndex));
-
-			// Get register info
-			if (displacement < 0)
-			{
-				displacement = (~displacement) + 1;
-				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s - %d]", calc.calcLiteral, displacement);
-			}
-			else
-			{
-				snprintf(instruction.rmMnemonic, BUFFER_SIZE, "[%s + %d]", calc.calcLiteral, displacement);
-			}
-		} break;
-
-		// Register mode, no displacement
-		case 0b11000000:
-		{
-
-			// Both operands are in registers, so decode the registers involved in the operation
-			instruction.reg = (program.at(programIndex) & entry.regMask) >> 3;
-			instruction.rm = program.at(programIndex) & entry.rmMask;
-			const char* reg = instruction.width ? registerWideTable.at(instruction.reg) : registerTable.at(instruction.reg);
-			snprintf(instruction.regMnemonic, BUFFER_SIZE, "%s", reg);
-
-			const char* rm = instruction.width ? registerWideTable.at(instruction.rm) : registerTable.at(instruction.rm);
-			snprintf(instruction.rmMnemonic, BUFFER_SIZE, "%s", rm);
-
-		} break;
-		}
-	}
-}
-
-/**
- * @brief Decode instruction using entry in 8086 table
+ * @brief Decode instruction using entry in 8086 table. This function acts as the ROM decoder in Intel 8086 hardware by 
+ * determining the correct decode logic (microcode) for an instruction. 
  * @param instruction
  * @param entry
+ * @returns The number of bytes read from memory to decode the instruction. This is used to update the program counter in the caller function.
  */
-void decodeInstruction(Instruction& instruction, InstructionEntry& entry, std::vector<uint8_t> program, int& programIndex)
+uint16_t decodeInstruction(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t PC)
 {
-	// Begin filling in instruction details
-	instruction.opcode = entry.opcode;
-	snprintf(instruction.mnemonic, BUFFER_SIZE, "%s", entry.mnemonic);
+	// Keep track of number of bytes read from memory to decode instruction
+	uint16_t byteIncrement = 0;
 
-	// TODO: Do we need to adjust length or do anything new if dMask or wMask are present? 
-	// Check if instruction contains Direction Mask
-	if (entry.dMask != 0)
-	{
-		instruction.direction = program.at(programIndex) & entry.dMask;
-	}
+	// Set mnemonic 
+	sprintf(instruction.mnemonic, "%s", entry.mnemonic);
 
-	// Check if instruction contains Direction Mask
-	if (entry.wMask != 0)
-	{
-		instruction.width = program.at(programIndex) & entry.wMask;
-	}
+	// Get width if w bit is present 
+	if (entry.wMask != 0)  instruction.width = (memory[PC] & entry.wMask) >> entry.wShift;
 
-	switch (entry.size)
-	{
-	case 1:
-	{
-		decodeOneByteInstruction(instruction, entry, program, programIndex);
-	} break;
-	case 2:
-	{
-		decodeTwoByteInstruction(instruction, entry, program, programIndex);
-	} break;
-	}
+	// Get direction if d bit is present, direction is always in bit 1 if it is present so we can just shift right by 1 to get the value
+	if (entry.dMask != 0) instruction.direction = (memory[PC] & entry.dMask) >> 1;
+	
+	// Get MOD byte and RM field if necessary
+	if (entry.hasModByte)
+		byteIncrement = getModRm(instruction, entry, memory, PC);
+
+	// Get reg field if necessary
+	if (entry.hasModByte && entry.hasReg)
+		getReg(instruction, entry, memory, PC + 1);
+
+
+	return byteIncrement;
+}
+
+std::optional<InstructionEntry> decodeOpcode(const uint8_t byte)
+{
+	int instructionEntry = findInstruction(byte);
+
+	if (instructionEntry < 0) return std::nullopt;
+
+	return std::make_optional(instructionTable.at(instructionEntry));
 }

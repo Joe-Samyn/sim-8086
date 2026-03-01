@@ -32,8 +32,10 @@ void printInstruction(Instruction &inst)
  * @brief Reads binary file into memory
  * @param filePath 
  * @param buffer 
+ * 
+ * TODO: Really should be part of initializing the machine
  */
-void readBinaryFile(char* filePath, std::vector<uint8_t> &buffer)
+void readBinaryFile(char* filePath)
 {
 	std::ifstream file(filePath, std::ios::binary | std::ios::ate);
 
@@ -45,45 +47,39 @@ void readBinaryFile(char* filePath, std::vector<uint8_t> &buffer)
 
 	// Determine file size 
 	std::streamsize file_size = file.tellg();
-	std::cout << "File size: " << file_size << "B" << std::endl;
-
-	// Seek back to beginning of file 
 	file.seekg(0, std::ios::beg);
-	buffer.resize(file_size);
 
-	file.read(reinterpret_cast<char*>(buffer.data()), file_size);
-
-	std::cout << "File read successfully.\n";
+	file.read(reinterpret_cast<char*>(memory), file_size);
 }
 
-std::vector<Instruction> beginDecode(std::vector<uint8_t>& buffer)
+// TODO: In the this decode loop, rather than passing PC as a reference, we should probably just return the number of bytes read and have the caller update PC. 
+// This would make it easier to handle instructions that have variable length (i.e. some instructions have an optional mod byte, some have an optional immediate value, etc.)
+std::vector<Instruction> beginDecode()
 {
 	std::vector<Instruction> decodedInstructions = {};
-	int programIndex = 0;
-	while (programIndex < buffer.size())
+	while (memory[PC] != 0)
 	{
+		uint8_t currentByte = memory[PC];
 
-		uint8_t currentByte = buffer.at(programIndex);
-		int instructionIndex = findInstruction(currentByte);
-
-		// Check if an instruction was found
-		if (instructionIndex == -1)
+		// Get opcode from byte 
+		// TODO: This could be cleaned up by having a global error function 
+		std::optional<InstructionEntry> opcodeResult = decodeOpcode(currentByte);
+		if (!opcodeResult)
 		{
-			std::cout << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
-			return {};
+			std::cerr << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
+			exit(1);
 		}
-
-		InstructionEntry instructionEntry = instructionTable.at(instructionIndex);
-		//std::cout << std::format("Instruction: {}, {}\n", instructionEntry.description, std::bitset<8>(instructionEntry.opcode).to_string());
+		InstructionEntry entry = *opcodeResult;
 
 		// Begin filling in instruction details
 		Instruction instruction = { 0 };
-		decodeInstruction(instruction, instructionEntry, buffer, programIndex);
+		PC += decodeInstruction(instruction, entry, memory, PC);
 
 		// Print instruction 
 		decodedInstructions.push_back(instruction);
 
-		programIndex++;
+		// PC currently points to the last byte that was decoded, increment to point to next instruction
+		PC++;
 	}
 
 	return decodedInstructions;
@@ -92,8 +88,6 @@ std::vector<Instruction> beginDecode(std::vector<uint8_t>& buffer)
 
 int main(int argc, char* argv[])
 {
-	std::vector<uint8_t> buffer;
-
 	// No filepath is present 
 	if (argc < 2)
 	{
@@ -104,18 +98,12 @@ int main(int argc, char* argv[])
 	std::cout << "Decoding instructions in binary: " << argv[1] << std::endl;
 
 	// Read binary file into a vector if bytes
-	readBinaryFile(argv[1], buffer);
-
-	// Ensure file was read into buffer
-	if (buffer.size() < 1)
-	{
-		return 1;
-	}
+	readBinaryFile(argv[1]);
 
 	// Begin decoding bytes one at a time
  	std::cout << "\n\nbits 16\n\n\n";
 	std::vector<Instruction> instructions;
-	std::vector<Instruction> inst = beginDecode(buffer);
+	std::vector<Instruction> inst = beginDecode();
 	instructions.insert(instructions.end(), inst.begin(), inst.end());
 		
 

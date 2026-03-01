@@ -5,22 +5,24 @@
 
 const int BUFFER_SIZE = 32;
 
+enum InstructionClassification {
+	ONE_BYTE_LOGIC,
+	ONE_BYTE_DATA,
+	TWO_BYTE_LOGIC,
+};
+
 /**
  * @brief Represents a decoded instructions
+ * TODO: This can probably go away at some point and we can just write directly to a buffer or file. Its more for debugging
  */
 struct Instruction
 {
-	uint8_t opcode;
-	char mnemonic[BUFFER_SIZE];
-	uint8_t direction;
-	uint8_t width;
-	uint8_t reg;
-	// The human readable name for the register (i.e. AX, BX, etc.)
-	char regMnemonic[BUFFER_SIZE];
-	uint8_t rm;
-	// The human redable name for the register stored in R/M when R/M is used to hold register info 
-	char rmMnemonic[BUFFER_SIZE];
-	int16_t immediate;
+	uint8_t direction;				// Determines if reg or rm goes first in assembly output
+	uint8_t width;					// Width of the register or data 
+	int16_t immediate;				// Immediate value if there is one
+	char mnemonic[BUFFER_SIZE];		// Human readable assembly language mnemonic for the instruction
+	char regMnemonic[BUFFER_SIZE];	// The human readable name for the register (i.e. AX, BX, etc.)
+	char rmMnemonic[BUFFER_SIZE];	// The human redable name for the register stored in R/M when R/M is used to hold register info 
 };
 
 
@@ -33,25 +35,36 @@ struct Instruction
  */
 struct InstructionEntry
 {
-	const char* description;
-	const char* mnemonic;
-	uint8_t size;
-	// TODO: I think opcode and opcode mask can do the same thing? No need for 2 entries?
+	// Opcode and mnemonic for the instruction
 	uint8_t opcode;
-	uint8_t opcodeMask;
+	const char* mnemonic;
+
+	// direction - determines if reg is src or dest
 	uint8_t dMask;
+
+	// width - width of width of register and data
+	bool immUsesW;
 	uint8_t wMask;
+	uint8_t wShift;
+
+	// mod byte extraction 
+	bool hasModByte;
 	uint8_t modMask;
+
+	// reg extraction
+	bool hasReg;
 	uint8_t regMask;
+	uint8_t regShift;
+
+	// r/m extraction
 	uint8_t rmMask;
 };
 
+// TODO (joe): Maybe remove strings from this table and create a mapping table of opcode -> mnemonic
 #define InstructionTable \
-	X("Register/memory to/from register/memory", "MOV", 2, 0b10001000, 0b11111100, 0b00000010, 0b00000001, 0b11000000, 0b00111000, 0b00000111) \
-	X("Immediate to register/memory", "MOV", 1, 0b10110000, 0b11110000, 0, 0b00001000, 0b00000000, 0b00000111, 0b00000000) \
-	X("Memory to accumulator", "MOV", 1, 0b10100000, 0b10100000, 0b00000000, 0b00000001, 0, 0, 0) \
+	X(0x88, "MOV", 0x2, false, 0x1, 0x0, true, 0xC0, true, 0x38, 0x3, 0x3) \
 
-#define X(desc, mnemonic, size, opcode, opcodeMask, dMask, wMask, modMask, reg, rm) { desc, mnemonic, size, opcode, opcodeMask, dMask, wMask, modMask, reg, rm },
+#define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, regMask, regShift, rmMask) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, regMask, regShift, rmMask },
 std::vector<InstructionEntry> instructionTable = {
 	InstructionTable
 };
@@ -91,34 +104,32 @@ std::unordered_map<uint8_t, const char*> registerTable = {
 };
 #undef X
 
+const char* getRegister(uint8_t reg, uint8_t width)
+{
+	// Get 16 bit register
+	if (width)
+		return registerWideTable.at(reg);
+
+	// Get 8 bit register
+	return registerTable.at(reg);
+}
+
 
 /* ====================================================================== */
 /* ============== Effective Address Calculation Table =================== */
-/* ====================================================================== */
-
-/**
- * @brief Represents an effective address calculation found in the Intel 8086 Manual MOD section
- */
-struct EffectiveAddrCalculation
-{
-	uint8_t registerA;
-	uint8_t registerB;
-	uint8_t displacement;
-	const char* calcLiteral;
-};
 
 #define ModCalculations \
-	X(/* R/M = 000*/ 0b00000000, /* BX */ 0b00000011, /* SI*/ 0b00000101, /* 0 */ 0b0, "BX + SI") \
-	X(/* R/M = 001*/ 0b00000001, /* BX */ 0b00000011, /* DI*/ 0b00000111, /* 0 */ 0b0, "BX + DI") \
-	X(/* R/M = 010*/ 0b00000010, /* BP */ 0b00000101, /* SI*/ 0b00000101, /* 0 */ 0b0, "BP + SI") \
-	X(/* R/M = 011*/ 0b00000011, /* BP */ 0b00000101, /* DI*/ 0b00000111, /* 0 */ 0b0, "BP + DI") \
-	X(/* R/M = 100*/ 0b00000100, /* SI */ 0b00000101, /* 0 */ 0b0,        /* 0 */ 0b0, "SI") \
-	X(/* R/M = 101*/ 0b00000101, /* DI */ 0b00000111, /* 0 */ 0b0,        /* 0 */ 0b0, "DI") \
-	X(/* R/M = 110*/ 0b00000110, /* DA */ 0b0,        /* SI*/ 0b0,        /* 0 */ 0b0, "[]") \
-	X(/* R/M = 111*/ 0b00000111, /* BX */ 0b00000011, /* 0 S*/ 0b0,       /* 0 */ 0b0, "BX") \
+	X(/* R/M = 000*/ 0b00000000, "BX + SI") \
+	X(/* R/M = 001*/ 0b00000001, "BX + DI") \
+	X(/* R/M = 010*/ 0b00000010, "BP + SI") \
+	X(/* R/M = 011*/ 0b00000011, "BP + DI") \
+	X(/* R/M = 100*/ 0b00000100, "SI") \
+	X(/* R/M = 101*/ 0b00000101, "DI") \
+	X(/* R/M = 110*/ 0b00000110, "[]") \
+	X(/* R/M = 111*/ 0b00000111, "BX") \
 
-#define X(code, regA, regB, displacement, calcLiteral) { code, {regA, regB, displacement, calcLiteral} },
-std::unordered_map<uint8_t, EffectiveAddrCalculation> modEffectiveAddressTable = {
+#define X(code, calcLiteral) { code, calcLiteral },
+std::unordered_map<uint8_t, const char*> modEffectiveAddressTable = {
 	ModCalculations
 };
 #undef X
@@ -141,7 +152,7 @@ int findInstruction(uint8_t byte)
 	{
 		// Get opcode from byte
 		InstructionEntry inst = instructionTable.at(i);
-		uint8_t b = byte & inst.opcodeMask;
+		uint8_t b = byte & inst.opcode;
 
 		// If byte matches opcode, break out and return index of instruction
 		if (b == inst.opcode)

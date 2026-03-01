@@ -6,7 +6,7 @@ set(SRC "src/main.cpp"
 		"src/Decoder.h")
 
 # Add source to this project's executable.
-add_executable (sim8086 ${SRC} "src/InstructionTable.h")
+add_executable (sim8086 ${SRC} "src/InstructionTable.h" "src/Hardware.h")
 
 # Add compile definitions 
 add_compile_definitions(DEBUG)

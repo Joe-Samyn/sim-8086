@@ -3,8 +3,11 @@
 
 #pragma once
 
-#include <iostream>
 #include "decoder.h"
 #include "InstructionTable.h"
+#include "Hardware.h"
+
+#include <iostream>
+
 
 // TODO: Reference additional headers your program requires here.
