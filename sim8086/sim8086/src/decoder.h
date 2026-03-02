@@ -28,14 +28,14 @@ uint16_t loadWordData(uint8_t memory[], uint16_t &PC)
 }
 
 /**
- * @brief Read an 8-bit byte from `memory` at address `PC + 1` and return it as a 16-bit unsigned integer.
+ * @brief Read an 8-bit byte from `memory` at address `PC` and return it as a 16-bit unsigned integer.
  * @param program 
  * @param programIndex 
  * @return The data loaded from memory converted to an unsigned 8-bit integer
  */
 uint16_t loadByteData(uint8_t memory[], uint16_t &PC)
 {
-	return static_cast<uint16_t>(memory[++PC]);
+	return static_cast<uint16_t>(memory[PC]);
 }
 
 /**
@@ -69,12 +69,13 @@ void getModRm(Instruction& instruction, InstructionEntry& entry, uint8_t memory[
 	// Memory mode, 8-bit displacement
 	case 0x01:
 	{
-		int16_t data = static_cast<int16_t>(loadByteData(memory, PC));
+		int16_t data = static_cast<int16_t>(loadByteData(memory, ++PC));
 		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
 	case 0x02:
 	{
-		// decode
+		int16_t data = static_cast<int16_t>(loadWordData(memory, ++PC));
+		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
 	case 0x03:
 	{

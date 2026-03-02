@@ -21,7 +21,7 @@ mov bx, [1234]
 mov cx, [bx + si + 4]
 
 ; 16-bit displacement
-; mov ax, [bx + di + 3254]
+mov bx, [bx + di + 3254]
 
 ; No displacement, write
 ; mov [bx + di], cx
