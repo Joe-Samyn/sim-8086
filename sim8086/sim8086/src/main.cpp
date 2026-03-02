@@ -73,7 +73,7 @@ std::vector<Instruction> beginDecode()
 
 		// Begin filling in instruction details
 		Instruction instruction = { 0 };
-		PC += decodeInstruction(instruction, entry, memory, PC);
+		decodeInstruction(instruction, entry, memory, PC);
 
 		// Print instruction 
 		decodedInstructions.push_back(instruction);

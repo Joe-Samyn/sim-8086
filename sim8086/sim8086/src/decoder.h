@@ -19,7 +19,7 @@
  * @note Accessing `memory[PC]` or `memory[PC + 1]` out of bounds is undefined
  *       behavior; callers must ensure `PC` and `PC + 1` are valid addresses.
  */
-uint16_t loadWordData(uint8_t memory[], uint16_t& PC)
+uint16_t loadWordData(uint8_t memory[], uint16_t &PC)
 {
 	uint8_t lowByte = memory[PC];
 	uint16_t highByte = memory[++PC];
@@ -28,15 +28,14 @@ uint16_t loadWordData(uint8_t memory[], uint16_t& PC)
 }
 
 /**
- * @brief Read one byte of data from emulator memory
+ * @brief Read an 8-bit byte from `memory` at address `PC + 1` and return it as a 16-bit unsigned integer.
  * @param program 
  * @param programIndex 
  * @return The data loaded from memory converted to an unsigned 8-bit integer
  */
-uint8_t loadByteData(std::vector<uint8_t>& program, int& programIndex)
+uint16_t loadByteData(uint8_t memory[], uint16_t &PC)
 {
-	programIndex++;
-	return program.at(programIndex);
+	return static_cast<uint16_t>(memory[++PC]);
 }
 
 /**
@@ -50,23 +49,28 @@ uint8_t loadByteData(std::vector<uint8_t>& program, int& programIndex)
  * @param entry The InstructionEntry that matches the opcode. This determines how an instruction is decoded. 
  * @param memory A reference to the emulator memory
  * @param PC A reference to the program counter
- * @return The number of bytes read from memory to decode the MOD and RM fields. This is used to update the program counter in the caller function.
  */
-uint16_t getModRm(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t PC)
+void getModRm(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t& PC)
 {
-	uint16_t tempPC = PC + 1;
-	uint8_t mod = (memory[tempPC] & entry.modMask) >> 6;
-	uint8_t rm = (memory[tempPC] & entry.rmMask);
+	uint8_t mod = (memory[PC] & entry.modMask) >> 6;
+	uint8_t rm = (memory[PC] & entry.rmMask);
 
 	switch (mod)
 	{
+	// Memory mode, no displacement
 	case 0x00:
 	{	
-		sprintf(instruction.rmMnemonic, "[%s]", modEffectiveAddressTable.at(rm));
+		// Special case of MOD that indicates direct memory access with no displacement. 
+		if (rm == 0x6)
+			sprintf(instruction.rmMnemonic, "[%d]", loadWordData(memory, ++PC));
+		else
+			sprintf(instruction.rmMnemonic, "[%s]", modEffectiveAddressTable.at(rm));
 	} break;
+	// Memory mode, 8-bit displacement
 	case 0x01:
 	{
-		// decode
+		int16_t data = static_cast<int16_t>(loadByteData(memory, PC));
+		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
 	case 0x02:
 	{
@@ -77,11 +81,9 @@ uint16_t getModRm(Instruction& instruction, InstructionEntry& entry, uint8_t mem
 		// decode
 	} break;
 	}
-
-	return tempPC;
 }
 
-void getReg(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t PC)
+void getReg(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t& PC)
 {
 	uint8_t reg = (memory[PC] & entry.regMask) >> entry.regShift;
 	sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
@@ -94,10 +96,8 @@ void getReg(Instruction& instruction, InstructionEntry& entry, uint8_t memory[],
  * @param entry
  * @returns The number of bytes read from memory to decode the instruction. This is used to update the program counter in the caller function.
  */
-uint16_t decodeInstruction(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t PC)
+void decodeInstruction(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t &PC)
 {
-	// Keep track of number of bytes read from memory to decode instruction
-	uint16_t byteIncrement = 0;
 
 	// Set mnemonic 
 	sprintf(instruction.mnemonic, "%s", entry.mnemonic);
@@ -107,17 +107,18 @@ uint16_t decodeInstruction(Instruction& instruction, InstructionEntry& entry, ui
 
 	// Get direction if d bit is present, direction is always in bit 1 if it is present so we can just shift right by 1 to get the value
 	if (entry.dMask != 0) instruction.direction = (memory[PC] & entry.dMask) >> 1;
-	
-	// Get MOD byte and RM field if necessary
-	if (entry.hasModByte)
-		byteIncrement = getModRm(instruction, entry, memory, PC);
 
 	// Get reg field if necessary
-	if (entry.hasModByte && entry.hasReg)
-		getReg(instruction, entry, memory, PC + 1);
+	if (entry.isRegInOpcode) getReg(instruction, entry, memory, PC);
 
+	// Get MOD byte, RM field and REG field
+	if (entry.hasModByte)
+	{
+		PC++;
+		getReg(instruction, entry, memory, PC);
+		getModRm(instruction, entry, memory, PC);
+	}
 
-	return byteIncrement;
 }
 
 std::optional<InstructionEntry> decodeOpcode(const uint8_t byte)

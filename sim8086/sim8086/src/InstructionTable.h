@@ -53,6 +53,7 @@ struct InstructionEntry
 
 	// reg extraction
 	bool hasReg;
+	bool isRegInOpcode;
 	uint8_t regMask;
 	uint8_t regShift;
 
@@ -62,9 +63,9 @@ struct InstructionEntry
 
 // TODO (joe): Maybe remove strings from this table and create a mapping table of opcode -> mnemonic
 #define InstructionTable \
-	X(0x88, "MOV", 0x2, false, 0x1, 0x0, true, 0xC0, true, 0x38, 0x3, 0x3) \
+	X(0x88, "MOV", 0x2, false, 0x1, 0x0, true, 0xC0, true, false, 0x38, 0x3, 0x7) \
 
-#define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, regMask, regShift, rmMask) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, regMask, regShift, rmMask },
+#define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask },
 std::vector<InstructionEntry> instructionTable = {
 	InstructionTable
 };
@@ -104,6 +105,12 @@ std::unordered_map<uint8_t, const char*> registerTable = {
 };
 #undef X
 
+/**
+ * @brief Get register mnemonic from register code and width. This is used to decode the reg field in the mod byte when it is used to hold register information.
+ * @param reg 
+ * @param width 
+ * @return register mnemonic
+ */
 const char* getRegister(uint8_t reg, uint8_t width)
 {
 	// Get 16 bit register
@@ -142,9 +149,9 @@ std::unordered_map<uint8_t, const char*> modEffectiveAddressTable = {
 
 // TODO: This might be better off returning an instruction entry instead of an index
 /**
- * @brief Find the instruction whose opcode matches the byte
- * @param byte
- * @return
+ * @brief Search instruction table for instruction that matches the opcode in the byte. 
+ * @param byte The byte containing the opcode to search for in the instruction table.
+ * @return Returns index of instruction in instruction table if found, otherwise returns -1.
  */
 int findInstruction(uint8_t byte)
 {
