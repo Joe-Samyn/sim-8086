@@ -39,3 +39,7 @@ if __name__ == "__main__":
 	# Run sim8086 program
 	decoder_path = sys.argv[1]
 	decoder_run_result = subprocess.run([decoder_path, mov_test_file_path])
+
+	# Get sim8086 output file and assemble it
+
+	# Compare sim8086 output to expected output

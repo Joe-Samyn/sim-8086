@@ -59,13 +59,16 @@ struct InstructionEntry
 
 	// r/m extraction
 	uint8_t rmMask;
+
+	bool hasImmediate;
 };
 
 // TODO (joe): Maybe remove strings from this table and create a mapping table of opcode -> mnemonic
 #define InstructionTable \
-	X(0x88, "MOV", 0x2, false, 0x1, 0x0, true, 0xC0, true, false, 0x38, 0x3, 0x7) \
+	X(0x88, "MOV", 0x02, false, 0x01, 0x00, true, 0xC0, true, false, 0x38, 0x3, 0x07, false) \
+    X(0xC6, "MOV", 0x00, true, 0x01, 0x00, true, 0xC0, false, false, 0x00, 0x00, 0x07, true) \
 
-#define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask },
+#define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate },
 std::vector<InstructionEntry> instructionTable = {
 	InstructionTable
 };

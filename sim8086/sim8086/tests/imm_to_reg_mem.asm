@@ -6,6 +6,4 @@
 
 bits 16
 
-mov ax, 3
-mov al, 3
-mov bx, 3265
+mov byte [bx + di], 12

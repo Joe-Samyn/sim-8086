@@ -19,7 +19,7 @@
  * @note Accessing `memory[PC]` or `memory[PC + 1]` out of bounds is undefined
  *       behavior; callers must ensure `PC` and `PC + 1` are valid addresses.
  */
-uint16_t loadWordData(uint8_t memory[], uint16_t &PC)
+uint16_t loadWordData(uint8_t memory[], uint16_t& PC)
 {
 	uint8_t lowByte = memory[PC];
 	uint16_t highByte = memory[++PC];
@@ -36,6 +36,14 @@ uint16_t loadWordData(uint8_t memory[], uint16_t &PC)
 uint16_t loadByteData(uint8_t memory[], uint16_t &PC)
 {
 	return static_cast<uint16_t>(memory[PC]);
+}
+
+void loadImmediate(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t& PC)
+{
+	if (entry.immUsesW)
+		instruction.immediate = loadWordData(memory, ++PC);
+	else
+		instruction.immediate = loadByteData(memory, ++PC);
 }
 
 void getReg(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t& PC)
@@ -87,7 +95,6 @@ void getModRm(Instruction& instruction, InstructionEntry& entry, uint8_t memory[
 	// Register mode, no displacement
 	case 0x03:
 	{
-		getReg(instruction, entry, memory, PC);
 		sprintf(instruction.rmMnemonic, "%s", getRegister(rm, instruction.width));
 	} break;
 	}
@@ -118,9 +125,11 @@ void decodeInstruction(Instruction& instruction, InstructionEntry& entry, uint8_
 	if (entry.hasModByte)
 	{
 		PC++;
-		getReg(instruction, entry, memory, PC);
+		if (entry.hasReg) getReg(instruction, entry, memory, PC);
 		getModRm(instruction, entry, memory, PC);
 	}
+
+	if (entry.hasImmediate) loadImmediate(instruction, entry, memory, PC);
 
 }
 

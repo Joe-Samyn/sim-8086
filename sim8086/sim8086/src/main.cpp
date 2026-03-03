@@ -13,7 +13,8 @@ void printInstruction(Instruction &inst)
 {
 	if (inst.immediate)
 	{
-		std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
+		if (inst.rmMnemonic != "") std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
+		else std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
 	}
 	else
 	{
