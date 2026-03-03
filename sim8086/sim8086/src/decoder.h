@@ -38,6 +38,12 @@ uint16_t loadByteData(uint8_t memory[], uint16_t &PC)
 	return static_cast<uint16_t>(memory[PC]);
 }
 
+void getReg(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t& PC)
+{
+	uint8_t reg = (memory[PC] & entry.regMask) >> entry.regShift;
+	sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
+}
+
 /**
  * @brief Decode the MOD data to determine value for RM field in assembly. 
  * The intel 8086 decoding syntax uses the MOD field to determine if the instruction is
@@ -72,22 +78,19 @@ void getModRm(Instruction& instruction, InstructionEntry& entry, uint8_t memory[
 		int16_t data = static_cast<int16_t>(loadByteData(memory, ++PC));
 		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
+	// Memory mode, 16-bit displacement
 	case 0x02:
 	{
 		int16_t data = static_cast<int16_t>(loadWordData(memory, ++PC));
 		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
+	// Register mode, no displacement
 	case 0x03:
 	{
-		// decode
+		getReg(instruction, entry, memory, PC);
+		sprintf(instruction.rmMnemonic, "%s", getRegister(rm, instruction.width));
 	} break;
 	}
-}
-
-void getReg(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t& PC)
-{
-	uint8_t reg = (memory[PC] & entry.regMask) >> entry.regShift;
-	sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
 }
 
 /**
@@ -99,7 +102,6 @@ void getReg(Instruction& instruction, InstructionEntry& entry, uint8_t memory[],
  */
 void decodeInstruction(Instruction& instruction, InstructionEntry& entry, uint8_t memory[], uint16_t &PC)
 {
-
 	// Set mnemonic 
 	sprintf(instruction.mnemonic, "%s", entry.mnemonic);
 

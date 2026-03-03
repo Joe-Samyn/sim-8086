@@ -23,6 +23,11 @@ mov cx, [bx + si + 4]
 ; 16-bit displacement
 mov bx, [bx + di + 3254]
 
+; Register to register 
+mov cx, bx
+mov al, bl
+mov ax, si
+
 ; No displacement, write
-; mov [bx + di], cx
-; mov [bp + si], cl
+mov [bx + di], cx
+mov [bp + si], cl
