@@ -31,6 +31,41 @@ struct Instruction
 /* ==============     Intel 8086 Instruction Table    =================== */
 /* ====================================================================== */
 
+/*
+TODO (joe): This table is not going to work long term. Flat structure is going to cause lots of flags to be created to support
+all the different instruction types. I want to try refactoring this to use unions and categories of instructions. For example, 
+we can have base fields for all instructions (i.e. opcode, mnemonic, etc.) and then have a union of different instruction types that have their own specific fields.
+For example: 
+typedef enum {
+	ENCODING_STANDARD,
+	ENCODING_ACCUMULATOR,
+} EncodingCategory;
+
+struct InstructionEntry {
+	// Fields every instruction needs
+	uint8_t opcode;
+	const char* mnemonic;
+	EncodingCategory category;
+
+	// Fields that only some instructions need
+	union {
+		struct {
+			uint8_t modMask;
+			uint8_t regMask;
+			uint8_t regShift;
+			uint8_t rmMask;
+			bool hasModByte;
+			// ...other standard fields
+		} standard;
+
+		struct {
+			uint8_t direction;
+			// that's probably it
+		} accumulator;
+	} encoding;
+};
+*/
+
 /**
  * @brief Represents an instruction entry in the Intel 8086 Instruction table
  */
