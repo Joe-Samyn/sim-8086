@@ -20,6 +20,7 @@ struct Instruction
 	uint8_t direction;				// Determines if reg or rm goes first in assembly output
 	uint8_t width;					// Width of the register or data 
 	int16_t immediate;				// Immediate value if there is one
+	uint16_t address;				// Address if instruction has an address (i.e. MOV AL, [1234h])
 	char mnemonic[BUFFER_SIZE];		// Human readable assembly language mnemonic for the instruction
 	char regMnemonic[BUFFER_SIZE];	// The human readable name for the register (i.e. AX, BX, etc.)
 	char rmMnemonic[BUFFER_SIZE];	// The human redable name for the register stored in R/M when R/M is used to hold register info 
@@ -61,14 +62,18 @@ struct InstructionEntry
 	uint8_t rmMask;
 
 	bool hasImmediate;
+	bool hasAddress;
+	bool isAccumulatorOperation;
+	uint8_t direction;
 };
 
 // TODO (joe): Maybe remove strings from this table and create a mapping table of opcode -> mnemonic
 #define InstructionTable \
-	X(0x88, "MOV", 0x02, false, 0x01, 0x00, true, 0xC0, true, false, 0x38, 0x3, 0x07, false) \
-    X(0xC6, "MOV", 0x00, true, 0x01, 0x00, true, 0xC0, false, false, 0x00, 0x00, 0x07, true) \
+	X(0x88, "MOV", 0x02, false, 0x01, 0x00, true, 0xC0, true, false, 0x38, 0x3, 0x07, false, false, false, 0x00) \
+    X(0xC6, "MOV", 0x00, true, 0x01, 0x00, true, 0xC0, false, false, 0x00, 0x00, 0x07, true, false, false, 0x00) \
+	X(0xA0, "MOV", 0x00, false, 0x01, 0x00, false, 0x00, false, false, 0x00, 0x00, 0x00, false, true, true, 0x01) \
 
-#define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate },
+#define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate, hasAddress) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate, hasAddress },
 std::vector<InstructionEntry> instructionTable = {
 	InstructionTable
 };

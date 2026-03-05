@@ -40,12 +40,23 @@ uint16_t loadByteData(struct CPU &cpu)
 	return static_cast<uint16_t>(cpu.memory[cpu.PC]);
 }
 
+void loadAddress(Instruction& instruction, InstructionEntry& entry, struct CPU& cpu)
+{
+	cpu.PC++;
+	instruction.address = loadWordData(cpu);
+}
+
 void loadImmediate(Instruction& instruction, InstructionEntry& entry, struct CPU &cpu)
 {
 	cpu.PC++;
 
+	// Instruction uses W bit to determine if immediate is byte or word, and the width of the instruction is 1 (i.e. word), then load a word
 	if (entry.immUsesW && instruction.width == 1)
 		instruction.immediate = loadWordData(cpu);
+	// Immediate does not use W bit, but has immediate value, so load word by default
+	else if (!entry.immUsesW && entry.hasImmediate)
+		instruction.immediate = loadWordData(cpu);
+	// Immediate uses W bit to determine if immediate is byte or word, and the width of the instruction is 0 (i.e. byte), then load a byte
 	else
 		instruction.immediate = loadByteData(cpu);
 }
@@ -138,7 +149,21 @@ void decodeInstruction(Instruction& instruction, InstructionEntry& entry, struct
 		getModRm(instruction, entry, cpu);
 	}
 
+	// Load immediate value
 	if (entry.hasImmediate) loadImmediate(instruction, entry, cpu);
+	
+	// Load address 
+	if (entry.hasAddress) loadAddress(instruction, entry, cpu);
+
+	// If no reg or mod byte is specified, it most likely means the instruction is using the accumulator register, so we can just set the reg mnemonic to AX or AL depending on the width of the instruction
+	if (!entry.hasModByte && !entry.hasReg)
+	{
+		instruction.direction = 1; // Set direction to 1 so that reg is always first in assembly output
+		if (instruction.width == 1)
+			sprintf(instruction.regMnemonic, "%s", "AX");
+		else
+			sprintf(instruction.regMnemonic, "%s", "AL");
+	}
 
 }
 
