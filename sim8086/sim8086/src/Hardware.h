@@ -7,17 +7,10 @@
 // The size of the prefetch buffer in bytes
 #define PREFETCH_BUFFER_SIZE_BYTES 6
 
-/** 
- * @brief Array that represents the physical main memory for an Intel 8086 machine 
- */
-uint8_t memory[MEMORY_SIZE_BYTES];
-
 /**
- * @brief Buffer that holds up to 6 bytes of prefetched instructions 
+ * @brief Struct that represents the state of the CPU, including memory and registers
  */
-uint8_t prefetchBuffer[PREFETCH_BUFFER_SIZE_BYTES];
-
-/**
- * @brief Program Counter keeps track of where in 
- */
-uint16_t PC = 0;
+struct CPU {
+	uint8_t memory[MEMORY_SIZE_BYTES];
+	uint16_t PC;
+};

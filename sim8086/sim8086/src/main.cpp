@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 
+struct CPU cpu = { 0 };
 
 void printInstruction(Instruction &inst)
 {
@@ -50,7 +51,7 @@ void readBinaryFile(char* filePath)
 	std::streamsize file_size = file.tellg();
 	file.seekg(0, std::ios::beg);
 
-	file.read(reinterpret_cast<char*>(memory), file_size);
+	file.read(reinterpret_cast<char*>(cpu.memory), file_size);
 }
 
 // TODO: In the this decode loop, rather than passing PC as a reference, we should probably just return the number of bytes read and have the caller update PC. 
@@ -58,9 +59,9 @@ void readBinaryFile(char* filePath)
 std::vector<Instruction> beginDecode()
 {
 	std::vector<Instruction> decodedInstructions = {};
-	while (memory[PC] != 0)
+	while (cpu.memory[cpu.PC] != 0)
 	{
-		uint8_t currentByte = memory[PC];
+		uint8_t currentByte = cpu.memory[cpu.PC];
 
 		// Get opcode from byte 
 		// TODO: This could be cleaned up by having a global error function 
@@ -74,13 +75,13 @@ std::vector<Instruction> beginDecode()
 
 		// Begin filling in instruction details
 		Instruction instruction = { 0 };
-		decodeInstruction(instruction, entry, memory, PC);
+		decodeInstruction(instruction, entry, cpu);
 
 		// Print instruction 
 		decodedInstructions.push_back(instruction);
 
 		// PC currently points to the last byte that was decoded, increment to point to next instruction
-		PC++;
+		cpu.PC++;
 	}
 
 	return decodedInstructions;
