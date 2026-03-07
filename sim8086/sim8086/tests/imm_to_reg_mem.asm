@@ -7,3 +7,4 @@
 bits 16
 
 mov byte [bx + di], 12
+mov bx, 12

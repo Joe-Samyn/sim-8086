@@ -40,55 +40,36 @@ uint16_t loadByteData(struct CPU &cpu)
 	return static_cast<uint16_t>(cpu.memory[cpu.PC]);
 }
 
-void loadAddress(Instruction& instruction, InstructionEntry& entry, struct CPU& cpu)
-{
-	cpu.PC++;
-	instruction.address = loadWordData(cpu);
-}
-
-void loadImmediate(Instruction& instruction, InstructionEntry& entry, struct CPU &cpu)
+uint16_t loadImmediate(uint8_t width, struct CPU &cpu)
 {
 	cpu.PC++;
 
-	// Instruction uses W bit to determine if immediate is byte or word, and the width of the instruction is 1 (i.e. word), then load a word
-	if (entry.immUsesW && instruction.width == 1)
-		instruction.immediate = loadWordData(cpu);
-	// Immediate does not use W bit, but has immediate value, so load word by default
-	else if (!entry.immUsesW && entry.hasImmediate)
-		instruction.immediate = loadWordData(cpu);
-	// Immediate uses W bit to determine if immediate is byte or word, and the width of the instruction is 0 (i.e. byte), then load a byte
-	else
-		instruction.immediate = loadByteData(cpu);
+	if (width) return loadWordData(cpu);
+
+	return loadByteData(cpu);
 }
 
-void getReg(Instruction& instruction, InstructionEntry& entry, struct CPU &cpu)
+uint8_t GetMod(uint8_t modMask, struct CPU& cpu)
 {
-	uint8_t reg = (cpu.memory[cpu.PC] & entry.regMask) >> entry.regShift;
-	sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
+	return (cpu.memory[cpu.PC] & modMask) >> 6;
 }
 
-/**
- * @brief Decode the MOD data to determine value for RM field in assembly. 
- * The intel 8086 decoding syntax uses the MOD field to determine if the instruction is
- *	- Memory Mode w/ No Displcement:      0x00
- *  - Memory Mode w/ 8-bit Displacement:  0x01
- *  - Memory Mode w/ 16-bit Displacement: 0x02
- *  - Register mode w/ No Displacement:   0x03
- * @param instruction The instruction struct to add MOD and RM information too
- * @param entry The InstructionEntry that matches the opcode. This determines how an instruction is decoded. 
- * @param memory A reference to the emulator memory
- * @param PC A reference to the program counter
- */
-void getModRm(Instruction& instruction, InstructionEntry& entry, struct CPU &cpu)
+uint8_t GetRm(uint8_t rmMask, struct CPU& cpu)
 {
-	uint8_t mod = (cpu.memory[cpu.PC] & entry.modMask) >> 6;
-	uint8_t rm = (cpu.memory[cpu.PC] & entry.rmMask);
+	return (cpu.memory[cpu.PC] & rmMask);
+}
 
+uint8_t GetReg(uint8_t regMask, uint8_t regShift, Instruction& instruction, struct CPU& cpu)
+{
+	return (cpu.memory[cpu.PC] & regMask) >> regShift;
+}
+
+void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cpu)
+{
 	switch (mod)
 	{
-	// Memory mode, no displacement
 	case 0x00:
-	{	
+	{
 		// Special case of MOD that indicates direct memory access with no displacement. 
 		if (rm == 0x6)
 		{
@@ -98,21 +79,18 @@ void getModRm(Instruction& instruction, InstructionEntry& entry, struct CPU &cpu
 		else
 			sprintf(instruction.rmMnemonic, "[%s]", modEffectiveAddressTable.at(rm));
 	} break;
-	// Memory mode, 8-bit displacement
 	case 0x01:
 	{
 		cpu.PC++;
 		int16_t data = static_cast<int16_t>(loadByteData(cpu));
 		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
-	// Memory mode, 16-bit displacement
 	case 0x02:
 	{
 		cpu.PC++;
 		int16_t data = static_cast<int16_t>(loadWordData(cpu));
 		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
-	// Register mode, no displacement
 	case 0x03:
 	{
 		sprintf(instruction.rmMnemonic, "%s", getRegister(rm, instruction.width));
@@ -120,54 +98,90 @@ void getModRm(Instruction& instruction, InstructionEntry& entry, struct CPU &cpu
 	}
 }
 
-/**
- * @brief Decode instruction using entry in 8086 table. This function acts as the ROM decoder in Intel 8086 hardware by 
- * determining the correct decode logic (microcode) for an instruction. 
- * @param instruction
- * @param entry
- * @returns The number of bytes read from memory to decode the instruction. This is used to update the program counter in the caller function.
- */
-void decodeInstruction(Instruction& instruction, InstructionEntry& entry, struct CPU &cpu)
+
+void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	// Set mnemonic 
-	sprintf(instruction.mnemonic, "%s", entry.mnemonic);
+	struct TwoByteLogicEntry logicEntry = entry.encoding.twoByteLogicEntry;
 
 	// Get width if w bit is present 
-	if (entry.wMask != 0)  instruction.width = (cpu.memory[cpu.PC] & entry.wMask) >> entry.wShift;
+	if (logicEntry.wMask != 0)  instruction.width = (cpu.memory[cpu.PC] & logicEntry.wMask);
 
 	// Get direction if d bit is present, direction is always in bit 1 if it is present so we can just shift right by 1 to get the value
-	if (entry.dMask != 0) instruction.direction = (cpu.memory[cpu.PC] & entry.dMask) >> 1;
+	if (logicEntry.dMask != 0) instruction.direction = (cpu.memory[cpu.PC] & logicEntry.dMask) >> 1;
 
-	// Get reg field if necessary
-	if (entry.isRegInOpcode) getReg(instruction, entry, cpu);
-
-	// Get MOD byte, RM field and REG field
-	if (entry.hasModByte)
+	cpu.PC++;
+	if (logicEntry.regMask != 0)
 	{
-		cpu.PC++;
-		if (entry.hasReg) getReg(instruction, entry, cpu);
-		getModRm(instruction, entry, cpu);
+		uint8_t reg = GetReg(logicEntry.regMask, logicEntry.regShift, instruction, cpu);
+		sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
 	}
-
-	// Load immediate value
-	if (entry.hasImmediate) loadImmediate(instruction, entry, cpu);
-	
-	// Load address 
-	if (entry.hasAddress) loadAddress(instruction, entry, cpu);
-
-	// If no reg or mod byte is specified, it most likely means the instruction is using the accumulator register, so we can just set the reg mnemonic to AX or AL depending on the width of the instruction
-	if (!entry.hasModByte && !entry.hasReg)
-	{
-		instruction.direction = 1; // Set direction to 1 so that reg is always first in assembly output
-		if (instruction.width == 1)
-			sprintf(instruction.regMnemonic, "%s", "AX");
-		else
-			sprintf(instruction.regMnemonic, "%s", "AL");
-	}
-
+	uint8_t mod = GetMod(logicEntry.modMask, cpu);
+	uint8_t rm = GetRm(logicEntry.rmMask, cpu);
+	DecodeMod(mod, rm, instruction, cpu);
 }
 
-std::optional<InstructionEntry> decodeOpcode(const uint8_t byte)
+void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
+{
+	struct TwoByteLogicImmediateEntry logicImmediateEntry = entry.encoding.twoByteLogicImmediateEntry;
+
+	// Get width if w bit is present 
+	if (logicImmediateEntry.wMask != 0) instruction.width = (cpu.memory[cpu.PC] & logicImmediateEntry.wMask);
+
+	cpu.PC++;
+	uint8_t mod = GetMod(logicImmediateEntry.modMask, cpu);
+	uint8_t rm = GetRm(logicImmediateEntry.rmMask, cpu);
+	DecodeMod(mod, rm, instruction, cpu);
+	instruction.immediate = loadImmediate(instruction.width, cpu);
+}
+
+void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
+{
+	struct OneByteLogicImmediateEntry logicImmediateEntry = entry.encoding.OneByteLogicImmediateEncoding;
+
+	// Get width if w bit is present 
+	instruction.width = (cpu.memory[cpu.PC] & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
+
+	uint8_t reg = (cpu.memory[cpu.PC] & logicImmediateEntry.regMask);
+	sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
+
+	instruction.immediate = loadImmediate(instruction.width, cpu);
+}
+
+void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
+{
+	struct ThreeByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
+	instruction.direction = accumulatorEntry.direction;
+	cpu.PC++;
+	loadAddress(instruction, cpu);
+	instruction.immediate = loadImmediate(instruction.width, cpu);
+}
+
+void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
+{
+	sprintf_s(instruction.mnemonic, "%s", entry.mnemonic);
+
+	switch (entry.category)
+	{
+	case ENCODING_TWO_BYTE_LOGIC:
+	{
+		DecodeTwoByteLogic(instruction, entry, cpu);
+	}break;
+	case ENCODING_TWO_BYTE_LOGIC_IMMEDIATE:
+	{
+		DecodeTwoByteLogicImmediate(instruction, entry, cpu);
+	}break;
+	case ENCODING_ONE_BYTE_LOGIC_IMMEDIATE:
+	{
+		DecodeOneByteLogicImmediate(instruction, entry, cpu);
+	} break;
+	case ENCODING_THREE_BYTE_ACCUMULATOR:
+	{
+		DecodeAccumulator(instruction, entry, cpu);
+	}break;
+	}
+}
+
+std::optional<InstructionTableEntry> decodeOpcode(const uint8_t byte)
 {
 	int instructionEntry = findInstruction(byte);
 

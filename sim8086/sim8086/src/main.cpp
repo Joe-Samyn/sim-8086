@@ -14,8 +14,10 @@ void printInstruction(Instruction &inst)
 {
 	if (inst.immediate)
 	{
-		if (inst.rmMnemonic != "") std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
-		else std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
+		if (inst.rmMnemonic[0] != '\0')
+			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
+		else 
+			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
 	}
 	else
 	{
@@ -65,17 +67,17 @@ std::vector<Instruction> beginDecode()
 
 		// Get opcode from byte 
 		// TODO: This could be cleaned up by having a global error function 
-		std::optional<InstructionEntry> opcodeResult = decodeOpcode(currentByte);
+		std::optional<InstructionTableEntry> opcodeResult = decodeOpcode(currentByte);
 		if (!opcodeResult)
 		{
 			std::cerr << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
 			exit(1);
 		}
-		InstructionEntry entry = *opcodeResult;
+		InstructionTableEntry entry = *opcodeResult;
 
 		// Begin filling in instruction details
 		Instruction instruction = { 0 };
-		decodeInstruction(instruction, entry, cpu);
+		Decode(instruction, entry, cpu);
 
 		// Print instruction 
 		decodedInstructions.push_back(instruction);

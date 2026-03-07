@@ -5,10 +5,11 @@
 
 const int BUFFER_SIZE = 32;
 
-enum InstructionClassification {
-	ONE_BYTE_LOGIC,
-	ONE_BYTE_DATA,
-	TWO_BYTE_LOGIC,
+enum EncodingCategory {
+	ENCODING_TWO_BYTE_LOGIC,
+	ENCODING_THREE_BYTE_ACCUMULATOR,
+	ENCODING_TWO_BYTE_LOGIC_IMMEDIATE,
+	ENCODING_ONE_BYTE_LOGIC_IMMEDIATE
 };
 
 /**
@@ -109,8 +110,66 @@ struct InstructionEntry
 	X(0xA0, "MOV", 0x00, false, 0x01, 0x00, false, 0x00, false, false, 0x00, 0x00, 0x00, false, true, true, 0x01) \
 
 #define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate, hasAddress) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate, hasAddress },
-std::vector<InstructionEntry> instructionTable = {
-	InstructionTable
+//std::vector<InstructionEntry> instructionTable = {
+//	InstructionTable
+//};
+#undef X
+struct TwoByteLogicEntry
+{
+	uint8_t dMask;
+	uint8_t wMask;
+	uint8_t modMask;
+	uint8_t regMask;
+	uint8_t regShift;
+	uint8_t rmMask;
+};
+
+struct TwoByteLogicImmediateEntry
+{
+	uint8_t wMask;
+	uint8_t modMask;
+	uint8_t rmMask;
+};
+
+struct ThreeByteAccumulatorEntry
+{
+	uint8_t direction;
+	bool hasAddress;
+};
+
+struct OneByteLogicImmediateEntry
+{
+	uint8_t wMask;
+	uint8_t wShift;
+	uint8_t regMask;
+};
+
+struct InstructionTableEntry
+{
+	uint8_t opcode;
+	uint8_t opcodeMask;
+	const char* mnemonic;
+	EncodingCategory category;
+	union
+	{
+		struct TwoByteLogicEntry twoByteLogicEntry;
+		struct TwoByteLogicImmediateEntry twoByteLogicImmediateEntry;
+		struct ThreeByteAccumulatorEntry threeByteAccumulatorEncoding;
+		struct OneByteLogicImmediateEntry OneByteLogicImmediateEncoding;
+
+	} encoding;
+};
+
+// TODO (joe): Maybe remove strings from this table and create a mapping table of opcode -> mnemonic
+#define InstructionTableEntries \
+	X(0x88, 0xFC, "MOV", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
+	X(0xC6, 0xFE, "MOV", ENCODING_TWO_BYTE_LOGIC_IMMEDIATE, 0x01, 0xC0, 0x07), \
+	X(0xB0, 0xF0, "MOV", ENCODING_ONE_BYTE_LOGIC_IMMEDIATE, 0x08, 0x03, 0x07), \
+	X(0xA0, 0xFF, "MOV", ENCODING_THREE_BYTE_ACCUMULATOR, 0x00, true) \
+
+#define X(opcode, opcodeMask, mnemonic, category, ...) { opcode, opcodeMask, mnemonic, category, { __VA_ARGS__ } }
+std::vector<InstructionTableEntry> instructionTable = {
+	InstructionTableEntries
 };
 #undef X
 
@@ -201,8 +260,8 @@ int findInstruction(uint8_t byte)
 	for (int i = 0; i < instructionTable.size(); i++)
 	{
 		// Get opcode from byte
-		InstructionEntry inst = instructionTable.at(i);
-		uint8_t b = byte & inst.opcode;
+		InstructionTableEntry inst = instructionTable.at(i);
+		uint8_t b = byte & inst.opcodeMask;
 
 		// If byte matches opcode, break out and return index of instruction
 		if (b == inst.opcode)
