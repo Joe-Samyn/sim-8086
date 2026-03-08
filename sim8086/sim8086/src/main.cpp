@@ -10,6 +10,11 @@
 
 struct CPU cpu = { 0 };
 
+void displayCpuState()
+{
+    std::cout << std::format("PC: {}\nCurrent Byte: {}\n", cpu.PC, std::bitset<8>(cpu.memory[cpu.PC]).to_string());
+}
+
 void printInstruction(Instruction &inst)
 {
 	if (inst.immediate)
@@ -88,6 +93,8 @@ std::vector<Instruction> beginDecode()
 
 		// PC currently points to the last byte that was decoded, increment to point to next instruction
 		cpu.PC++;
+        displayCpuState();
+        
 	}
 
 	return decodedInstructions;
