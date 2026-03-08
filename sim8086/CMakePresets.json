@@ -80,7 +80,7 @@
         {
             "name": "macos-debug",
             "displayName": "macOS Debug",
-            "generator": "Ninja",
+            "generator": "Xcode",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "installDir": "${sourceDir}/out/install/${presetName}",
             "cacheVariables": {

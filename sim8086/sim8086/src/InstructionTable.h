@@ -32,88 +32,6 @@ struct Instruction
 /* ==============     Intel 8086 Instruction Table    =================== */
 /* ====================================================================== */
 
-/*
-TODO (joe): This table is not going to work long term. Flat structure is going to cause lots of flags to be created to support
-all the different instruction types. I want to try refactoring this to use unions and categories of instructions. For example, 
-we can have base fields for all instructions (i.e. opcode, mnemonic, etc.) and then have a union of different instruction types that have their own specific fields.
-For example: 
-typedef enum {
-	ENCODING_STANDARD,
-	ENCODING_ACCUMULATOR,
-} EncodingCategory;
-
-struct InstructionEntry {
-	// Fields every instruction needs
-	uint8_t opcode;
-	const char* mnemonic;
-	EncodingCategory category;
-
-	// Fields that only some instructions need
-	union {
-		struct {
-			uint8_t modMask;
-			uint8_t regMask;
-			uint8_t regShift;
-			uint8_t rmMask;
-			bool hasModByte;
-			// ...other standard fields
-		} standard;
-
-		struct {
-			uint8_t direction;
-			// that's probably it
-		} accumulator;
-	} encoding;
-};
-*/
-
-/**
- * @brief Represents an instruction entry in the Intel 8086 Instruction table
- */
-struct InstructionEntry
-{
-	// Opcode and mnemonic for the instruction
-	uint8_t opcode;
-	const char* mnemonic;
-
-	// direction - determines if reg is src or dest
-	uint8_t dMask;
-
-	// width - width of width of register and data
-	bool immUsesW;
-	uint8_t wMask;
-	uint8_t wShift;
-
-	// mod byte extraction 
-	bool hasModByte;
-	uint8_t modMask;
-
-	// reg extraction
-	bool hasReg;
-	bool isRegInOpcode;
-	uint8_t regMask;
-	uint8_t regShift;
-
-	// r/m extraction
-	uint8_t rmMask;
-
-	bool hasImmediate;
-	bool hasAddress;
-	bool isAccumulatorOperation;
-	uint8_t direction;
-};
-
-// TODO (joe): Maybe remove strings from this table and create a mapping table of opcode -> mnemonic
-#define InstructionTable \
-	X(0x88, "MOV", 0x02, false, 0x01, 0x00, true, 0xC0, true, false, 0x38, 0x3, 0x07, false, false, false, 0x00) \
-    X(0xC6, "MOV", 0x00, true, 0x01, 0x00, true, 0xC0, false, false, 0x00, 0x00, 0x07, true, false, false, 0x00) \
-	X(0xA0, "MOV", 0x00, false, 0x01, 0x00, false, 0x00, false, false, 0x00, 0x00, 0x00, false, true, true, 0x01) \
-
-#define X(opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate, hasAddress) { opcode, mnemonic, dMask, immUsesW, wMask, wShift, hasModByte, modMask, hasReg, isRegInOpcode, regMask, regShift, rmMask, hasImmediate, hasAddress },
-//std::vector<InstructionEntry> instructionTable = {
-//	InstructionTable
-//};
-#undef X
 struct TwoByteLogicEntry
 {
 	uint8_t dMask;
@@ -165,7 +83,7 @@ struct InstructionTableEntry
 	X(0x88, 0xFC, "MOV", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
 	X(0xC6, 0xFE, "MOV", ENCODING_TWO_BYTE_LOGIC_IMMEDIATE, 0x01, 0xC0, 0x07), \
 	X(0xB0, 0xF0, "MOV", ENCODING_ONE_BYTE_LOGIC_IMMEDIATE, 0x08, 0x03, 0x07), \
-	X(0xA0, 0xFF, "MOV", ENCODING_THREE_BYTE_ACCUMULATOR, 0x00, true) \
+	X(0xA0, 0xFE, "MOV", ENCODING_THREE_BYTE_ACCUMULATOR, 0x00, true) \
 
 #define X(opcode, opcodeMask, mnemonic, category, ...) { opcode, opcodeMask, mnemonic, category, { __VA_ARGS__ } }
 std::vector<InstructionTableEntry> instructionTable = {

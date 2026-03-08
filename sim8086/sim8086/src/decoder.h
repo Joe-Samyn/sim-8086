@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <optional>
+#include <stdio.h>
 
 
 /**
@@ -152,13 +153,13 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
 	struct ThreeByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
 	instruction.direction = accumulatorEntry.direction;
 	cpu.PC++;
-	loadAddress(instruction, cpu);
+	loadImmediate(instruction.width, cpu);
 	instruction.immediate = loadImmediate(instruction.width, cpu);
 }
 
 void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	sprintf_s(instruction.mnemonic, "%s", entry.mnemonic);
+	sprintf(instruction.mnemonic, "%s", entry.mnemonic);
 
 	switch (entry.category)
 	{
