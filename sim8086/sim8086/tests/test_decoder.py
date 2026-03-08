@@ -3,43 +3,33 @@
 import subprocess
 import sys
 from pathlib import Path
-
-def validateSimOutput(testFile, simOutput):
-	pass
-
-def run8086Simulator(testFile):
-	pass
-
-def assembleFile(testFile) -> str:
-	''' Assembles the test file using NASM 
-	
-	Parameters
-	----------
-		testFile: str
-			The test Intel 8086 assembly file to assemble into a binary. 
-	
-	Returns
-	-------
-		(str): The path to the assembled file 
-	'''
-	pass
+import filecmp
 
 if __name__ == "__main__":
 	print("Running decoder tests..\n", flush=True)
 
-	# Check to see if we have proper arguments for running tests
-	# Need 2 args: sim8086 exe and test file
-	if len(sys.argv) < 2:
-		print("Provide path to sim8086 executable.", flush=True)
-
 	# Load test files
 	current_dir = Path(__file__).parent 
-	mov_test_file_path = f"{current_dir}\mov_tst"
+	test_file_asm = f"{current_dir}/asm/mov_tst.asm"
+	test_file_bin = f"{current_dir}/mov_tst.out"
+
+	# Assemble test file 
+	subprocess.run(['nasm', test_file_asm, '-o', test_file_bin], check=True)
+
 
 	# Run sim8086 program
 	decoder_path = sys.argv[1]
-	decoder_run_result = subprocess.run([decoder_path, mov_test_file_path])
+	decoder_run_result = subprocess.run([decoder_path, test_file_bin], check=True, capture_output=True)
+	output = decoder_run_result.stdout.decode().replace('\x00', '')
+	lines = output.split('\n')
+	cleaned_output = '\n'.join(lines[1:]) if lines else ''
+	result_file = f'{current_dir}/result.asm'
+	with open(result_file, 'w') as file:
+		file.write(cleaned_output)
 
 	# Get sim8086 output file and assemble it
+	result_assembled = f'{current_dir}/result.out'
+	subprocess.run(['nasm', result_file, '-o', result_assembled], check=True)
 
 	# Compare sim8086 output to expected output
+	assert filecmp.cmp(result_assembled, test_file_bin, shallow=False) == True

@@ -93,7 +93,6 @@ std::vector<Instruction> beginDecode()
 
 		// PC currently points to the last byte that was decoded, increment to point to next instruction
 		cpu.PC++;
-        displayCpuState();
         
 	}
 

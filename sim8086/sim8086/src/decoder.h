@@ -32,15 +32,22 @@ uint16_t loadWordData(struct CPU &cpu)
 
 /**
  * @brief Read an 8-bit byte from `memory` at address `PC` and return it as a 16-bit unsigned integer.
- * @param program 
- * @param programIndex 
- * @return The data loaded from memory converted to an unsigned 8-bit integer
+ * @param cpu The CPU structure containing memory and PC.
+ * @return The data loaded from memory as an unsigned 16-bit integer (upper bits zeroed).
+ * @note This function relates to 8086 immediate byte operands, where 8-bit values are loaded from the instruction stream.
  */
 uint16_t loadByteData(struct CPU &cpu)
 {
 	return static_cast<uint16_t>(cpu.memory[cpu.PC]);
 }
 
+/**
+ * @brief Loads an immediate value from memory based on the specified width.
+ * @param width 0 for 8-bit, 1 for 16-bit.
+ * @param cpu The CPU structure containing memory and PC.
+ * @return The loaded immediate value as a 16-bit unsigned integer.
+ * @note Increments PC. In 8086, immediates follow opcodes and are used directly in instructions like MOV immediate.
+ */
 uint16_t loadImmediate(uint8_t width, struct CPU &cpu)
 {
 	cpu.PC++;
@@ -50,21 +57,52 @@ uint16_t loadImmediate(uint8_t width, struct CPU &cpu)
 	return loadByteData(cpu);
 }
 
+/**
+ * @brief Extracts the MOD field from the current opcode byte.
+ * @param modMask Bitmask to isolate the MOD bits (typically 0xC0).
+ * @param cpu The CPU structure.
+ * @return The 2-bit MOD value (0-3), indicating addressing mode.
+ * @note In 8086, MOD (bits 7-6 of MOD-RM byte) specifies memory/register mode: 00=mem no disp, 01=mem 8-bit disp, 10=mem 16-bit disp, 11=register.
+ */
 uint8_t GetMod(uint8_t modMask, struct CPU& cpu)
 {
 	return (cpu.memory[cpu.PC] & modMask) >> 6;
 }
 
+/**
+ * @brief Extracts the RM field from the current opcode byte.
+ * @param rmMask Bitmask to isolate the RM bits (typically 0x07).
+ * @param cpu The CPU structure.
+ * @return The 3-bit RM value (0-7), indicating register or effective address base.
+ * @note In 8086, RM (bits 2-0 of MOD-RM byte) selects the register or base for addressing (e.g., BX+SI).
+ */
 uint8_t GetRm(uint8_t rmMask, struct CPU& cpu)
 {
 	return (cpu.memory[cpu.PC] & rmMask);
 }
 
+/**
+ * @brief Extracts the REG field from the current opcode byte and formats the register mnemonic.
+ * @param regMask Bitmask to isolate the REG bits.
+ * @param regShift Number of bits to shift right to get the REG value.
+ * @param instruction The instruction structure to store the mnemonic.
+ * @param cpu The CPU structure.
+ * @return The 3-bit REG value (0-7).
+ * @note In 8086, REG (bits 5-3 of MOD-RM byte) specifies the source/destination register in reg-reg/mem operations.
+ */
 uint8_t GetReg(uint8_t regMask, uint8_t regShift, Instruction& instruction, struct CPU& cpu)
 {
 	return (cpu.memory[cpu.PC] & regMask) >> regShift;
 }
 
+/**
+ * @brief Decodes the MOD-RM byte to determine the addressing mode and formats the operand mnemonic.
+ * @param mod The MOD value (0-3).
+ * @param rm The RM value (0-7).
+ * @param instruction The instruction structure to update with the mnemonic.
+ * @param cpu The CPU structure; PC is advanced as needed.
+ * @note This function emulates 8086's microcode for parsing effective addresses, handling displacements and register modes.
+ */
 void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cpu)
 {
 	switch (mod)
@@ -99,7 +137,13 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 	}
 }
 
-
+/**
+ * @brief Decodes two-byte logic instructions (e.g., MOV reg/mem to reg/mem).
+ * @param instruction The instruction structure to populate.
+ * @param entry The instruction table entry with encoding details.
+ * @param cpu The CPU structure; PC is advanced.
+ * @note Handles 8086 instructions like MOV, ADD with MOD-RM and REG operands, extracting width, direction, and operands.
+ */
 void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
 	struct TwoByteLogicEntry logicEntry = entry.encoding.twoByteLogicEntry;
@@ -121,6 +165,13 @@ void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, 
 	DecodeMod(mod, rm, instruction, cpu);
 }
 
+/**
+ * @brief Decodes two-byte logic instructions with immediate operands (e.g., MOV immediate to reg/mem).
+ * @param instruction The instruction structure to populate.
+ * @param entry The instruction table entry with encoding details.
+ * @param cpu The CPU structure; PC is advanced.
+ * @note Emulates 8086 microcode for instructions like MOV immediate, loading the immediate value after MOD-RM.
+ */
 void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
 	struct TwoByteLogicImmediateEntry logicImmediateEntry = entry.encoding.twoByteLogicImmediateEntry;
@@ -135,6 +186,13 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	instruction.immediate = loadImmediate(instruction.width, cpu);
 }
 
+/**
+ * @brief Decodes one-byte logic instructions with immediate operands (e.g., MOV immediate to register).
+ * @param instruction The instruction structure to populate.
+ * @param entry The instruction table entry with encoding details.
+ * @param cpu The CPU structure; PC is advanced.
+ * @note Handles 8086 instructions like MOV AL/AX, immediate, where the register is encoded in the opcode byte.
+ */
 void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
 	struct OneByteLogicImmediateEntry logicImmediateEntry = entry.encoding.OneByteLogicImmediateEncoding;
@@ -148,6 +206,13 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	instruction.immediate = loadImmediate(instruction.width, cpu);
 }
 
+/**
+ * @brief Decodes accumulator instructions (e.g., MOV accumulator, memory/immediate).
+ * @param instruction The instruction structure to populate.
+ * @param entry The instruction table entry with encoding details.
+ * @param cpu The CPU structure; PC is advanced.
+ * @note Acts like microcode for 8086 accumulator operations, such as MOV AL/AX, [mem] or MOV AL/AX, immediate, where the accumulator is implied.
+ */
 void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
 	struct ThreeByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
@@ -161,6 +226,13 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
     
 }
 
+/**
+ * @brief Main decoding function that dispatches to specific decoders based on instruction category.
+ * @param instruction The instruction structure to populate with decoded information.
+ * @param entry The instruction table entry containing mnemonic and encoding details.
+ * @param cpu The CPU structure; PC is advanced during decoding.
+ * @note This function emulates the 8086's instruction decoding pipeline, routing opcodes to appropriate microcode-like handlers.
+ */
 void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
 	sprintf(instruction.mnemonic, "%s", entry.mnemonic);
@@ -186,6 +258,12 @@ void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& 
 	}
 }
 
+/**
+ * @brief Looks up an opcode byte in the instruction table.
+ * @param byte The opcode byte to decode.
+ * @return An optional containing the instruction table entry if found, or std::nullopt if invalid.
+ * @note This function performs the initial opcode lookup in the 8086 decoding process, similar to the control store access.
+ */
 std::optional<InstructionTableEntry> decodeOpcode(const uint8_t byte)
 {
 	int instructionEntry = findInstruction(byte);
