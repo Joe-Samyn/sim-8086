@@ -1,4 +1,4 @@
-﻿// sim8086.cpp : Defines the entry point for the application.
+// sim8086.cpp : Defines the entry point for the application.
 
 #include "sim8086.h"
 
@@ -19,6 +19,10 @@ void printInstruction(Instruction &inst)
 		else 
 			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
 	}
+    else if (inst.address)
+    {
+        std::cout << std::format("{} {}, [{}]\n", inst.mnemonic, inst.regMnemonic, inst.address);
+    }
 	else
 	{
 		if (inst.direction)

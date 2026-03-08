@@ -152,9 +152,13 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
 {
 	struct ThreeByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
 	instruction.direction = accumulatorEntry.direction;
-	cpu.PC++;
-	loadImmediate(instruction.width, cpu);
-	instruction.immediate = loadImmediate(instruction.width, cpu);
+    if (accumulatorEntry.hasAddress)
+        instruction.address = loadImmediate(1, cpu);
+    else
+        instruction.immediate = loadImmediate(1, cpu);
+    
+    sprintf(instruction.regMnemonic, "%s", getRegister(0x00, instruction.width));
+    
 }
 
 void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
