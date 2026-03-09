@@ -38,7 +38,10 @@ uint16_t loadWordData(struct CPU &cpu)
  */
 uint16_t loadByteData(struct CPU &cpu)
 {
-	return static_cast<uint16_t>(cpu.memory[cpu.PC]);
+	uint8_t lowByte = cpu.memory[cpu.PC];
+	uint16_t data = 0xFFF00;
+	data = data | lowByte; // Zero out upper bits to return as 16-bit value
+	return data;
 }
 
 /**
@@ -120,15 +123,26 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 	} break;
 	case 0x01:
 	{
-		cpu.PC++;
-		int16_t data = static_cast<int16_t>(loadByteData(cpu));
-		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
+		// Need to sign extend properly to cast to signed int16, otherwise we will get incorrect values for negative displacements.
+		int16_t data = static_cast<int16_t>(loadImmediate(0, cpu));
+		if (data < 0)
+		{
+			data = ~data + 1; // get the positive value of the negative displacement for printing
+			sprintf(instruction.rmMnemonic, "[%s - %d]", modEffectiveAddressTable.at(rm), data);
+		}
+		else
+			sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
 	case 0x02:
 	{
-		cpu.PC++;
-		int16_t data = static_cast<int16_t>(loadWordData(cpu));
-		sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
+		int16_t data = static_cast<int16_t>(loadImmediate(1, cpu));
+		if (data < 0)
+		{
+			data = ~data + 1; // get the positive value of the negative displacement for printing
+			sprintf(instruction.rmMnemonic, "[%s - %d]", modEffectiveAddressTable.at(rm), data);
+		}
+		else
+			sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
 	} break;
 	case 0x03:
 	{
