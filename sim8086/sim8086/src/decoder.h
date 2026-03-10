@@ -36,11 +36,10 @@ uint16_t loadWordData(struct CPU &cpu)
  * @return The data loaded from memory as an unsigned 16-bit integer (upper bits zeroed).
  * @note This function relates to 8086 immediate byte operands, where 8-bit values are loaded from the instruction stream.
  */
-uint16_t loadByteData(struct CPU &cpu)
+int16_t loadByteData(struct CPU &cpu)
 {
-	uint8_t lowByte = cpu.memory[cpu.PC];
-	uint16_t data = 0xFFF00;
-	data = data | lowByte; // Zero out upper bits to return as 16-bit value
+	int8_t lowByte = static_cast<int8_t>(cpu.memory[cpu.PC]);
+    int16_t data = static_cast<int16_t>(lowByte);
 	return data;
 }
 

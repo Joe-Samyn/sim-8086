@@ -3,7 +3,8 @@
 # project specific logic here.
 set(SRC "src/main.cpp"
 		"src/sim8086.h"
-		"src/Decoder.h")
+		"src/Decoder.h"
+		"src/FileIO.h")
 
 # Add source to this project's executable.
 add_executable (sim8086 ${SRC} "src/InstructionTable.h" "src/Hardware.h")
