@@ -1,7 +1,4 @@
-
-
 bits 16
-
 
 MOV CX, BX
 MOV AL, BL

@@ -7,6 +7,7 @@
 #include <format>
 #include <vector>
 #include <unordered_map>
+#include <string>
 
 struct CPU cpu = { 0 };
 
@@ -15,28 +16,28 @@ void displayCpuState()
     std::cout << std::format("PC: {}\nCurrent Byte: {}\n", cpu.PC, std::bitset<8>(cpu.memory[cpu.PC]).to_string());
 }
 
-void printInstruction(Instruction &inst)
+std::string formatInstruction(Instruction &inst)
 {
 	if (inst.immediate)
 	{
 		if (inst.rmMnemonic[0] != '\0')
-			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
+			return std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
 		else 
-			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
+			return std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
 	}
     else if (inst.address)
     {
-        std::cout << std::format("{} {}, [{}]\n", inst.mnemonic, inst.regMnemonic, inst.address);
+        return std::format("{} {}, [{}]\n", inst.mnemonic, inst.regMnemonic, inst.address);
     }
 	else
 	{
 		if (inst.direction)
 		{
-			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
+			return std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
 		}
 		else
 		{
-			std::cout << std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
+			return std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
 		}
 	}
 }
@@ -120,13 +121,14 @@ int main(int argc, char* argv[])
 	std::vector<Instruction> inst = beginDecode();
 	instructions.insert(instructions.end(), inst.begin(), inst.end());
 		
+	std::vector<std::string> formattedInstructions;
 
-#ifdef DEBUG
 	for (auto inst : instructions)
 	{
-		printInstruction(inst);
+		formattedInstructions.push_back(formatInstruction(inst));
 	}
-#endif 
+
+	writeToFile(formattedInstructions);
 
 	return 0;
 }

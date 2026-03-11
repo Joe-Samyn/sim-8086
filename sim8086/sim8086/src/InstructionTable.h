@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstdint>
 #include <unordered_map>
+#include <string>
 
 const int BUFFER_SIZE = 32;
 
@@ -22,9 +23,9 @@ struct Instruction
 	uint8_t width;					// Width of the register or data 
 	int16_t immediate;				// Immediate value if there is one
 	uint16_t address;				// Address if instruction has an address (i.e. MOV AL, [1234h])
-	char mnemonic[BUFFER_SIZE];		// Human readable assembly language mnemonic for the instruction
-	char regMnemonic[BUFFER_SIZE];	// The human readable name for the register (i.e. AX, BX, etc.)
-	char rmMnemonic[BUFFER_SIZE];	// The human redable name for the register stored in R/M when R/M is used to hold register info 
+	std::string mnemonic;		// Human readable assembly language mnemonic for the instruction
+	std::string regMnemonic;	// The human readable name for the register (i.e. AX, BX, etc.)
+	std::string rmMnemonic;	// The human redable name for the register stored in R/M when R/M is used to hold register info 
 };
 
 

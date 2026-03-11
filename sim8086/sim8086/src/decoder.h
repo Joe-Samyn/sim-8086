@@ -5,6 +5,7 @@
 #include <vector>
 #include <optional>
 #include <stdio.h>
+#include <format>
 
 
 /**
@@ -115,10 +116,10 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 		if (rm == 0x6)
 		{
 			cpu.PC++;
-			sprintf(instruction.rmMnemonic, "[%d]", loadWordData(cpu));
+			instruction.rmMnemonic = std::format("[{}]", loadWordData(cpu));
 		}
 		else
-			sprintf(instruction.rmMnemonic, "[%s]", modEffectiveAddressTable.at(rm));
+			instruction.rmMnemonic = std::format("[{}]", modEffectiveAddressTable.at(rm));
 	} break;
 	case 0x01:
 	{
@@ -127,10 +128,10 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 		if (data < 0)
 		{
 			data = ~data + 1; // get the positive value of the negative displacement for printing
-			sprintf(instruction.rmMnemonic, "[%s - %d]", modEffectiveAddressTable.at(rm), data);
+			instruction.rmMnemonic = std::format("[{} - {}]", modEffectiveAddressTable.at(rm), data);
 		}
 		else
-			sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
+			instruction.rmMnemonic = std::format("[{} + {}]", modEffectiveAddressTable.at(rm), data);
 	} break;
 	case 0x02:
 	{
@@ -138,14 +139,14 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 		if (data < 0)
 		{
 			data = ~data + 1; // get the positive value of the negative displacement for printing
-			sprintf(instruction.rmMnemonic, "[%s - %d]", modEffectiveAddressTable.at(rm), data);
+			instruction.rmMnemonic = std::format("[{} - {}]", modEffectiveAddressTable.at(rm), data);
 		}
 		else
-			sprintf(instruction.rmMnemonic, "[%s + %d]", modEffectiveAddressTable.at(rm), data);
+			instruction.rmMnemonic = std::format("[{} + {}]", modEffectiveAddressTable.at(rm), data);
 	} break;
 	case 0x03:
 	{
-		sprintf(instruction.rmMnemonic, "%s", getRegister(rm, instruction.width));
+		instruction.rmMnemonic = std::format("{}", getRegister(rm, instruction.width));
 	} break;
 	}
 }
@@ -171,7 +172,7 @@ void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, 
 	if (logicEntry.regMask != 0)
 	{
 		uint8_t reg = GetReg(logicEntry.regMask, logicEntry.regShift, instruction, cpu);
-		sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
+		instruction.regMnemonic = std::format("{}", getRegister(reg, instruction.width));
 	}
 	uint8_t mod = GetMod(logicEntry.modMask, cpu);
 	uint8_t rm = GetRm(logicEntry.rmMask, cpu);
@@ -214,7 +215,7 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	instruction.width = (cpu.memory[cpu.PC] & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
 
 	uint8_t reg = (cpu.memory[cpu.PC] & logicImmediateEntry.regMask);
-	sprintf(instruction.regMnemonic, "%s", getRegister(reg, instruction.width));
+	instruction.regMnemonic = std::format("{}", getRegister(reg, instruction.width));
 
 	instruction.immediate = loadImmediate(instruction.width, cpu);
 }
@@ -235,7 +236,7 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
     else
         instruction.immediate = loadImmediate(1, cpu);
     
-    sprintf(instruction.regMnemonic, "%s", getRegister(0x00, instruction.width));
+	instruction.regMnemonic = std::format("{}", getRegister(0x00, instruction.width));
     
 }
 
@@ -248,7 +249,7 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
  */
 void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	sprintf(instruction.mnemonic, "%s", entry.mnemonic);
+	instruction.mnemonic = std::format("{}", entry.mnemonic);
 
 	switch (entry.category)
 	{
