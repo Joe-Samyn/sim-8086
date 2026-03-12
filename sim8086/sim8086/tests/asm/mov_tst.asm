@@ -34,7 +34,7 @@ mov [bp + si], cl
 mov ax, 3
 mov bl, 9
 mov cx, 5328
-mov byte [bx + di], 12
+; mov byte [bx + di], 12
 mov bx, 12
 
 ; Memory to Accumulator

@@ -20,14 +20,9 @@ if __name__ == "__main__":
 	# Run sim8086 program
 	decoder_path = sys.argv[1]
 	decoder_run_result = subprocess.run([decoder_path, test_file_bin], check=True, capture_output=True)
-	output = decoder_run_result.stdout.decode().replace('\x00', '')
-	lines = output.split('\n')
-	cleaned_output = '\n'.join(lines[1:]) if lines else ''
-	result_file = f'{current_dir}/result.asm'
-	with open(result_file, 'w') as file:
-		file.write(cleaned_output)
 
 	# Get sim8086 output file and assemble it
+	result_file = f'{current_dir}/result.asm'
 	result_assembled = f'{current_dir}/result.out'
 	subprocess.run(['nasm', result_file, '-o', result_assembled], check=True)
 
