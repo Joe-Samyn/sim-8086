@@ -231,6 +231,7 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
 {
 	struct ThreeByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
 	instruction.direction = accumulatorEntry.direction;
+	instruction.width = (cpu.memory[cpu.PC] & accumulatorEntry.wMask);
     if (accumulatorEntry.hasAddress)
         instruction.address = loadImmediate(1, cpu);
     else

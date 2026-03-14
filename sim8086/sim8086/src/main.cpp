@@ -27,7 +27,10 @@ std::string formatInstruction(Instruction &inst)
 	}
     else if (inst.address)
     {
-        return std::format("{} {}, [{}]\n", inst.mnemonic, inst.regMnemonic, inst.address);
+        if (inst.direction)
+            return std::format("{} {}, [{}]\n", inst.mnemonic, inst.regMnemonic, inst.address);
+        
+        return std::format("{} [{}], {}\n", inst.mnemonic, inst.address, inst.regMnemonic);
     }
 	else
 	{

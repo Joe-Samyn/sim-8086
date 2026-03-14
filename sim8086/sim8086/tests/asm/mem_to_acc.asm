@@ -7,4 +7,4 @@
 
 bits 16
 
-mov al, [123]
+mov ax, [12]
