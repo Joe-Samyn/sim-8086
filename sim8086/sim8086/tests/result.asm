@@ -1,3 +1,12 @@
 bits 16
 
-MOV AX, [12]
+MOV CX, [BX + SI]
+MOV AL, [BX + DI]
+MOV BX, [1234]
+MOV CX, [BX + SI + 4]
+MOV BX, [BX + DI + 3254]
+MOV CX, BX
+MOV AL, BL
+MOV AX, SI
+MOV [BX + DI], CX
+MOV [BP + SI], CL
