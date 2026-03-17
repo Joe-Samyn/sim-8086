@@ -23,7 +23,7 @@
  * @note Accessing `memory[PC]` or `memory[PC + 1]` out of bounds is undefined
  *       behavior; callers must ensure `PC` and `PC + 1` are valid addresses.
  */
-uint16_t loadWordData(struct CPU &cpu)
+uint16_t LoadWordData(struct CPU &cpu)
 {
 	uint8_t lowByte = cpu.memory[cpu.PC];
 	uint16_t highByte = cpu.memory[++cpu.PC];
@@ -37,7 +37,7 @@ uint16_t loadWordData(struct CPU &cpu)
  * @return The data loaded from memory as an unsigned 16-bit integer (upper bits zeroed).
  * @note This function relates to 8086 immediate byte operands, where 8-bit values are loaded from the instruction stream.
  */
-int16_t loadByteData(struct CPU &cpu)
+int16_t LoadByteData(struct CPU &cpu)
 {
 	int8_t lowByte = static_cast<int8_t>(cpu.memory[cpu.PC]);
     int16_t data = static_cast<int16_t>(lowByte);
@@ -51,13 +51,13 @@ int16_t loadByteData(struct CPU &cpu)
  * @return The loaded immediate value as a 16-bit unsigned integer.
  * @note Increments PC. In 8086, immediates follow opcodes and are used directly in instructions like MOV immediate.
  */
-uint16_t loadImmediate(uint8_t width, struct CPU &cpu)
+uint16_t LoadImmediate(uint8_t width, struct CPU &cpu)
 {
 	cpu.PC++;
 
-	if (width) return loadWordData(cpu);
+	if (width) return LoadWordData(cpu);
 
-	return loadByteData(cpu);
+	return LoadByteData(cpu);
 }
 
 /**
@@ -99,6 +99,18 @@ uint8_t GetReg(uint8_t regMask, uint8_t regShift, Instruction& instruction, stru
 }
 
 /**
+ * @brief Extracts a constant bit field from the current opcode byte.
+ * @param constMask Bitmask to isolate the constant bits.
+ * @param cpu The CPU structure.
+ * @return The extracted bit value, shifted to the least significant position.
+ * @note In 8086 arithmetic instructions, this extracts specific control bits from the opcode.
+ */
+uint8_t GetBitConst(uint8_t constMask, struct CPU& cpu)
+{
+	return (cpu.memory[cpu.PC] & constMask) >> 3;
+}
+
+/**
  * @brief Decodes the MOD-RM byte to determine the addressing mode and formats the operand mnemonic.
  * @param mod The MOD value (0-3).
  * @param rm The RM value (0-7).
@@ -116,7 +128,7 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 		if (rm == 0x6)
 		{
 			cpu.PC++;
-			instruction.rmMnemonic = std::format("[{}]", loadWordData(cpu));
+			instruction.rmMnemonic = std::format("[{}]", LoadWordData(cpu));
 		}
 		else
 			instruction.rmMnemonic = std::format("[{}]", modEffectiveAddressTable.at(rm));
@@ -124,7 +136,7 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 	case 0x01:
 	{
 		// Need to sign extend properly to cast to signed int16, otherwise we will get incorrect values for negative displacements.
-		int16_t data = static_cast<int16_t>(loadImmediate(0, cpu));
+		int16_t data = static_cast<int16_t>(LoadImmediate(0, cpu));
 		if (data < 0)
 		{
 			data = ~data + 1; // get the positive value of the negative displacement for printing
@@ -135,7 +147,7 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 	} break;
 	case 0x02:
 	{
-		int16_t data = static_cast<int16_t>(loadImmediate(1, cpu));
+		int16_t data = static_cast<int16_t>(LoadImmediate(1, cpu));
 		if (data < 0)
 		{
 			data = ~data + 1; // get the positive value of the negative displacement for printing
@@ -146,7 +158,7 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 	} break;
 	case 0x03:
 	{
-		instruction.rmMnemonic = std::format("{}", getRegister(rm, instruction.width));
+		instruction.rmMnemonic = std::format("{}", GetRegister(rm, instruction.width));
 	} break;
 	}
 }
@@ -172,7 +184,7 @@ void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, 
 	if (logicEntry.regMask != 0)
 	{
 		uint8_t reg = GetReg(logicEntry.regMask, logicEntry.regShift, instruction, cpu);
-		instruction.regMnemonic = std::format("{}", getRegister(reg, instruction.width));
+		instruction.regMnemonic = std::format("{}", GetRegister(reg, instruction.width));
 	}
 	uint8_t mod = GetMod(logicEntry.modMask, cpu);
 	uint8_t rm = GetRm(logicEntry.rmMask, cpu);
@@ -197,7 +209,7 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	uint8_t mod = GetMod(logicImmediateEntry.modMask, cpu);
 	uint8_t rm = GetRm(logicImmediateEntry.rmMask, cpu);
 	DecodeMod(mod, rm, instruction, cpu);
-	instruction.immediate = loadImmediate(instruction.width, cpu);
+	instruction.immediate = LoadImmediate(instruction.width, cpu);
 }
 
 /**
@@ -209,15 +221,15 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
  */
 void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	struct OneByteLogicImmediateEntry logicImmediateEntry = entry.encoding.OneByteLogicImmediateEncoding;
+	struct OneByteLogicImmediateEntry logicImmediateEntry = entry.encoding.oneByteLogicImmediateEncoding;
 
 	// Get width if w bit is present 
 	instruction.width = (cpu.memory[cpu.PC] & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
 
 	uint8_t reg = (cpu.memory[cpu.PC] & logicImmediateEntry.regMask);
-	instruction.regMnemonic = std::format("{}", getRegister(reg, instruction.width));
+	instruction.regMnemonic = std::format("{}", GetRegister(reg, instruction.width));
 
-	instruction.immediate = loadImmediate(instruction.width, cpu);
+	instruction.immediate = LoadImmediate(instruction.width, cpu);
 }
 
 /**
@@ -233,12 +245,29 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
 	instruction.direction = accumulatorEntry.direction;
 	instruction.width = (cpu.memory[cpu.PC] & accumulatorEntry.wMask);
     if (accumulatorEntry.hasAddress)
-        instruction.address = loadImmediate(1, cpu);
+        instruction.address = LoadImmediate(1, cpu);
     else
-        instruction.immediate = loadImmediate(1, cpu);
+        instruction.immediate = LoadImmediate(1, cpu);
     
-	instruction.regMnemonic = std::format("{}", getRegister(0x00, instruction.width));
+	instruction.regMnemonic = std::format("{}", GetRegister(0x00, instruction.width));
     
+}
+
+void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
+{
+	ArithmeticTwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
+
+	uint8_t s = (cpu.memory[cpu.PC] & signedEntry.sMask) >> 1;
+	instruction.width = cpu.memory[cpu.PC] & signedEntry.wMask;
+
+	// Increment because all the following data is in byte 2
+	cpu.PC++;
+	uint8_t mod = GetMod(signedEntry.modMask, cpu);
+	uint8_t rm = GetRm(signedEntry.rmMask, cpu);
+	uint8_t bitConst = GetBitConst(signedEntry.constMask, cpu);
+	DecodeMod(mod, rm, instruction, cpu);
+
+	instruction.immediate = LoadImmediate(instruction.width, cpu);
 }
 
 /**
@@ -270,6 +299,10 @@ void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& 
 	{
 		DecodeAccumulator(instruction, entry, cpu);
 	}break;
+	case ENCODING_ARITHMETIC_TWO_BYTE_IMMEDIATE_SIGNED:
+	{
+		DecodeArithmeticTwoByteSigned(instruction, entry, cpu);
+	} break;
 	}
 }
 
@@ -281,7 +314,7 @@ void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& 
  */
 std::optional<InstructionTableEntry> decodeOpcode(const uint8_t byte)
 {
-	int instructionEntry = findInstruction(byte);
+	int instructionEntry = FindInstruction(byte);
 
 	if (instructionEntry < 0) return std::nullopt;
 

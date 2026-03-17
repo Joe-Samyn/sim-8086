@@ -10,7 +10,8 @@ enum EncodingCategory {
 	ENCODING_TWO_BYTE_LOGIC,
 	ENCODING_THREE_BYTE_ACCUMULATOR,
 	ENCODING_TWO_BYTE_LOGIC_IMMEDIATE,
-	ENCODING_ONE_BYTE_LOGIC_IMMEDIATE
+	ENCODING_ONE_BYTE_LOGIC_IMMEDIATE,
+	ENCODING_ARITHMETIC_TWO_BYTE_IMMEDIATE_SIGNED
 };
 
 /**
@@ -65,6 +66,16 @@ struct OneByteLogicImmediateEntry
 	uint8_t regMask;
 };
 
+struct ArithmeticTwoByteImmedSignedEntry 
+{
+	uint8_t sMask;
+	uint8_t wMask;
+	uint8_t modMask;
+	uint8_t rmMask;
+	uint8_t constMask;
+	uint8_t direction;
+};
+
 struct InstructionTableEntry
 {
 	uint8_t opcode;
@@ -76,7 +87,8 @@ struct InstructionTableEntry
 		struct TwoByteLogicEntry twoByteLogicEntry;
 		struct TwoByteLogicImmediateEntry twoByteLogicImmediateEntry;
 		struct ThreeByteAccumulatorEntry threeByteAccumulatorEncoding;
-		struct OneByteLogicImmediateEntry OneByteLogicImmediateEncoding;
+		struct OneByteLogicImmediateEntry oneByteLogicImmediateEncoding;
+		struct ArithmeticTwoByteImmedSignedEntry arithmeticTwoByteImmedSignedEntry;
 
 	} encoding;
 };
@@ -88,7 +100,8 @@ struct InstructionTableEntry
 	X(0xB0, 0xF0, "MOV", ENCODING_ONE_BYTE_LOGIC_IMMEDIATE, 0x08, 0x03, 0x07), \
 	X(0xA0, 0xFE, "MOV", ENCODING_THREE_BYTE_ACCUMULATOR, 0x01, 0x01, true), \
 	X(0xA2, 0xFE, "MOV", ENCODING_THREE_BYTE_ACCUMULATOR, 0x00, 0x01, true), \
-	X(0x00, 0xFC, "ADD", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07) \
+	X(0x00, 0xFC, "ADD", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
+	X(0x80, 0xFC, "ADD", ENCODING_ARITHMETIC_TWO_BYTE_IMMEDIATE_SIGNED,  0x02, 0x01, 0xC0, 0x07, 0x38, 0x01) \
 
 #define X(opcode, opcodeMask, mnemonic, category, ...) { opcode, opcodeMask, mnemonic, category, { __VA_ARGS__ } }
 std::vector<InstructionTableEntry> instructionTable = {
@@ -136,7 +149,7 @@ std::unordered_map<uint8_t, const char*> registerTable = {
  * @param width 
  * @return register mnemonic
  */
-const char* getRegister(uint8_t reg, uint8_t width)
+const char* GetRegister(uint8_t reg, uint8_t width)
 {
 	// Get 16 bit register
 	if (width)
@@ -178,7 +191,7 @@ std::unordered_map<uint8_t, const char*> modEffectiveAddressTable = {
  * @param byte The byte containing the opcode to search for in the instruction table.
  * @return Returns index of instruction in instruction table if found, otherwise returns -1.
  */
-int findInstruction(uint8_t byte)
+int FindInstruction(uint8_t byte)
 {
 	for (int i = 0; i < instructionTable.size(); i++)
 	{
