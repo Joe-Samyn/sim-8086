@@ -9,7 +9,7 @@ import unittest
 
 class TestDecodingMov(unittest.TestCase):
     def test_mem_to_acc(self):
-        '''Test simulator can properly decode memory to accumulator moves'''
+        '''Test simulator can properly decode memory to accumulator moves.'''
         # Arrange test files
         testFile = f"{TEST_BINARIES_DIR}/mem_to_acc.bin"
 
@@ -64,6 +64,7 @@ class TestDecodingMov(unittest.TestCase):
 
     def test_imm_to_reg_mem(self):
         '''Test similator can properly decode immediate to register/memory moves.'''
+
         # Arrange test files
         testFile = f"{TEST_BINARIES_DIR}/imm_to_reg_mem.bin"
 
@@ -81,8 +82,9 @@ class TestDecodingMov(unittest.TestCase):
         self.assertEqual(testFileBinArr, resultFileBinArr)
 
     def test_all_mov_instructions(self):
-        '''Test simulator can decode all move instructions aggregated together in a single binary. 
-        This is essentially the final verification that the simulator can differentiate and decode
+        '''Test simulator can decode all move instructions aggregated together in a single binary.'''
+
+        '''This is essentially the final verification that the simulator can differentiate and decode
         all move instructions properly from a single binary file.'''
         # Arrange test files
         testFile = f"{TEST_BINARIES_DIR}/mov_tst.bin"
