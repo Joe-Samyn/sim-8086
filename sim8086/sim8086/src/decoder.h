@@ -60,6 +60,33 @@ uint16_t LoadImmediate(uint8_t width, struct CPU &cpu)
 	return LoadByteData(cpu);
 }
 
+uint16_t LoadImmediateSigned(uint8_t width, uint8_t sign, struct CPU &cpu)
+{
+	cpu.PC++;
+
+	uint8_t size = width | sign;
+
+	switch(size)
+	{
+		case 0:
+		{
+			return LoadByteData(cpu);
+		} break;
+		case 1:
+		{
+			return LoadWordData(cpu);
+		} break;
+		case 2:
+		{
+			// Read 1 byte, sign extend to 16
+		} break;
+		case 3:
+		{
+            return LoadByteData(cpu);
+		} break;
+	};
+}
+
 /**
  * @brief Extracts the MOD field from the current opcode byte.
  * @param modMask Bitmask to isolate the MOD bits (typically 0xC0).
@@ -259,6 +286,7 @@ void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEnt
 
 	uint8_t s = (cpu.memory[cpu.PC] & signedEntry.sMask) >> 1;
 	instruction.width = cpu.memory[cpu.PC] & signedEntry.wMask;
+	instruction.sign = cpu.memory[cpu.PC] & signedEntry.sMask;
 
 	// Increment because all the following data is in byte 2
 	cpu.PC++;
@@ -267,7 +295,7 @@ void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEnt
 	uint8_t bitConst = GetBitConst(signedEntry.constMask, cpu);
 	DecodeMod(mod, rm, instruction, cpu);
 
-	instruction.immediate = LoadImmediate(instruction.width, cpu);
+	instruction.immediate = LoadImmediateSigned(instruction.width, instruction.sign, cpu);
 }
 
 /**

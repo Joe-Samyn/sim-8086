@@ -22,6 +22,7 @@ struct Instruction
 {
 	uint8_t direction;				// Determines if reg or rm goes first in assembly output
 	uint8_t width;					// Width of the register or data 
+	uint8_t sign;
 	int16_t immediate;				// Immediate value if there is one
 	uint16_t address;				// Address if instruction has an address (i.e. MOV AL, [1234h])
 	std::string mnemonic;		// Human readable assembly language mnemonic for the instruction
