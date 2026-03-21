@@ -293,6 +293,10 @@ void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEnt
 	uint8_t mod = GetMod(signedEntry.modMask, cpu);
 	uint8_t rm = GetRm(signedEntry.rmMask, cpu);
 	uint8_t bitConst = GetBitConst(signedEntry.constMask, cpu);
+    
+    if (bitConst == 2)
+        instruction.mnemonic = "ADC";
+    
 	DecodeMod(mod, rm, instruction, cpu);
 
 	instruction.immediate = LoadImmediateSigned(instruction.width, instruction.sign, cpu);
