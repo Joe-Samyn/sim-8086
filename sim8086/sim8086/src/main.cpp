@@ -16,14 +16,21 @@ void displayCpuState()
     std::cout << std::format("PC: {}\nCurrent Byte: {}\n", cpu.PC, std::bitset<8>(cpu.memory[cpu.PC]).to_string());
 }
 
+// TODO: We can get more granular on which instructions need to have size defined (word, byte) instead of doing all of them
 std::string formatInstruction(Instruction &inst)
 {
 	if (inst.immediate)
 	{
 		if (inst.rmMnemonic[0] != '\0')
-			return std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
+            if (inst.width)
+                return std::format("{} word {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
+            else
+                return std::format("{} byte {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
 		else
-			return std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
+            if (inst.width)
+                return std::format("{} word {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
+            else
+                return std::format("{} byte {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
 	}
     else if (inst.address)
     {
@@ -33,16 +40,22 @@ std::string formatInstruction(Instruction &inst)
         return std::format("{} [{}], {}\n", inst.mnemonic, inst.address, inst.regMnemonic);
     }
 	else
-	{
-		if (inst.direction)
-		{
-			return std::format("{} {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
-		}
-		else
-		{
-			return std::format("{} {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
-		}
-	}
+    {
+        if (inst.direction)
+        {
+            if (inst.width)
+                return std::format("{} word {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
+            else
+                return std::format("{} byte {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
+        }
+        else
+        {
+            if (inst.width)
+                return std::format("{} word {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
+            else
+                return std::format("{} byte {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
+        }
+    }
 }
 
 /**
