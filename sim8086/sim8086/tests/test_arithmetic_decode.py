@@ -39,7 +39,7 @@ class TestArithmeticDecode(unittest.TestCase):
         self.assertEqual(resultFileBin, testFileBin)
 
     def test_add_reg_mem_w_reg(self):
-         # Arrange 
+         # Arrange
         testFile = f'{TEST_BINARIES_DIR}/add_reg_mem_w_reg.bin'
 
         # Act
@@ -52,3 +52,19 @@ class TestArithmeticDecode(unittest.TestCase):
 
         # Assert
         self.assertEqual(resultFileBin, testFileBin)
+
+    def test_add_imm_to_acc(self):
+        # Arrange
+        testFile = f'{TEST_BINARIES_DIR}/add_imm_to_acc.bin'
+
+        # Act
+        runSim8086(SIMULATOR_PATH, testFile)
+
+        assembleFile(SIM_OUTPUT_ASM, SIM_OUTPUT_BIN)
+
+        resultFileBin = readFileIntoByteArr(SIM_OUTPUT_BIN)
+        testFileBin = readFileIntoByteArr(testFile)
+
+        # Assert
+        self.assertEqual(resultFileBin, testFileBin)
+

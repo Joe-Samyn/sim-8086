@@ -274,7 +274,8 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
     if (accumulatorEntry.hasAddress)
         instruction.address = LoadImmediate(1, cpu);
     else
-        instruction.immediate = LoadImmediate(1, cpu);
+        
+        instruction.immediate = LoadImmediate(instruction.width, cpu);
     
 	instruction.regMnemonic = std::format("{}", GetRegister(0x00, instruction.width));
     
