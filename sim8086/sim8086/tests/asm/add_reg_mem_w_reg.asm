@@ -7,3 +7,8 @@
 bits 16
 
 add bx, [bx + si]
+
+add bx, cx
+add bl, cl
+
+hlt

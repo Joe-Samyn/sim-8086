@@ -44,3 +44,5 @@ mov al, [1234]
 ; Accumulator to Memory 
 mov [12], ax
 mov [1234], al
+
+hlt

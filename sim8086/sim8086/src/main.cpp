@@ -87,7 +87,7 @@ void readBinaryFile(char* filePath)
 std::vector<Instruction> beginDecode()
 {
 	std::vector<Instruction> decodedInstructions = {};
-	while (cpu.memory[cpu.PC] != 0)
+	while (cpu.memory[cpu.PC] != HALT)
 	{
 		uint8_t currentByte = cpu.memory[cpu.PC];
 

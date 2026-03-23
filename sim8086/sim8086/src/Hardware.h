@@ -7,6 +7,11 @@
 // The size of the prefetch buffer in bytes
 #define PREFETCH_BUFFER_SIZE_BYTES 6
 
+// The halt instruction to signify the end of a program.
+// NOTE: This may not be the correct way to signal end of a program, but it is what is being used
+// for now. 
+#define HALT 0xF4
+
 /**
  * @brief Struct that represents the state of the CPU, including memory and registers
  */

@@ -18,3 +18,5 @@ adc word [bp + di], 8
 adc word [bp + di], -8
 
 adc word [bp + di + 7], -27
+
+hlt

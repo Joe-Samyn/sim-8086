@@ -8,3 +8,5 @@
 bits 16
 
 mov ax, [12]
+
+hlt

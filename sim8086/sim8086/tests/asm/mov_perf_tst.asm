@@ -299,3 +299,5 @@ mov ax, 9999
 mov bx, 8888
 mov cx, 7777
 mov dx, 6666
+
+hlt

@@ -31,3 +31,5 @@ mov ax, si
 ; No displacement, write
 mov [bx + di], cx
 mov [bp + si], cl
+
+hlt

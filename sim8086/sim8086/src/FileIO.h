@@ -19,6 +19,8 @@ void writeToFile(std::vector<std::string> instructions)
     {
         asmFile << inst;
     }
+    
+    asmFile << "hlt"; 
 
     asmFile.close();
 }

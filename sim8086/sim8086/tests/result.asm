@@ -10,3 +10,4 @@ MOV byte AL, BL
 MOV word AX, SI
 MOV word [BX + DI], CX
 MOV byte [BP + SI], CL
+hlt
