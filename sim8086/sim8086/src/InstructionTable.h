@@ -103,7 +103,8 @@ struct InstructionTableEntry
 	X(0x00, 0xFC, "ADD", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
 	X(0x80, 0xFC, "ADD", ENCODING_ARITHMETIC_TWO_BYTE_IMMEDIATE_SIGNED,  0x02, 0x01, 0xC0, 0x07, 0x38, 0x01), \
     X(0x04, 0xFE, "ADD", ENCODING_THREE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
-	X(0x14, 0xFE, "ADC", ENCODING_THREE_BYTE_ACCUMULATOR, 0x01, 0x01, false) \
+	X(0x14, 0xFE, "ADC", ENCODING_THREE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
+	X(0x10, 0xFC, "ADC", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07) \
 
 #define X(opcode, opcodeMask, mnemonic, category, ...) { opcode, opcodeMask, mnemonic, category, { __VA_ARGS__ } }
 std::vector<InstructionTableEntry> instructionTable = {
