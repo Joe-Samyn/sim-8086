@@ -29,11 +29,17 @@ TODO:
 */
 
 /**
+ * Memory for the Intel 8086 simulator. 
+ * Intel 8086 computers typically had 1 MB of addressable memory. Therefore
+ * this simulator is initialized with 1 MB of memory space. 
+ */
+uint8_t Memory[1024 * 1024];
+
+/**
  * @brief Struct that represents the state of the CPU, including memory and registers
  */
 struct CPU {
-	uint8_t memory[1024 * 1024]; // 1 MB
-	uint16_t PC;
+	uint16_t IP;
 };
 
 enum EncodingCategory {
@@ -297,8 +303,8 @@ std::optional<InstructionTableEntry> decodeOpcode(const uint8_t byte)
  */
 uint16_t LoadWordData(struct CPU &cpu)
 {
-	uint8_t lowByte = cpu.memory[cpu.PC];
-	uint16_t highByte = cpu.memory[++cpu.PC];
+	uint8_t lowByte = Memory[cpu.IP];
+	uint16_t highByte = Memory[++cpu.IP];
 	uint16_t wideValue = (highByte << 8) | lowByte;
 	return wideValue;
 }
@@ -311,7 +317,7 @@ uint16_t LoadWordData(struct CPU &cpu)
  */
 int16_t LoadByteData(struct CPU &cpu)
 {
-	int8_t lowByte = static_cast<int8_t>(cpu.memory[cpu.PC]);
+	int8_t lowByte = static_cast<int8_t>(Memory[cpu.IP]);
     int16_t data = static_cast<int16_t>(lowByte);
 	return data;
 }
@@ -325,7 +331,7 @@ int16_t LoadByteData(struct CPU &cpu)
  */
 uint16_t LoadImmediate(uint8_t width, struct CPU &cpu)
 {
-	cpu.PC++;
+	cpu.IP++;
 
 	if (width) return LoadWordData(cpu);
 
@@ -334,7 +340,7 @@ uint16_t LoadImmediate(uint8_t width, struct CPU &cpu)
 
 uint16_t LoadImmediateSigned(uint8_t width, uint8_t sign, struct CPU &cpu)
 {
-	cpu.PC++;
+	cpu.IP++;
 
 	uint8_t size = width | sign;
 
@@ -368,7 +374,7 @@ uint16_t LoadImmediateSigned(uint8_t width, uint8_t sign, struct CPU &cpu)
  */
 uint8_t GetMod(uint8_t modMask, struct CPU& cpu)
 {
-	return (cpu.memory[cpu.PC] & modMask) >> 6;
+	return (Memory[cpu.IP] & modMask) >> 6;
 }
 
 /**
@@ -380,7 +386,7 @@ uint8_t GetMod(uint8_t modMask, struct CPU& cpu)
  */
 uint8_t GetRm(uint8_t rmMask, struct CPU& cpu)
 {
-	return (cpu.memory[cpu.PC] & rmMask);
+	return (Memory[cpu.IP] & rmMask);
 }
 
 /**
@@ -394,7 +400,7 @@ uint8_t GetRm(uint8_t rmMask, struct CPU& cpu)
  */
 uint8_t GetReg(uint8_t regMask, uint8_t regShift, Instruction& instruction, struct CPU& cpu)
 {
-	return (cpu.memory[cpu.PC] & regMask) >> regShift;
+	return (Memory[cpu.IP] & regMask) >> regShift;
 }
 
 /**
@@ -406,7 +412,7 @@ uint8_t GetReg(uint8_t regMask, uint8_t regShift, Instruction& instruction, stru
  */
 uint8_t GetBitConst(uint8_t constMask, struct CPU& cpu)
 {
-	return (cpu.memory[cpu.PC] & constMask) >> 3;
+	return (Memory[cpu.IP] & constMask) >> 3;
 }
 
 /**
@@ -426,7 +432,7 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 		// Special case of MOD that indicates direct memory access with no displacement. 
 		if (rm == 0x6)
 		{
-			cpu.PC++;
+			cpu.IP++;
 			instruction.rmMnemonic = std::format("[{}]", LoadWordData(cpu));
 		}
 		else
@@ -474,12 +480,12 @@ void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, 
 	struct TwoByteLogicEntry logicEntry = entry.encoding.twoByteLogicEntry;
 
 	// Get width if w bit is present 
-	if (logicEntry.wMask != 0)  instruction.width = (cpu.memory[cpu.PC] & logicEntry.wMask);
+	if (logicEntry.wMask != 0)  instruction.width = (Memory[cpu.IP] & logicEntry.wMask);
 
 	// Get direction if d bit is present, direction is always in bit 1 if it is present so we can just shift right by 1 to get the value
-	if (logicEntry.dMask != 0) instruction.direction = (cpu.memory[cpu.PC] & logicEntry.dMask) >> 1;
+	if (logicEntry.dMask != 0) instruction.direction = (Memory[cpu.IP] & logicEntry.dMask) >> 1;
 
-	cpu.PC++;
+	cpu.IP++;
 	if (logicEntry.regMask != 0)
 	{
 		uint8_t reg = GetReg(logicEntry.regMask, logicEntry.regShift, instruction, cpu);
@@ -502,9 +508,9 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	struct TwoByteLogicImmediateEntry logicImmediateEntry = entry.encoding.twoByteLogicImmediateEntry;
 
 	// Get width if w bit is present 
-	if (logicImmediateEntry.wMask != 0) instruction.width = (cpu.memory[cpu.PC] & logicImmediateEntry.wMask);
+	if (logicImmediateEntry.wMask != 0) instruction.width = (Memory[cpu.IP] & logicImmediateEntry.wMask);
 
-	cpu.PC++;
+	cpu.IP++;
 	uint8_t mod = GetMod(logicImmediateEntry.modMask, cpu);
 	uint8_t rm = GetRm(logicImmediateEntry.rmMask, cpu);
 	DecodeMod(mod, rm, instruction, cpu);
@@ -523,9 +529,9 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	struct OneByteLogicImmediateEntry logicImmediateEntry = entry.encoding.oneByteLogicImmediateEncoding;
 
 	// Get width if w bit is present 
-	instruction.width = (cpu.memory[cpu.PC] & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
+	instruction.width = (Memory[cpu.IP] & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
 
-	uint8_t reg = (cpu.memory[cpu.PC] & logicImmediateEntry.regMask);
+	uint8_t reg = (Memory[cpu.IP] & logicImmediateEntry.regMask);
 	instruction.regMnemonic = std::format("{}", GetRegister(reg, instruction.width));
 
 	instruction.immediate = LoadImmediate(instruction.width, cpu);
@@ -542,7 +548,7 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
 {
 	struct ThreeByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
 	instruction.direction = accumulatorEntry.direction;
-	instruction.width = (cpu.memory[cpu.PC] & accumulatorEntry.wMask);
+	instruction.width = (Memory[cpu.IP] & accumulatorEntry.wMask);
     if (accumulatorEntry.hasAddress)
         instruction.address = LoadImmediate(1, cpu);
     else
@@ -557,12 +563,12 @@ void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEnt
 {
 	ArithmeticTwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
 
-	uint8_t s = (cpu.memory[cpu.PC] & signedEntry.sMask) >> 1;
-	instruction.width = cpu.memory[cpu.PC] & signedEntry.wMask;
-	instruction.sign = cpu.memory[cpu.PC] & signedEntry.sMask;
+	uint8_t s = (Memory[cpu.IP] & signedEntry.sMask) >> 1;
+	instruction.width = Memory[cpu.IP] & signedEntry.wMask;
+	instruction.sign = Memory[cpu.IP] & signedEntry.sMask;
 
 	// Increment because all the following data is in byte 2
-	cpu.PC++;
+	cpu.IP++;
 	uint8_t mod = GetMod(signedEntry.modMask, cpu);
 	uint8_t rm = GetRm(signedEntry.rmMask, cpu);
 	uint8_t bitConst = GetBitConst(signedEntry.constMask, cpu);
@@ -616,7 +622,7 @@ void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& 
 */
 void displayCpuState()
 {
-    std::cout << std::format("PC: {}\nCurrent Byte: {}\n", cpu.PC, std::bitset<8>(cpu.memory[cpu.PC]).to_string());
+    std::cout << std::format("PC: {}\nCurrent Byte: {}\n", cpu.IP, std::bitset<8>(Memory[cpu.IP]).to_string());
 }
 
 /*
@@ -689,7 +695,7 @@ void readBinaryFile(char* filePath)
 	std::streamsize file_size = file.tellg();
 	file.seekg(0, std::ios::beg);
 
-	file.read(reinterpret_cast<char*>(cpu.memory), file_size);
+	file.read(reinterpret_cast<char*>(Memory), file_size);
 }
 
 /**
@@ -706,12 +712,12 @@ std::vector<Instruction> beginDecode()
 	/**
 	 * TODO: Not the biggest fan of this, could be a lot more readable
 	 */
-	while (cpu.memory[cpu.PC] != 0xF4)
+	while (Memory[cpu.IP] != 0xF4)
 	{
 		/**
 		 * TODO: We are already doing an array access above to get the current byte, seems redundant to do it again
 		 */
-		uint8_t currentByte = cpu.memory[cpu.PC];
+		uint8_t currentByte = Memory[cpu.IP];
 
 		// Get opcode from byte
 		/**
@@ -752,7 +758,7 @@ std::vector<Instruction> beginDecode()
 		 * TODO: We should have a single function in Hardware.h that handles incrementing the PC or getting the next byte. 
 		 * Having this operationg everywhere is asking for bugs. 
 		 */
-		cpu.PC++;
+		cpu.IP++;
 
 	}
 
