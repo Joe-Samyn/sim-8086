@@ -42,6 +42,12 @@ struct CPU {
 	uint16_t IP;
 };
 
+struct Program {
+	uint32_t size;
+	uint32_t startAddr;
+	uint32_t endAddr;
+};
+
 enum EncodingCategory {
 	ENCODING_TWO_BYTE_LOGIC,
 	ENCODING_THREE_BYTE_ACCUMULATOR,
@@ -673,29 +679,36 @@ std::string formatInstruction(Instruction &inst)
  * @brief Reads binary file into memory
  * @param filePath
  * @param buffer
- *
- * TODO: This should move to somewhere that deals with loading a program like FileIO or something
- * TODO: We need to keep track of file size. The HLT instruction being used as a terminating instruction is
- * not going to work long term. 
+ * @return An instance of Program that contains metadata about the program loaded into memory
  */
-void readBinaryFile(char* filePath)
+Program* LoadProgramIntoMemory(std::string filePath)
 {
 	std::ifstream file(filePath, std::ios::binary | std::ios::ate);
 
-	/**
-	 * TODO: Not proper file error handling. Should be || and handle all failures to open
-	 */
-	if (!file.is_open() && errno == ENOENT)
+	if (!file.is_open() || errno == ENOENT)
 	{
-		std::cerr << "File does not exist.\n";
+		std::cerr << "ERROR: Could not open file. File does not exist.\n";
 		return;
 	}
 
 	// Determine file size
-	std::streamsize file_size = file.tellg();
-	file.seekg(0, std::ios::beg);
+	file.seekg(0, file.end);
+	uint32_t length = static_cast<uint32_t>(file.tellg());
+	file.seekg(0, file.beg);
 
-	file.read(reinterpret_cast<char*>(Memory), file_size);
+	/**
+		TODO: This is not in its final form. Ultimately, we would need some function that finds 
+			a block of open memory large enough, gets the starting address & ending address, etc. 
+			Essentially, we need proper memory management here. I am just doing this for short term
+			to test out this strategy. 
+	*/
+	Program *program = static_cast<Program*>(malloc(sizeof(Program)));
+	file.read(reinterpret_cast<char*>(Memory), length);
+
+	program->size = length;
+	program->startAddr = 0;
+	program->endAddr = length;
+	return program; 
 }
 
 /**
@@ -786,33 +799,8 @@ int main(int argc, char* argv[])
 	}
 
 	// Read binary file into a vector if bytes
-	readBinaryFile(argv[1]);
-
-	/**
-	 * TODO: May be unnecessary. Just seems like a lot of overhead
-	 */
-	std::vector<Instruction> instructions;
-
-	/**
-	 * TODO: Since decoding will be a feature of the overall simulator, rename beginDecode to just decode() and run decode loop. 
-	 */
-	std::vector<Instruction> inst = beginDecode();
-	instructions.insert(instructions.end(), inst.begin(), inst.end());
-
-	/**
-	 * TODO: Very unnecessary and exessive. Should be accomplished much simpler 
-	 */
-	std::vector<std::string> formattedInstructions;
-
-	/**
-	 * TODO: Seems like an unnecessary loop. Could be done as part of the normal decode loop rather than in main. 
-	 */
-	for (auto inst : instructions)
-	{
-		formattedInstructions.push_back(formatInstruction(inst));
-	}
-
-	writeToFile(formattedInstructions);
+	std::string asmFile = argv[1];
+	Program *program = LoadProgramIntoMemory(asmFile);
 
 	return 0;
 }
