@@ -28,10 +28,9 @@ TODO:
 - 
 */
 
+
 /**
- * Memory for the Intel 8086 simulator. 
- * Intel 8086 computers typically had 1 MB of addressable memory. Therefore
- * this simulator is initialized with 1 MB of memory space. 
+ * @brief Memory for the Intel 8086 simulator. Intel 8086 computers typically had 1 MB of addressable memory. Therefore this simulator is initialized with 1 MB of memory space. 
  */
 uint8_t Memory[1024 * 1024];
 
@@ -42,40 +41,59 @@ struct CPU {
 	uint16_t IP;
 };
 
+struct Register {
+	uint8_t lowByte;
+	uint8_t highByte;
+	std::string byteName; 
+	std::string wordName;
+};
+
+/**
+ * @brief Retrieve a byte from a prgram in memory at the specified Instruction Pointer. 
+ * The instruction pointer is incremented by 1 after the byte is retrieved from memory.
+ */
+uint8_t GetInstructionByte(int ip) {
+	return Memory[ip];
+	ip++;
+}
+
+
 struct Program {
 	uint32_t size;
 	uint32_t startAddr;
 	uint32_t endAddr;
 };
 
-enum EncodingCategory {
-	ENCODING_TWO_BYTE_LOGIC,
-	ENCODING_THREE_BYTE_ACCUMULATOR,
-	ENCODING_TWO_BYTE_LOGIC_IMMEDIATE,
-	ENCODING_ONE_BYTE_LOGIC_IMMEDIATE,
-	ENCODING_ARITHMETIC_TWO_BYTE_IMMEDIATE_SIGNED
-};
-
 /**
  * @brief Represents a decoded instructions
- * TODO: This can probably go away at some point and we can just write directly to a buffer or file. Its more for debugging
  */
 struct Instruction
 {
-	uint8_t direction;				// Determines if reg or rm goes first in assembly output
-	uint8_t width;					// Width of the register or data 
+	std::string mnemonic;
+	uint8_t direction;				
+	uint8_t width;					
 	uint8_t sign;
-	int16_t immediate;				// Immediate value if there is one
-	uint16_t address;				// Address if instruction has an address (i.e. MOV AL, [1234h])
-	std::string mnemonic;		// Human readable assembly language mnemonic for the instruction
-	std::string regMnemonic;	// The human readable name for the register (i.e. AX, BX, etc.)
-	std::string rmMnemonic;	// The human redable name for the register stored in R/M when R/M is used to hold register info 
+	int16_t immediate;	
+	uint16_t displacement;			
+	uint16_t address;					
+	struct Register regA;
+	struct Register regB;
+	struct Register regC;
+	// TODO: Need to figure out how to encode R/M properly. Its tricky because it can be a couple of different things: Register, Effective Address Calculation, Direct Address. I wonder if 
+	// we should encode this similar to instructions via an enum, depending on the type it has different things? Union? Seems overly complicated.... 
 };
 
+/**
+ * @brief Identifies what type of encoding an Intel 8086 instruction uses. 
+ */
+enum EncodingCategory {
+	ENCODING_TWO_BYTE_LOGIC,
+	ENCODING_ONE_BYTE_ACCUMULATOR,
+	ENCODING_TWO_BYTE_LOGIC_IMMEDIATE,
+	ENCODING_ONE_BYTE_LOGIC_IMMEDIATE,
+	ENCODING_TWO_BYTE_IMMEDIATE_SIGNED
+};
 
-/* ====================================================================== */
-/* ==============     Intel 8086 Instruction Table    =================== */
-/* ====================================================================== */
 
 struct TwoByteLogicEntry
 {
@@ -94,7 +112,7 @@ struct TwoByteLogicImmediateEntry
 	uint8_t rmMask;
 };
 
-struct ThreeByteAccumulatorEntry
+struct OneByteAccumulatorEntry
 {
 	uint8_t direction;
 	uint8_t wMask;
@@ -108,7 +126,7 @@ struct OneByteLogicImmediateEntry
 	uint8_t regMask;
 };
 
-struct ArithmeticTwoByteImmedSignedEntry 
+struct TwoByteImmedSignedEntry 
 {
 	uint8_t sMask;
 	uint8_t wMask;
@@ -122,15 +140,15 @@ struct InstructionTableEntry
 {
 	uint8_t opcode;
 	uint8_t opcodeMask;
-	const char* mnemonic;
+	std::string mnemonic;
 	EncodingCategory category;
 	union
 	{
 		struct TwoByteLogicEntry twoByteLogicEntry;
 		struct TwoByteLogicImmediateEntry twoByteLogicImmediateEntry;
-		struct ThreeByteAccumulatorEntry threeByteAccumulatorEncoding;
+		struct OneByteAccumulatorEntry threeByteAccumulatorEncoding;
 		struct OneByteLogicImmediateEntry oneByteLogicImmediateEncoding;
-		struct ArithmeticTwoByteImmedSignedEntry arithmeticTwoByteImmedSignedEntry;
+		struct TwoByteImmedSignedEntry arithmeticTwoByteImmedSignedEntry;
 
 	} encoding;
 };
@@ -140,25 +158,21 @@ struct InstructionTableEntry
 	X(0x88, 0xFC, "MOV", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
 	X(0xC6, 0xFE, "MOV", ENCODING_TWO_BYTE_LOGIC_IMMEDIATE, 0x01, 0xC0, 0x07), \
 	X(0xB0, 0xF0, "MOV", ENCODING_ONE_BYTE_LOGIC_IMMEDIATE, 0x08, 0x03, 0x07), \
-	X(0xA0, 0xFE, "MOV", ENCODING_THREE_BYTE_ACCUMULATOR, 0x01, 0x01, true), \
-	X(0xA2, 0xFE, "MOV", ENCODING_THREE_BYTE_ACCUMULATOR, 0x00, 0x01, true), \
+	X(0xA0, 0xFE, "MOV", ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, true), \
+	X(0xA2, 0xFE, "MOV", ENCODING_ONE_BYTE_ACCUMULATOR, 0x00, 0x01, true), \
 	X(0x00, 0xFC, "ADD", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0x80, 0xFC, "ADD", ENCODING_ARITHMETIC_TWO_BYTE_IMMEDIATE_SIGNED,  0x02, 0x01, 0xC0, 0x07, 0x38, 0x01), \
-    X(0x04, 0xFE, "ADD", ENCODING_THREE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
-	X(0x14, 0xFE, "ADC", ENCODING_THREE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
+	X(0x80, 0xFC, "ADD", ENCODING_TWO_BYTE_IMMEDIATE_SIGNED,  0x02, 0x01, 0xC0, 0x07, 0x38, 0x01), \
+    X(0x04, 0xFE, "ADD", ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
+	X(0x14, 0xFE, "ADC", ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
 	X(0x10, 0xFC, "ADC", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
 	X(0x28, 0xFC, "SUB", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0x2C, 0xFE, "SUB", ENCODING_THREE_BYTE_ACCUMULATOR, 0x01, 0x01, false) \
+	X(0x2C, 0xFE, "SUB", ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false) \
 
 #define X(opcode, opcodeMask, mnemonic, category, ...) { opcode, opcodeMask, mnemonic, category, { __VA_ARGS__ } }
 std::vector<InstructionTableEntry> instructionTable = {
 	InstructionTableEntries
 };
 #undef X
-
-/* ====================================================================== */
-/* ==============     Register (1 & 2 byte) Table     =================== */
-/* ====================================================================== */
 
 #define RegistersWide8086 \
 	X(0b00000000, "AX") \
@@ -206,10 +220,6 @@ const char* GetRegister(uint8_t reg, uint8_t width)
 	return registerTable.at(reg);
 }
 
-
-/* ====================================================================== */
-/* ============== Effective Address Calculation Table =================== */
-
 #define ModCalculations \
 	X(/* R/M = 000*/ 0b00000000, "BX + SI") \
 	X(/* R/M = 001*/ 0b00000001, "BX + DI") \
@@ -226,19 +236,12 @@ std::unordered_map<uint8_t, const char*> modEffectiveAddressTable = {
 };
 #undef X
 
-
-/* ====================================================================== */
-/* ==============      Table operation functions      =================== */
-/* ====================================================================== */
-
-
-// TODO: This might be better off returning an instruction entry instead of an index
 /**
  * @brief Search instruction table for instruction that matches the opcode in the byte. 
  * @param byte The byte containing the opcode to search for in the instruction table.
  * @return Returns index of instruction in instruction table if found, otherwise returns -1.
  */
-int FindInstruction(uint8_t byte)
+std::optional<InstructionTableEntry> FindInstruction(uint8_t byte)
 {
 	for (int i = 0; i < instructionTable.size(); i++)
 	{
@@ -249,16 +252,12 @@ int FindInstruction(uint8_t byte)
 		// If byte matches opcode, break out and return index of instruction
 		if (b == inst.opcode)
 		{
-			return i;
+			return inst;
 		}
 	}
 
-	// Byte doesn't match any instructions
-	return -1;
+	return std::nullopt;
 }
-
-
-struct CPU cpu = { 0 };
 
 void writeToFile(std::vector<std::string> instructions)
 {
@@ -277,20 +276,6 @@ void writeToFile(std::vector<std::string> instructions)
     asmFile.close();
 }
 
-/**
- * @brief Looks up an opcode byte in the instruction table.
- * @param byte The opcode byte to decode.
- * @return An optional containing the instruction table entry if found, or std::nullopt if invalid.
- * @note This function performs the initial opcode lookup in the 8086 decoding process, similar to the control store access.
- */
-std::optional<InstructionTableEntry> decodeOpcode(const uint8_t byte)
-{
-	int instructionEntry = FindInstruction(byte);
-
-	if (instructionEntry < 0) return std::nullopt;
-
-	return std::make_optional(instructionTable.at(instructionEntry));
-}
 
 /**
  * @brief Read a 16-bit little-endian word from `memory` starting at address `PC`.
@@ -450,6 +435,7 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 		int16_t data = static_cast<int16_t>(LoadImmediate(0, cpu));
 		if (data < 0)
 		{
+			// TODO: There is a better way to do twos complement. 
 			data = ~data + 1; // get the positive value of the negative displacement for printing
 			instruction.rmMnemonic = std::format("[{} - {}]", modEffectiveAddressTable.at(rm), data);
 		}
@@ -461,6 +447,7 @@ void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cp
 		int16_t data = static_cast<int16_t>(LoadImmediate(1, cpu));
 		if (data < 0)
 		{
+			// TODO: There is better way to do two's complement 
 			data = ~data + 1; // get the positive value of the negative displacement for printing
 			instruction.rmMnemonic = std::format("[{} - {}]", modEffectiveAddressTable.at(rm), data);
 		}
@@ -552,7 +539,7 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
  */
 void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	struct ThreeByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
+	struct OneByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
 	instruction.direction = accumulatorEntry.direction;
 	instruction.width = (Memory[cpu.IP] & accumulatorEntry.wMask);
     if (accumulatorEntry.hasAddress)
@@ -567,7 +554,7 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
 
 void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	ArithmeticTwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
+	TwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
 
 	uint8_t s = (Memory[cpu.IP] & signedEntry.sMask) >> 1;
 	instruction.width = Memory[cpu.IP] & signedEntry.wMask;
@@ -594,85 +581,46 @@ void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEnt
  * @param cpu The CPU structure; PC is advanced during decoding.
  * @note This function emulates the 8086's instruction decoding pipeline, routing opcodes to appropriate microcode-like handlers.
  */
-void Decode(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
+Instruction Decode(InstructionTableEntry& entry, struct CPU& cpu)
 {
-	instruction.mnemonic = std::format("{}", entry.mnemonic);
+	Instruction instruction = { 0 };
+	instruction.mnemonic = entry.mnemonic;
 
 	switch (entry.category)
 	{
 	case ENCODING_TWO_BYTE_LOGIC:
 	{
 		DecodeTwoByteLogic(instruction, entry, cpu);
-	}break;
+	} break;
 	case ENCODING_TWO_BYTE_LOGIC_IMMEDIATE:
 	{
 		DecodeTwoByteLogicImmediate(instruction, entry, cpu);
-	}break;
+	} break;
 	case ENCODING_ONE_BYTE_LOGIC_IMMEDIATE:
 	{
 		DecodeOneByteLogicImmediate(instruction, entry, cpu);
 	} break;
-	case ENCODING_THREE_BYTE_ACCUMULATOR:
+	case ENCODING_ONE_BYTE_ACCUMULATOR:
 	{
 		DecodeAccumulator(instruction, entry, cpu);
-	}break;
-	case ENCODING_ARITHMETIC_TWO_BYTE_IMMEDIATE_SIGNED:
+	} break;
+	case ENCODING_TWO_BYTE_IMMEDIATE_SIGNED:
 	{
 		DecodeArithmeticTwoByteSigned(instruction, entry, cpu);
 	} break;
 	}
+
+	return instruction;
 }
 
-/*
- TODO: This should move into Hardware.h
-*/
-void displayCpuState()
-{
-    std::cout << std::format("PC: {}\nCurrent Byte: {}\n", cpu.IP, std::bitset<8>(Memory[cpu.IP]).to_string());
-}
-
-/*
-	TODO: We can get more granular on which instructions need to have size defined (word, byte) instead of doing all of them
-*/
+/**
+ * @brief Format an instruction for nice file output 
+ */
 std::string formatInstruction(Instruction &inst)
 {
-	if (inst.immediate)
-	{
-		if (inst.rmMnemonic[0] != '\0')
-            if (inst.width)
-                return std::format("{} word {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
-            else
-                return std::format("{} byte {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.immediate);
-		else
-            if (inst.width)
-                return std::format("{} word {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
-            else
-                return std::format("{} byte {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.immediate);
-	}
-    else if (inst.address)
-    {
-        if (inst.direction)
-            return std::format("{} {}, [{}]\n", inst.mnemonic, inst.regMnemonic, inst.address);
-
-        return std::format("{} [{}], {}\n", inst.mnemonic, inst.address, inst.regMnemonic);
-    }
-	else
-    {
-        if (inst.direction)
-        {
-            if (inst.width)
-                return std::format("{} word {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
-            else
-                return std::format("{} byte {}, {}\n", inst.mnemonic, inst.regMnemonic, inst.rmMnemonic);
-        }
-        else
-        {
-            if (inst.width)
-                return std::format("{} word {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
-            else
-                return std::format("{} byte {}, {}\n", inst.mnemonic, inst.rmMnemonic, inst.regMnemonic);
-        }
-    }
+	// I don't know if we even want to use this. This was used to format all instructions at the end of decoding. However, 
+	// this is supposed to be a simulator, not just a decoder. Therefore, instructions will be printed/executed as they are
+	// decoded
 }
 
 /**
@@ -681,7 +629,7 @@ std::string formatInstruction(Instruction &inst)
  * @param buffer
  * @return An instance of Program that contains metadata about the program loaded into memory
  */
-Program* LoadProgramIntoMemory(std::string filePath)
+Program LoadProgramIntoMemory(std::string filePath)
 {
 	std::ifstream file(filePath, std::ios::binary | std::ios::ate);
 
@@ -702,83 +650,40 @@ Program* LoadProgramIntoMemory(std::string filePath)
 			Essentially, we need proper memory management here. I am just doing this for short term
 			to test out this strategy. 
 	*/
-	Program *program = static_cast<Program*>(malloc(sizeof(Program)));
+	Program program = { 0 };
 	file.read(reinterpret_cast<char*>(Memory), length);
 
-	program->size = length;
-	program->startAddr = 0;
-	program->endAddr = length;
+	program.size = length;
+	program.startAddr = 0;
+	program.endAddr = length;
 	return program; 
 }
 
 /**
- * TODO: This may not be realistic. Chances are, simulating is not going to require entire programs
- * to be decoded. The instructions will be decoded one at a time and the instruction will be executed. 
- * This should be adjusted to just be a specific feature of the sim8086 application. 
- * 
- * TODO: This function is not the most testable. Its essentially a full decode integration test. 
- * We should think about ways to make this more deterministic and testable. 
- */
-std::vector<Instruction> beginDecode()
+ * When we execute a program, we should expect output, i.e. specific CPU state. This should be much more testable now
+*/
+void Execute(struct CPU &cpu, struct Program program)
 {
 	std::vector<Instruction> decodedInstructions = {};
-	/**
-	 * TODO: Not the biggest fan of this, could be a lot more readable
-	 */
-	while (Memory[cpu.IP] != 0xF4)
+
+
+	while (cpu.IP != program.size)
 	{
-		/**
-		 * TODO: We are already doing an array access above to get the current byte, seems redundant to do it again
-		 */
-		uint8_t currentByte = Memory[cpu.IP];
+		uint8_t currentByte = GetInstructionByte(cpu.IP);
 
 		// Get opcode from byte
-		/**
-		 *  TODO: This could be cleaned up by having a global error function
-		 * 	TODO: Probably should be specific decodeOpcodeByte rather than just decodeOpcode. I bet we could simplify a lot of
-		 * 	the logic in other microcode functions. There should then be a specific action to findInstruction or something. 
-		 * 	Two very testable, single responsibility functions. 
-		 *  TODO: Need to remove exit(1). This will not work in unit testing scenarios. It breaks out of the program. 
-		 */
-		std::optional<InstructionTableEntry> opcodeResult = decodeOpcode(currentByte);
+		std::optional<InstructionTableEntry> opcodeResult = FindInstruction(currentByte);
 		if (!opcodeResult)
 		{
 			std::cerr << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
-			exit(1);
+			return;
 		}
-		/**
-		 * TODO: Instruction table is globally accessible and doesn't change, we probably don't need to pass around this entry 
-		 * as a parameter everywhere. 
-		 */
 
 		InstructionTableEntry entry = *opcodeResult;
 
-		/**
-		 * TODO: Again, we could probably do this above and get multiple things out of the decodeOpcodeByte function
-		 */
-		Instruction instruction = { 0 };
-		Decode(instruction, entry, cpu);
-
-		/**
-		 * TODO: We have an entire data structure to keep track of all the decoded instructions, this is probably unnecessary. 
-		 * We should be able to just output an instruction to a file or buffer once we have it. This might even be better off
-		 * as a string[] in the FileIO section of the code base. That is probably a lot simpler and more performant than a vector. 
-		 */
-		decodedInstructions.push_back(instruction);
-
-		// PC currently points to the last byte that was decoded, increment to point to next instruction
-		/**
-		 * TODO: We should have a single function in Hardware.h that handles incrementing the PC or getting the next byte. 
-		 * Having this operationg everywhere is asking for bugs. 
-		 */
-		cpu.IP++;
-
+		// Not sure if we even need to return an instruction? Maybe just for outputing to file? 
+		Instruction instruction = Decode(entry, cpu);
 	}
-
-	/**
-	 * TODO: May not need this if we are going to change how we output instructions
-	 */
-	return decodedInstructions;
 }
 
 /**
@@ -800,7 +705,10 @@ int main(int argc, char* argv[])
 
 	// Read binary file into a vector if bytes
 	std::string asmFile = argv[1];
-	Program *program = LoadProgramIntoMemory(asmFile);
+	struct Program program = LoadProgramIntoMemory(asmFile);
+
+	struct CPU cpu = { 0 };
+	Execute(cpu, program);
 
 	return 0;
 }
