@@ -28,7 +28,6 @@ TODO:
 - 
 */
 
-
 /**
  * @brief Memory for the Intel 8086 simulator. Intel 8086 computers typically had 1 MB of addressable memory. Therefore this simulator is initialized with 1 MB of memory space. 
  */
@@ -43,12 +42,10 @@ struct CPU {
 	uint16_t registers[8];
 };
 
-struct Register {
-	uint8_t lowByte;
-	uint8_t highByte;
-	std::string byteName; 
-	std::string wordName;
-};
+/**
+ * TODO: We need to define a register table to look up the human friendly name for these registers. 
+ */
+
 
 /**
  * @brief Retrieve a byte from a prgram in memory at the specified Instruction Pointer. 
@@ -74,6 +71,24 @@ enum OperandType {
 	EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT
 };
 
+enum Mnemonic {
+	MOV, 
+	ADD,
+	ADC,
+	SUB
+};
+
+std::string MnemonicToString(Mnemonic m)
+{
+	switch (m)
+	{
+		case MOV: return "MOV";
+		case ADD: return "ADD";
+		case ADC: return "ADC";
+		case SUB: return "SUB";
+	}
+}
+
 /**
  * @note The registers are uint8_t because they represent the index of the register in the CPUs register table (array)
  */
@@ -90,7 +105,7 @@ struct Operand {
  */
 struct Instruction
 {
-	std::string mnemonic;
+	Mnemonic mnemonic;
 
 	uint8_t direction;
 	uint8_t width;
@@ -159,7 +174,7 @@ struct InstructionTableEntry
 {
 	uint8_t opcode;
 	uint8_t opcodeMask;
-	std::string mnemonic;
+	Mnemonic mnemonic;
 	EncodingCategory category;
 	union
 	{
@@ -174,18 +189,18 @@ struct InstructionTableEntry
 
 // TODO (joe): Maybe remove strings from this table and create a mapping table of opcode -> mnemonic
 #define InstructionTableEntries \
-	X(0x88, 0xFC, "MOV", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0xC6, 0xFE, "MOV", ENCODING_TWO_BYTE_LOGIC_IMMEDIATE, 0x01, 0xC0, 0x07), \
-	X(0xB0, 0xF0, "MOV", ENCODING_ONE_BYTE_LOGIC_IMMEDIATE, 0x08, 0x03, 0x07), \
-	X(0xA0, 0xFE, "MOV", ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, true), \
-	X(0xA2, 0xFE, "MOV", ENCODING_ONE_BYTE_ACCUMULATOR, 0x00, 0x01, true), \
-	X(0x00, 0xFC, "ADD", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0x80, 0xFC, "ADD", ENCODING_TWO_BYTE_IMMEDIATE_SIGNED,  0x02, 0x01, 0xC0, 0x07, 0x38, 0x01), \
-    X(0x04, 0xFE, "ADD", ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
-	X(0x14, 0xFE, "ADC", ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
-	X(0x10, 0xFC, "ADC", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0x28, 0xFC, "SUB", ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0x2C, 0xFE, "SUB", ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false) \
+	X(0x88, 0xFC, MOV, ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
+	X(0xC6, 0xFE, MOV, ENCODING_TWO_BYTE_LOGIC_IMMEDIATE, 0x01, 0xC0, 0x07), \
+	X(0xB0, 0xF0, MOV, ENCODING_ONE_BYTE_LOGIC_IMMEDIATE, 0x08, 0x03, 0x07), \
+	X(0xA0, 0xFE, MOV, ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, true), \
+	X(0xA2, 0xFE, MOV, ENCODING_ONE_BYTE_ACCUMULATOR, 0x00, 0x01, true), \
+	X(0x00, 0xFC, ADD, ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
+	X(0x80, 0xFC, ADD, ENCODING_TWO_BYTE_IMMEDIATE_SIGNED,  0x02, 0x01, 0xC0, 0x07, 0x38, 0x01), \
+    X(0x04, 0xFE, ADD, ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
+	X(0x14, 0xFE, ADC, ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
+	X(0x10, 0xFC, ADC, ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
+	X(0x28, 0xFC, SUB, ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
+	X(0x2C, 0xFE, SUB, ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false) \
 
 #define X(opcode, opcodeMask, mnemonic, category, ...) { opcode, opcodeMask, mnemonic, category, { __VA_ARGS__ } }
 std::vector<InstructionTableEntry> instructionTable = {
@@ -216,21 +231,34 @@ std::optional<InstructionTableEntry> FindInstruction(uint8_t byte)
 	return std::nullopt;
 }
 
-void writeToFile(std::vector<std::string> instructions)
+std::ofstream OpenAsmFile(std::string name)
 {
-    std::ofstream asmFile;
-    asmFile.open("result.asm");
+	std::ofstream asmFile;
+    asmFile.open(name);
 
-    asmFile << "bits 16\n\n";
+	// TODO: Check if file failed to open. 
 
-    for (auto inst : instructions)
-    {
-        asmFile << inst;
-    }
-    
-    asmFile << "hlt"; 
+	// Write header of asm file 
+	asmFile << "bits 16\n\n";
+}
 
-    asmFile.close();
+void CloseAsmFile(std::ofstream file)
+{
+	file.close();
+}
+
+void WriteToFile(Instruction instruction, std::ofstream file)
+{
+	switch (instruction.mnemonic)
+	{
+		case MOV:
+		{
+			if (instruction.operandAType == REGISTER && instruction.operandBType == REGISTER)
+			{
+				file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), )
+			}
+		} break;
+	}
 }
 
 
