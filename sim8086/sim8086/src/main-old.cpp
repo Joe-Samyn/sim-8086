@@ -36,11 +36,9 @@ uint8_t Memory[1024 * 1024];
 
 /**
  * @brief Struct that represents the state of the CPU, including memory and registers
- * @note IP is not in the register table because it is accessed often. This is more for programmer UX to prevent typing array element access syntax constantly
  */
 struct CPU {
 	uint16_t IP;
-	uint16_t registers[8];
 };
 
 struct Register {
@@ -54,11 +52,11 @@ struct Register {
  * @brief Retrieve a byte from a prgram in memory at the specified Instruction Pointer. 
  * The instruction pointer is incremented by 1 after the byte is retrieved from memory.
  */
-uint8_t GetInstructionByte(uint16_t &ip, bool incrementIp = false) {
-	uint8_t byte = Memory[ip];
-	if (incrementIp) ip++;
-	return byte;
+uint8_t GetInstructionByte(int &ip) {
+	return Memory[ip];
+	ip++;
 }
+
 
 struct Program {
 	uint32_t size;
@@ -66,23 +64,10 @@ struct Program {
 	uint32_t endAddr;
 };
 
-enum OperandType {
-	REGISTER,
-	DIRECT_ADDRESS,
-	IMMEDIATE,
-	EFFECTIVE_ADDRESS_CALC,
-	EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT
-};
-
-/**
- * @note The registers are uint8_t because they represent the index of the register in the CPUs register table (array)
- */
-struct Operand {
-	uint8_t baseRegister;
-	uint8_t indexRegister;
-	uint16_t displacement;
-	uint16_t directAddress;
-	int16_t immediate;
+enum Operation {
+	MOV,
+	ADD,
+	SUB
 };
 
 /**
@@ -90,16 +75,12 @@ struct Operand {
  */
 struct Instruction
 {
-	std::string mnemonic;
-
-	uint8_t direction;
-	uint8_t width;
-
-	OperandType operandAType;
-	Operand operandA;
-
-	OperandType operandBType;
-	Operand operandB;
+	Operation operation;
+	int16_t immediate;			
+	uint16_t address;					
+	struct Register regA;
+	struct Register regB;
+	struct Register regC;
 };
 
 /**
@@ -193,6 +174,54 @@ std::vector<InstructionTableEntry> instructionTable = {
 };
 #undef X
 
+#define RegistersWide8086 \
+	X(0b00000000, { 0, 0, "AL", "AX" }) \
+	X(0b00000001, "CX") \
+	X(0b00000010, "DX") \
+	X(0b00000011, "BX") \
+	X(0b00000100, "SP") \
+	X(0b00000101, "BP") \
+	X(0b00000110, "SI") \
+	X(0b00000111, "DI") \
+
+#define X(name, code) {name, code},
+std::unordered_map<uint8_t, const char*> RegisterTable = {
+	RegistersWide8086
+};
+#undef X
+
+/**
+ * @brief Get register mnemonic from register code and width. This is used to decode the reg field in the mod byte when it is used to hold register information.
+ * @param reg 
+ * @param width 
+ * @return register mnemonic
+ */
+const char* GetRegister(uint8_t reg, uint8_t width)
+{
+	// Get 16 bit register
+	if (width)
+		return registerWideTable.at(reg);
+
+	// Get 8 bit register
+	return registerTable.at(reg);
+}
+
+#define ModCalculations \
+	X(/* R/M = 000*/ 0b00000000, "BX + SI") \
+	X(/* R/M = 001*/ 0b00000001, "BX + DI") \
+	X(/* R/M = 010*/ 0b00000010, "BP + SI") \
+	X(/* R/M = 011*/ 0b00000011, "BP + DI") \
+	X(/* R/M = 100*/ 0b00000100, "SI") \
+	X(/* R/M = 101*/ 0b00000101, "DI") \
+	X(/* R/M = 110*/ 0b00000110, "[]") \
+	X(/* R/M = 111*/ 0b00000111, "BX") \
+
+#define X(code, calcLiteral) { code, calcLiteral },
+std::unordered_map<uint8_t, const char*> modEffectiveAddressTable = {
+	ModCalculations
+};
+#undef X
+
 /**
  * @brief Search instruction table for instruction that matches the opcode in the byte. 
  * @param byte The byte containing the opcode to search for in the instruction table.
@@ -251,9 +280,8 @@ void writeToFile(std::vector<std::string> instructions)
  */
 uint16_t LoadWordData(struct CPU &cpu)
 {
-	uint8_t lowByte = GetInstructionByte(cpu.IP, true);
-	uint16_t highByte = static_cast<uint16_t>(GetInstructionByte(cpu.IP));
-
+	uint8_t lowByte = Memory[cpu.IP];
+	uint16_t highByte = Memory[++cpu.IP];
 	uint16_t wideValue = (highByte << 8) | lowByte;
 	return wideValue;
 }
@@ -272,13 +300,56 @@ int16_t LoadByteData(struct CPU &cpu)
 }
 
 /**
+ * @brief Loads an immediate value from memory based on the specified width.
+ * @param width 0 for 8-bit, 1 for 16-bit.
+ * @param cpu The CPU structure containing memory and PC.
+ * @return The loaded immediate value as a 16-bit unsigned integer.
+ * @note Increments PC. In 8086, immediates follow opcodes and are used directly in instructions like MOV immediate.
+ */
+uint16_t LoadImmediate(uint8_t width, struct CPU &cpu)
+{
+	cpu.IP++;
+
+	if (width) return LoadWordData(cpu);
+
+	return LoadByteData(cpu);
+}
+
+uint16_t LoadImmediateSigned(uint8_t width, uint8_t sign, struct CPU &cpu)
+{
+	cpu.IP++;
+
+	uint8_t size = width | sign;
+
+	switch(size)
+	{
+		case 0:
+		{
+			return LoadByteData(cpu);
+		} break;
+		case 1:
+		{
+			return LoadWordData(cpu);
+		} break;
+		case 2:
+		{
+			// Read 1 byte, sign extend to 16
+		} break;
+		case 3:
+		{
+            return LoadByteData(cpu);
+		} break;
+	};
+}
+
+/**
  * @brief Extracts the MOD field from the current opcode byte.
  * @param modMask Bitmask to isolate the MOD bits (typically 0xC0).
  * @param cpu The CPU structure.
  * @return The 2-bit MOD value (0-3), indicating addressing mode.
  * @note In 8086, MOD (bits 7-6 of MOD-RM byte) specifies memory/register mode: 00=mem no disp, 01=mem 8-bit disp, 10=mem 16-bit disp, 11=register.
  */
-uint8_t DecodeMod(uint8_t modMask, uint8_t byte)
+uint8_t GetMod(uint8_t modMask, uint8_t byte)
 {
 	return (byte & modMask) >> 6;
 }
@@ -290,7 +361,7 @@ uint8_t DecodeMod(uint8_t modMask, uint8_t byte)
  * @return The 3-bit RM value (0-7), indicating register or effective address base.
  * @note In 8086, RM (bits 2-0 of MOD-RM byte) selects the register or base for addressing (e.g., BX+SI).
  */
-uint8_t DecodeRm(uint8_t rmMask, uint8_t byte)
+uint8_t GetRm(uint8_t rmMask, uint8_t byte)
 {
 	return (byte & rmMask);
 }
@@ -304,7 +375,7 @@ uint8_t DecodeRm(uint8_t rmMask, uint8_t byte)
  * @return The 3-bit REG value (0-7).
  * @note In 8086, REG (bits 5-3 of MOD-RM byte) specifies the source/destination register in reg-reg/mem operations.
  */
-uint8_t DecodeReg(uint8_t regMask, uint8_t regShift, uint8_t byte)
+uint8_t GetReg(uint8_t regMask, uint8_t regShift, uint8_t byte)
 {
 	return (byte & regMask) >> regShift;
 }
@@ -316,49 +387,62 @@ uint8_t DecodeReg(uint8_t regMask, uint8_t regShift, uint8_t byte)
  * @return The extracted bit value, shifted to the least significant position.
  * @note In 8086 arithmetic instructions, this extracts specific control bits from the opcode.
  */
-uint8_t DecodeBitConst(uint8_t constMask, uint8_t byte)
+uint8_t GetBitConst(uint8_t constMask, uint8_t byte)
 {
 	return (byte & constMask) >> 3;
 }
 
 /**
- * @brief Decodes the MOD field and performs microcode operations for the specific mod encodings as specified in the 8086 manual.
+ * @brief Decodes the MOD-RM byte to determine the addressing mode and formats the operand mnemonic.
  * @param mod The MOD value (0-3).
  * @param rm The RM value (0-7).
  * @param instruction The instruction structure to update with the mnemonic.
  * @param cpu The CPU structure; PC is advanced as needed.
  * @note This function emulates 8086's microcode for parsing effective addresses, handling displacements and register modes.
  */
-void InterpretModField(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cpu)
+void DecodeMod(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cpu)
 {
 	switch (mod)
 	{
-	case 0x00: // Memory Mode, No Displacement
+	case 0x00:
 	{
 		// Special case of MOD that indicates direct memory access with no displacement. 
 		if (rm == 0x6)
 		{
-			instruction.operandBType = DIRECT_ADDRESS;
-			instruction.operandB.directAddress = LoadWordData(cpu);
-		}	
+			cpu.IP++;
+			instruction.rmMnemonic = std::format("[{}]", LoadWordData(cpu));
+		}
 		else
+			instruction.rmMnemonic = std::format("[{}]", modEffectiveAddressTable.at(rm));
+	} break;
+	case 0x01:
+	{
+		// Need to sign extend properly to cast to signed int16, otherwise we will get incorrect values for negative displacements.
+		int16_t data = static_cast<int16_t>(LoadImmediate(0, cpu));
+		if (data < 0)
 		{
-			instruction.operandBType = REGISTER;
-			instruction.operandB.baseRegister = rm;
-		}	
+			// TODO: There is a better way to do twos complement. 
+			data = ~data + 1; // get the positive value of the negative displacement for printing
+			instruction.rmMnemonic = std::format("[{} - {}]", modEffectiveAddressTable.at(rm), data);
+		}
+		else
+			instruction.rmMnemonic = std::format("[{} + {}]", modEffectiveAddressTable.at(rm), data);
 	} break;
-	case 0x01: // Memory Mode, 8-bit displacement
+	case 0x02:
 	{
-		
+		int16_t data = static_cast<int16_t>(LoadImmediate(1, cpu));
+		if (data < 0)
+		{
+			// TODO: There is better way to do two's complement 
+			data = ~data + 1; // get the positive value of the negative displacement for printing
+			instruction.rmMnemonic = std::format("[{} - {}]", modEffectiveAddressTable.at(rm), data);
+		}
+		else
+			instruction.rmMnemonic = std::format("[{} + {}]", modEffectiveAddressTable.at(rm), data);
 	} break;
-	case 0x02: // Memory Mode, 16-bit displacement
+	case 0x03:
 	{
-		
-	} break;
-	case 0x03: // Register Mode, No Displacement
-	{
-        instruction.operandBType = REGISTER;
-        instruction.operandB.baseRegister = rm;
+		instruction.rmMnemonic = std::format("{}", GetRegister(rm, instruction.width));
 	} break;
 	}
 }
@@ -373,7 +457,7 @@ void InterpretModField(uint8_t mod, uint8_t rm, Instruction& instruction, struct
 void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
 	struct TwoByteLogicEntry logicEntry = entry.encoding.twoByteLogicEntry;
-	uint8_t currentByte = GetInstructionByte(cpu.IP, true);
+	uint8_t currentByte = GetInstructionByte(cpu.IP);
 
 	// Get width if w bit is present 
 	if (logicEntry.wMask != 0)  instruction.width = (currentByte & logicEntry.wMask);
@@ -382,15 +466,11 @@ void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, 
 	if (logicEntry.dMask != 0) instruction.direction = (currentByte & logicEntry.dMask) >> 1;
 
 	currentByte = GetInstructionByte(cpu.IP);
-	if (logicEntry.regMask != 0) 
-	{
-		instruction.operandA.baseRegister = DecodeReg(logicEntry.regMask, logicEntry.regShift, currentByte);
-		instruction.operandAType = REGISTER;
-	}
+	if (logicEntry.regMask != 0) uint8_t reg = GetReg(logicEntry.regMask, logicEntry.regShift, instruction, cpu);
 	
-	uint8_t mod = DecodeMod(logicEntry.modMask, currentByte);
-	uint8_t rm = DecodeRm(logicEntry.rmMask, currentByte);
-	InterpretModField(mod, rm, instruction, cpu);
+	uint8_t mod = GetMod(logicEntry.modMask, cpu);
+	uint8_t rm = GetRm(logicEntry.rmMask, cpu);
+	DecodeMod(mod, rm, instruction, cpu);
 }
 
 /**
@@ -404,16 +484,14 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 {
 	struct TwoByteLogicImmediateEntry logicImmediateEntry = entry.encoding.twoByteLogicImmediateEntry;
 
-	uint8_t currentByte = GetInstructionByte(cpu.IP, true);
 	// Get width if w bit is present 
 	if (logicImmediateEntry.wMask != 0) instruction.width = (Memory[cpu.IP] & logicImmediateEntry.wMask);
 
-
-	currentByte = GetInstructionByte(cpu.IP, true);
-	uint8_t mod = DecodeMod(logicImmediateEntry.modMask, currentByte);
-	uint8_t rm = DecodeRm(logicImmediateEntry.rmMask, currentByte);
-	InterpretModField(mod, rm, instruction, cpu);
-	// instruction.immediate = LoadImmediate(instruction.width, currentByte); TODO: Need to update to new style
+	cpu.IP++;
+	uint8_t mod = GetMod(logicImmediateEntry.modMask, cpu);
+	uint8_t rm = GetRm(logicImmediateEntry.rmMask, cpu);
+	DecodeMod(mod, rm, instruction, cpu);
+	instruction.immediate = LoadImmediate(instruction.width, cpu);
 }
 
 /**
@@ -431,10 +509,9 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	instruction.width = (Memory[cpu.IP] & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
 
 	uint8_t reg = (Memory[cpu.IP] & logicImmediateEntry.regMask);
-	// TODO: Update to new style
-	// instruction.regMnemonic = std::format("{}", GetRegister(reg, instruction.width));
+	instruction.regMnemonic = std::format("{}", GetRegister(reg, instruction.width));
 
-	// instruction.immediate = LoadImmediate(instruction.width, cpu);
+	instruction.immediate = LoadImmediate(instruction.width, cpu);
 }
 
 /**
@@ -446,83 +523,39 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
  */
 void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	// struct OneByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
-	// instruction.direction = accumulatorEntry.direction;
-	// instruction.width = (Memory[cpu.IP] & accumulatorEntry.wMask);
-    // if (accumulatorEntry.hasAddress)
-    //     instruction.address = LoadImmediate(1, cpu);
-    // else
+	struct OneByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
+	instruction.direction = accumulatorEntry.direction;
+	instruction.width = (Memory[cpu.IP] & accumulatorEntry.wMask);
+    if (accumulatorEntry.hasAddress)
+        instruction.address = LoadImmediate(1, cpu);
+    else
         
-    //     instruction.immediate = LoadImmediate(instruction.width, cpu);
+        instruction.immediate = LoadImmediate(instruction.width, cpu);
     
-	// instruction.regMnemonic = std::format("{}", GetRegister(0x00, instruction.width));
+	instruction.regMnemonic = std::format("{}", GetRegister(0x00, instruction.width));
     
 }
 
 void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	// TwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
+	TwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
 
-	// uint8_t s = (Memory[cpu.IP] & signedEntry.sMask) >> 1;
-	// instruction.width = Memory[cpu.IP] & signedEntry.wMask;
-	// instruction.sign = Memory[cpu.IP] & signedEntry.sMask;
+	uint8_t s = (Memory[cpu.IP] & signedEntry.sMask) >> 1;
+	instruction.width = Memory[cpu.IP] & signedEntry.wMask;
+	instruction.sign = Memory[cpu.IP] & signedEntry.sMask;
 
-	// // Increment because all the following data is in byte 2
-	// cpu.IP++;
-	// uint8_t mod = GetMod(signedEntry.modMask, cpu);
-	// uint8_t rm = GetRm(signedEntry.rmMask, cpu);
-	// uint8_t bitConst = GetBitConst(signedEntry.constMask, cpu);
+	// Increment because all the following data is in byte 2
+	cpu.IP++;
+	uint8_t mod = GetMod(signedEntry.modMask, cpu);
+	uint8_t rm = GetRm(signedEntry.rmMask, cpu);
+	uint8_t bitConst = GetBitConst(signedEntry.constMask, cpu);
     
-    // if (bitConst == 2)
-    //     instruction.mnemonic = "ADC";
+    if (bitConst == 2)
+        instruction.mnemonic = "ADC";
     
-	// DecodeMod(mod, rm, instruction, cpu);
+	DecodeMod(mod, rm, instruction, cpu);
 
-	// instruction.immediate = LoadImmediateSigned(instruction.width, instruction.sign, cpu);
-}
-
-/**
- * @brief Reads binary file into memory
- * @param filePath
- * @param buffer
- * @return An instance of Program that contains metadata about the program loaded into memory
- */
-Program LoadProgramIntoMemory(std::string filePath)
-{
-	std::ifstream file(filePath, std::ios::binary | std::ios::ate);
-
-	if (!file.is_open() || errno == ENOENT)
-	{
-		std::cerr << "ERROR: Could not open file. File does not exist.\n";
-		return { 0 };
-	}
-
-	// Determine file size
-	file.seekg(0, file.end);
-	uint32_t length = static_cast<uint32_t>(file.tellg());
-	file.seekg(0, file.beg);
-
-	/**
-		TODO: This is not in its final form. Ultimately, we would need some function that finds 
-			a block of open memory large enough, gets the starting address & ending address, etc. 
-			Essentially, we need proper memory management here. I am just doing this for short term
-			to test out this strategy. 
-	*/
-	Program program = { 0 };
-	file.read(reinterpret_cast<char*>(Memory), length);
-
-	program.size = length;
-	program.startAddr = 0;
-	program.endAddr = length;
-	return program; 
-}
-
-/**
- * When we execute a program, we should expect output, i.e. specific CPU state. This should be much more testable now
-*/
-void Execute(struct CPU &cpu)
-{
-	std::vector<Instruction> decodedInstructions = {};
+	instruction.immediate = LoadImmediateSigned(instruction.width, instruction.sign, cpu);
 }
 
 /**
@@ -534,7 +567,7 @@ void Execute(struct CPU &cpu)
  */
 Instruction Decode(InstructionTableEntry& entry, struct CPU& cpu)
 {
-	Instruction instruction;
+	Instruction instruction = { 0 };
 	instruction.mnemonic = entry.mnemonic;
 
 	switch (entry.category)
@@ -565,6 +598,79 @@ Instruction Decode(InstructionTableEntry& entry, struct CPU& cpu)
 }
 
 /**
+ * @brief Format an instruction for nice file output 
+ */
+std::string formatInstruction(Instruction &inst)
+{
+	// I don't know if we even want to use this. This was used to format all instructions at the end of decoding. However, 
+	// this is supposed to be a simulator, not just a decoder. Therefore, instructions will be printed/executed as they are
+	// decoded
+}
+
+/**
+ * @brief Reads binary file into memory
+ * @param filePath
+ * @param buffer
+ * @return An instance of Program that contains metadata about the program loaded into memory
+ */
+Program LoadProgramIntoMemory(std::string filePath)
+{
+	std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+
+	if (!file.is_open() || errno == ENOENT)
+	{
+		std::cerr << "ERROR: Could not open file. File does not exist.\n";
+		return;
+	}
+
+	// Determine file size
+	file.seekg(0, file.end);
+	uint32_t length = static_cast<uint32_t>(file.tellg());
+	file.seekg(0, file.beg);
+
+	/**
+		TODO: This is not in its final form. Ultimately, we would need some function that finds 
+			a block of open memory large enough, gets the starting address & ending address, etc. 
+			Essentially, we need proper memory management here. I am just doing this for short term
+			to test out this strategy. 
+	*/
+	Program program = { 0 };
+	file.read(reinterpret_cast<char*>(Memory), length);
+
+	program.size = length;
+	program.startAddr = 0;
+	program.endAddr = length;
+	return program; 
+}
+
+/**
+ * When we execute a program, we should expect output, i.e. specific CPU state. This should be much more testable now
+*/
+void Execute(struct CPU &cpu, struct Program program)
+{
+	std::vector<Instruction> decodedInstructions = {};
+
+
+	while (cpu.IP != program.size)
+	{
+		uint8_t currentByte = GetInstructionByte(cpu.IP);
+
+		// Get opcode from byte
+		std::optional<InstructionTableEntry> opcodeResult = FindInstruction(currentByte);
+		if (!opcodeResult)
+		{
+			std::cerr << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
+			return;
+		}
+
+		InstructionTableEntry entry = *opcodeResult;
+
+		// Not sure if we even need to return an instruction? Maybe just for outputing to file? 
+		Instruction instruction = Decode(entry, cpu);
+	}
+}
+
+/**
  * TODO: This could be enhanced with a feature to specify what action a user is trying to accomplish. 
  * For example:
  * 	-d: decode
@@ -586,30 +692,7 @@ int main(int argc, char* argv[])
 	struct Program program = LoadProgramIntoMemory(asmFile);
 
 	struct CPU cpu = { 0 };
-
-	while (cpu.IP != program.size)
-	{
-		uint8_t currentByte = GetInstructionByte(cpu.IP);
-
-		// Get opcode from byte
-		std::optional<InstructionTableEntry> opcodeResult = FindInstruction(currentByte);
-		if (!opcodeResult)
-		{
-			std::cerr << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
-			return 1;
-		}
-
-		InstructionTableEntry entry = *opcodeResult;
-
-		// Not sure if we even need to return an instruction? Maybe just for outputing to file? 
-		Instruction instruction = Decode(entry, cpu);
-
-		// Write to asm file if in disassemble mode
-
-		// Execute if in simulate mode
-		Execute(cpu);
-	}
-
+	Execute(cpu, program);
 
 	return 0;
 }
