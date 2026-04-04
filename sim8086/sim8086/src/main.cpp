@@ -78,6 +78,7 @@ enum OperandType {
 	EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT
 };
 
+
 enum Mnemonic {
 	MOV, 
 	ADD,
@@ -119,15 +120,11 @@ struct Operand {
 struct Instruction
 {
 	Mnemonic mnemonic;
-
-	uint8_t direction;
 	uint8_t width;
-
-	OperandType operandAType;
-	Operand operandA;
-
-	OperandType operandBType;
-	Operand operandB;
+	OperandType srcType;
+	Operand src;
+	OperandType destType;
+	Operand dest;
 };
 
 /**
@@ -241,7 +238,7 @@ std::string RegisterNames[8][2] = {
 };
 
 Operand EffectiveAddressCalculation[8] = {
-	{ 0b011, 0b110, 0, 0, 0 }, // BX + SI
+	{ 0b110, 0, 0, 0 }, // BX + SI
 	{ 0b011, 0b111, 0, 0, 0 }, // BX + DI
 	{ 0b101, 0b110, 0, 0, 0 }, // BP + SI
 	{ 0b101, 0b111, 0, 0, 0 }, // BP + DI
@@ -306,21 +303,21 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 	{
 		case MOV:
 		{
-			if (instruction.operandAType == REGISTER && instruction.operandBType == REGISTER)
-			{
-				if (instruction.direction == 0)
-					file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.operandB.baseRegister][instruction.width], RegisterNames[instruction.operandA.baseRegister][instruction.width]);	
-				else
-					file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.operandA.baseRegister][instruction.width], RegisterNames[instruction.operandB.baseRegister][instruction.width]);	
-			}
+			if (instruction.srcType == REGISTER && instruction.destType == REGISTER)
+				file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.src.baseRegister][instruction.width], RegisterNames[instruction.dest.baseRegister][instruction.width]);	
 
-			if (instruction.operandAType == REGISTER && instruction.operandBType == EFFECTIVE_ADDRESS_CALC)
-			{
-				if (instruction.direction == 0)
-					file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.operandB.baseRegister][WIDE], RegisterNames[instruction.operandB.indexRegister][WIDE], RegisterNames[instruction.operandA.baseRegister][WIDE]);	
-				else
-					file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.operandA.baseRegister][WIDE], RegisterNames[instruction.operandB.baseRegister][WIDE], RegisterNames[instruction.operandB.indexRegister][WIDE]);
-			}
+			if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC)
+				file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
+
+			if (instruction.destType == EFFECTIVE_ADDRESS_CALC && instruction.srcType == REGISTER)
+				file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], RegisterNames[instruction.src.baseRegister][WIDE]);
+
+			if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT)
+				file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], instruction.src.displacement);	
+
+			if (instruction.destType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT && instruction.srcType == REGISTER)
+				file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][WIDE]);
+
 		} break;
 		case ADC:
 		{
@@ -334,7 +331,10 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 		{
 
 		} break;
+
 	}
+
+	file << std::endl;
 }
 
 
@@ -433,8 +433,9 @@ uint8_t DecodeBitConst(uint8_t constMask, uint8_t byte)
  * @param cpu The CPU structure; PC is advanced as needed.
  * @note This function emulates 8086's microcode for parsing effective addresses, handling displacements and register modes.
  */
-void InterpretModField(uint8_t mod, uint8_t rm, Instruction& instruction, struct CPU &cpu)
+Operand InterpretModField(uint8_t mod, uint8_t rm, struct CPU &cpu)
 {
+	Operand operand = { 0 };
 	switch (mod)
 	{
 	case 0x00: // Memory Mode, No Displacement
@@ -442,13 +443,11 @@ void InterpretModField(uint8_t mod, uint8_t rm, Instruction& instruction, struct
 		// Special case of MOD that indicates direct memory access with no displacement. 
 		if (rm == 0x6)
 		{
-			instruction.operandBType = DIRECT_ADDRESS;
-			instruction.operandB.directAddress = LoadWordData(cpu);
+			operand.directAddress = LoadWordData(cpu);
 		}	
 		else
 		{
-			instruction.operandBType = EFFECTIVE_ADDRESS_CALC;
-			instruction.operandB = EffectiveAddressCalculation[rm];
+			operand = EffectiveAddressCalculation[rm];
 
 		}	
 	} break;
@@ -462,9 +461,41 @@ void InterpretModField(uint8_t mod, uint8_t rm, Instruction& instruction, struct
 	} break;
 	case 0x03: // Register Mode, No Displacement
 	{
-        instruction.operandBType = REGISTER;
-        instruction.operandB.baseRegister = rm;
+        operand.baseRegister = rm;
 	} break;
+	}
+
+	return operand;
+}
+
+OperandType InterpretRmOperandType(uint8_t mod, uint8_t rm)
+{
+	switch (mod)
+	{
+	case 0x00: // Memory Mode, No Displacement
+	{
+		// Special case of MOD that indicates direct memory access with no displacement. 
+		if (rm == 0x6)
+			return DIRECT_ADDRESS;
+		else
+			return EFFECTIVE_ADDRESS_CALC;
+	}
+	case 0x01: // Memory Mode, 8-bit displacement
+	{
+		return EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT;
+	} 
+	case 0x02: // Memory Mode, 16-bit displacement
+	{
+		return EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT;
+	} 
+	case 0x03: // Register Mode, No Displacement
+	{
+        return REGISTER;
+	} 
+	default: // Just to prevent compiler warnings, there has to be a better way to handle this
+	{
+		return REGISTER;
+	}
 	}
 }
 
@@ -478,24 +509,43 @@ void InterpretModField(uint8_t mod, uint8_t rm, Instruction& instruction, struct
 void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
 	struct TwoByteLogicEntry logicEntry = entry.encoding.twoByteLogicEntry;
-	uint8_t currentByte = GetInstructionByte(cpu.IP, false);
+	uint8_t currentByte = GetInstructionByte(cpu.IP);
 
 	// Get width if w bit is present 
 	if (logicEntry.wMask != 0)  instruction.width = (currentByte & logicEntry.wMask);
 
 	// Get direction if d bit is present, direction is always in bit 1 if it is present so we can just shift right by 1 to get the value
-	if (logicEntry.dMask != 0) instruction.direction = (currentByte & logicEntry.dMask) >> 1;
+	uint8_t direction;
+	if (logicEntry.dMask != 0) direction = (currentByte & logicEntry.dMask) >> 1;
 
 	currentByte = GetInstructionByte(cpu.IP);
+	Operand regOperand = { 0 };
+	OperandType regOperandType;
 	if (logicEntry.regMask != 0) 
 	{
-		instruction.operandA.baseRegister = DecodeReg(logicEntry.regMask, logicEntry.regShift, currentByte);
-		instruction.operandAType = REGISTER;
+		regOperand.baseRegister = DecodeReg(logicEntry.regMask, logicEntry.regShift, currentByte);
+		regOperandType = REGISTER;
 	}
 	
 	uint8_t mod = DecodeMod(logicEntry.modMask, currentByte);
 	uint8_t rm = DecodeRm(logicEntry.rmMask, currentByte);
-	InterpretModField(mod, rm, instruction, cpu);
+	Operand rmOperand = InterpretModField(mod, rm, cpu);
+	OperandType rmOperandType = InterpretRmOperandType(mod, rm);
+
+	if (direction == 0) // SRC is in REG field
+	{
+		instruction.src = regOperand;
+		instruction.srcType = regOperandType;
+		instruction.dest = rmOperand;
+		instruction.destType = rmOperandType;
+	}
+	else // DEST is in REG field
+	{
+		instruction.src = rmOperand;
+		instruction.srcType = rmOperandType;
+		instruction.dest = regOperand;
+		instruction.destType = regOperandType;
+	}
 }
 
 /**
@@ -517,7 +567,7 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	currentByte = GetInstructionByte(cpu.IP);
 	uint8_t mod = DecodeMod(logicImmediateEntry.modMask, currentByte);
 	uint8_t rm = DecodeRm(logicImmediateEntry.rmMask, currentByte);
-	InterpretModField(mod, rm, instruction, cpu);
+	//InterpretModField(mod, rm, instruction, cpu);
 	// instruction.immediate = LoadImmediate(instruction.width, currentByte); TODO: Need to update to new style
 }
 
@@ -679,7 +729,7 @@ void Disassemble(Program &program)
 
 	while (cpu.IP != program.size)
 	{
-		uint8_t currentByte = GetInstructionByte(cpu.IP);
+		uint8_t currentByte = GetInstructionByte(cpu.IP, false);
 
 		// Get opcode from byte
 		std::optional<InstructionTableEntry> opcodeResult = FindInstruction(currentByte);
