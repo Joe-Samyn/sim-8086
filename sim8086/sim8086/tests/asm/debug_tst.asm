@@ -2,4 +2,4 @@
 
 bits 16
 
-mov AX, BX
+mov bx, [bp + si]

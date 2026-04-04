@@ -29,6 +29,13 @@ TODO:
 */
 
 /**
+ * @brief Buffer to hold instructions that have been decoded to batch writes to IO 
+ */
+// #define IO_BUFFER_SIZE 3500
+// Instruction IoBuffer[IO_BUFFER_SIZE];
+// uint8_t IoBufferIndex = 0;
+
+/**
  * @brief Memory for the Intel 8086 simulator. Intel 8086 computers typically had 1 MB of addressable memory. Therefore this simulator is initialized with 1 MB of memory space. 
  */
 uint8_t Memory[1024 * 1024];
@@ -51,7 +58,7 @@ struct CPU {
  * @brief Retrieve a byte from a prgram in memory at the specified Instruction Pointer. 
  * The instruction pointer is incremented by 1 after the byte is retrieved from memory.
  */
-uint8_t GetInstructionByte(uint16_t &ip, bool incrementIp = false) {
+uint8_t GetInstructionByte(uint16_t &ip, bool incrementIp = true) {
 	uint8_t byte = Memory[ip];
 	if (incrementIp) ip++;
 	return byte;
@@ -99,6 +106,12 @@ struct Operand {
 	uint16_t directAddress;
 	int16_t immediate;
 };
+
+/**
+ * Possible width field values
+ */
+#define WIDE 1
+#define BYTE 0
 
 /**
  * @brief Represents a decoded instructions
@@ -209,6 +222,36 @@ std::vector<InstructionTableEntry> instructionTable = {
 #undef X
 
 /**
+ * Table holding human readible names of registers
+ * 
+ * Accessing register names happens using register index + width.
+ * Example: 
+ * 	AL is register index 0 and width is 0: registerNames[0 + 0] = AL
+ *	AX is register index 0 as well but width of 1: registerNames[0 + 1] = registerNames[1] = AX     	   
+ */
+std::string RegisterNames[8][2] = {
+	{ "AL", "AX" },
+	{ "CL", "CX" },
+	{ "DL", "DX" },
+	{ "BL", "BX" },
+	{ "AH", "SP" },
+	{ "CH", "BP" },
+	{ "DH", "SI" },
+	{ "BH", "DI" },
+};
+
+Operand EffectiveAddressCalculation[8] = {
+	{ 0b011, 0b110, 0, 0, 0 }, // BX + SI
+	{ 0b011, 0b111, 0, 0, 0 }, // BX + DI
+	{ 0b101, 0b110, 0, 0, 0 }, // BP + SI
+	{ 0b101, 0b111, 0, 0, 0 }, // BP + DI
+	{ 0b110, 0b000, 0, 0, 0 }, // SI
+	{ 0b111, 0, 0, 0, 0 }, // DI
+	{ 0b101, 0, 0, 0, 0 }, // BP
+	{ 0b011, 0, 0, 0, 0 }, // BX
+};
+
+/**
  * @brief Search instruction table for instruction that matches the opcode in the byte. 
  * @param byte The byte containing the opcode to search for in the instruction table.
  * @return Returns index of instruction in instruction table if found, otherwise returns -1.
@@ -236,18 +279,28 @@ std::ofstream OpenAsmFile(std::string name)
 	std::ofstream asmFile;
     asmFile.open(name);
 
-	// TODO: Check if file failed to open. 
+	// TODO: Check if file failed to open.
+	if (!asmFile.is_open())
+	{
+		std::cerr << "Could not open file" << std::endl;
+		return asmFile;
+	}
 
 	// Write header of asm file 
 	asmFile << "bits 16\n\n";
+	return asmFile;
 }
 
-void CloseAsmFile(std::ofstream file)
+void CloseAsmFile(std::ofstream &file)
 {
 	file.close();
 }
 
-void WriteToFile(Instruction instruction, std::ofstream file)
+/**
+ * TODO: Need to use the IoBuffer to properly batch writes because this is going to take a lot of CPU time and cause cache misses
+ * if we need to write to file every iteration of loop. 
+ */
+void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = false)
 {
 	switch (instruction.mnemonic)
 	{
@@ -255,8 +308,31 @@ void WriteToFile(Instruction instruction, std::ofstream file)
 		{
 			if (instruction.operandAType == REGISTER && instruction.operandBType == REGISTER)
 			{
-				file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), )
+				if (instruction.direction == 0)
+					file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.operandB.baseRegister][instruction.width], RegisterNames[instruction.operandA.baseRegister][instruction.width]);	
+				else
+					file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.operandA.baseRegister][instruction.width], RegisterNames[instruction.operandB.baseRegister][instruction.width]);	
 			}
+
+			if (instruction.operandAType == REGISTER && instruction.operandBType == EFFECTIVE_ADDRESS_CALC)
+			{
+				if (instruction.direction == 0)
+					file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.operandB.baseRegister][WIDE], RegisterNames[instruction.operandB.indexRegister][WIDE], RegisterNames[instruction.operandA.baseRegister][WIDE]);	
+				else
+					file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.operandA.baseRegister][WIDE], RegisterNames[instruction.operandB.baseRegister][WIDE], RegisterNames[instruction.operandB.indexRegister][WIDE]);
+			}
+		} break;
+		case ADC:
+		{
+
+		} break;
+		case ADD:
+		{
+
+		} break;
+		case SUB:
+		{
+
 		} break;
 	}
 }
@@ -279,8 +355,8 @@ void WriteToFile(Instruction instruction, std::ofstream file)
  */
 uint16_t LoadWordData(struct CPU &cpu)
 {
-	uint8_t lowByte = GetInstructionByte(cpu.IP, true);
-	uint16_t highByte = static_cast<uint16_t>(GetInstructionByte(cpu.IP));
+	uint8_t lowByte = GetInstructionByte(cpu.IP);
+	uint16_t highByte = static_cast<uint16_t>(GetInstructionByte(cpu.IP, false));
 
 	uint16_t wideValue = (highByte << 8) | lowByte;
 	return wideValue;
@@ -371,8 +447,9 @@ void InterpretModField(uint8_t mod, uint8_t rm, Instruction& instruction, struct
 		}	
 		else
 		{
-			instruction.operandBType = REGISTER;
-			instruction.operandB.baseRegister = rm;
+			instruction.operandBType = EFFECTIVE_ADDRESS_CALC;
+			instruction.operandB = EffectiveAddressCalculation[rm];
+
 		}	
 	} break;
 	case 0x01: // Memory Mode, 8-bit displacement
@@ -401,7 +478,7 @@ void InterpretModField(uint8_t mod, uint8_t rm, Instruction& instruction, struct
 void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
 	struct TwoByteLogicEntry logicEntry = entry.encoding.twoByteLogicEntry;
-	uint8_t currentByte = GetInstructionByte(cpu.IP, true);
+	uint8_t currentByte = GetInstructionByte(cpu.IP, false);
 
 	// Get width if w bit is present 
 	if (logicEntry.wMask != 0)  instruction.width = (currentByte & logicEntry.wMask);
@@ -432,12 +509,12 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 {
 	struct TwoByteLogicImmediateEntry logicImmediateEntry = entry.encoding.twoByteLogicImmediateEntry;
 
-	uint8_t currentByte = GetInstructionByte(cpu.IP, true);
+	uint8_t currentByte = GetInstructionByte(cpu.IP);
 	// Get width if w bit is present 
 	if (logicImmediateEntry.wMask != 0) instruction.width = (Memory[cpu.IP] & logicImmediateEntry.wMask);
 
 
-	currentByte = GetInstructionByte(cpu.IP, true);
+	currentByte = GetInstructionByte(cpu.IP);
 	uint8_t mod = DecodeMod(logicImmediateEntry.modMask, currentByte);
 	uint8_t rm = DecodeRm(logicImmediateEntry.rmMask, currentByte);
 	InterpretModField(mod, rm, instruction, cpu);
@@ -593,12 +670,48 @@ Instruction Decode(InstructionTableEntry& entry, struct CPU& cpu)
 }
 
 /**
+ * @brief Disassembly an Intel 8086 binary into Intel 8086 assembly code
+ */
+void Disassemble(Program &program)
+{
+	struct CPU cpu = { 0 };
+	std::ofstream file = OpenAsmFile("result.asm");
+
+	while (cpu.IP != program.size)
+	{
+		uint8_t currentByte = GetInstructionByte(cpu.IP);
+
+		// Get opcode from byte
+		std::optional<InstructionTableEntry> opcodeResult = FindInstruction(currentByte);
+		if (!opcodeResult)
+		{
+			std::cerr << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
+			return;
+		}
+
+		InstructionTableEntry entry = *opcodeResult;
+
+		Instruction instruction = Decode(entry, cpu);
+
+		WriteToFile(instruction, file);
+	}
+
+	CloseAsmFile(file);
+}
+
+
+/**
  * TODO: This could be enhanced with a feature to specify what action a user is trying to accomplish. 
  * For example:
  * 	-d: decode
  * 	-s: simulate
  * 	-o: output file name 
  * 	etc. 
+ * 
+ * TODO: Each run of the simulator will have one responsibility for now
+ * 	- execute
+ *  - disassemble 
+ * We are just focusing on disassembling for now 
  */
 int main(int argc, char* argv[])
 {
@@ -613,31 +726,8 @@ int main(int argc, char* argv[])
 	std::string asmFile = argv[1];
 	struct Program program = LoadProgramIntoMemory(asmFile);
 
-	struct CPU cpu = { 0 };
-
-	while (cpu.IP != program.size)
-	{
-		uint8_t currentByte = GetInstructionByte(cpu.IP);
-
-		// Get opcode from byte
-		std::optional<InstructionTableEntry> opcodeResult = FindInstruction(currentByte);
-		if (!opcodeResult)
-		{
-			std::cerr << std::format("The byte did not map to a valid 8086 instruction::{}\n", std::bitset<8>(currentByte).to_string());
-			return 1;
-		}
-
-		InstructionTableEntry entry = *opcodeResult;
-
-		// Not sure if we even need to return an instruction? Maybe just for outputing to file? 
-		Instruction instruction = Decode(entry, cpu);
-
-		// Write to asm file if in disassemble mode
-
-		// Execute if in simulate mode
-		Execute(cpu);
-	}
-
+	// For now we are just disassembling.
+	Disassemble(program);
 
 	return 0;
 }
