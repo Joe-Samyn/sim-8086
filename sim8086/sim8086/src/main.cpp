@@ -103,7 +103,7 @@ std::string MnemonicToString(Mnemonic m)
 struct Operand {
 	uint8_t baseRegister;
 	uint8_t indexRegister;
-	uint16_t displacement;
+	int16_t displacement;
 	uint16_t directAddress;
 	int16_t immediate;
 };
@@ -238,11 +238,11 @@ std::string RegisterNames[8][2] = {
 };
 
 Operand EffectiveAddressCalculation[8] = {
-	{ 0b110, 0, 0, 0 }, // BX + SI
+	{ 0b011, 0b110, 0, 0 }, // BX + SI
 	{ 0b011, 0b111, 0, 0, 0 }, // BX + DI
 	{ 0b101, 0b110, 0, 0, 0 }, // BP + SI
 	{ 0b101, 0b111, 0, 0, 0 }, // BP + DI
-	{ 0b110, 0b000, 0, 0, 0 }, // SI
+	{ 0b110, 0, 0, 0, 0 }, // SI
 	{ 0b111, 0, 0, 0, 0 }, // DI
 	{ 0b101, 0, 0, 0, 0 }, // BP
 	{ 0b011, 0, 0, 0, 0 }, // BX
@@ -304,20 +304,42 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 		case MOV:
 		{
 			if (instruction.srcType == REGISTER && instruction.destType == REGISTER)
-				file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.src.baseRegister][instruction.width], RegisterNames[instruction.dest.baseRegister][instruction.width]);	
+				file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][instruction.width]);	
 
 			if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC)
-				file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
+				file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
 
 			if (instruction.destType == EFFECTIVE_ADDRESS_CALC && instruction.srcType == REGISTER)
-				file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], RegisterNames[instruction.src.baseRegister][WIDE]);
+				file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], RegisterNames[instruction.src.baseRegister][instruction.width]);
 
 			if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT)
-				file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], instruction.src.displacement);	
-
+			{	
+				if (instruction.src.displacement < 0)
+					file << std::format("{} {}, [{} + {} - {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], -instruction.src.displacement);	
+				else
+					file << std::format("{} {}, [{} + {} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], instruction.src.displacement);	
+			}
 			if (instruction.destType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT && instruction.srcType == REGISTER)
-				file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][WIDE]);
-
+			{
+				if (instruction.dest.displacement < 0)
+					file << std::format("{} [{} + {} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], -instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
+				else
+					file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
+			}
+			if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == REGISTER)
+			{
+				if (instruction.dest.displacement < 0)
+					file << std::format("{} [-{}], {}", MnemonicToString(instruction.mnemonic), -instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
+				else
+					file << std::format("{} [{}], {}", MnemonicToString(instruction.mnemonic), instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
+			}
+			if (instruction.destType == REGISTER && instruction.srcType == DIRECT_ADDRESS)
+			{
+				if (instruction.dest.displacement < 0)
+					file << std::format("{} {}, [-{}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], -instruction.src.directAddress);
+				else
+					file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][WIDE], instruction.src.directAddress);
+			}
 		} break;
 		case ADC:
 		{
@@ -353,13 +375,14 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
  * @note Accessing `memory[PC]` or `memory[PC + 1]` out of bounds is undefined
  *       behavior; callers must ensure `PC` and `PC + 1` are valid addresses.
  */
-uint16_t LoadWordData(struct CPU &cpu)
+int16_t LoadWordData(struct CPU &cpu)
 {
 	uint8_t lowByte = GetInstructionByte(cpu.IP);
-	uint16_t highByte = static_cast<uint16_t>(GetInstructionByte(cpu.IP, false));
+	uint8_t highByte = GetInstructionByte(cpu.IP);
 
-	uint16_t wideValue = (highByte << 8) | lowByte;
-	return wideValue;
+	int16_t data = static_cast<int16_t>(highByte);
+	data = (data << 8) | lowByte;
+	return data;
 }
 
 /**
@@ -370,9 +393,9 @@ uint16_t LoadWordData(struct CPU &cpu)
  */
 int16_t LoadByteData(struct CPU &cpu)
 {
-	int8_t lowByte = static_cast<int8_t>(Memory[cpu.IP]);
-    int16_t data = static_cast<int16_t>(lowByte);
-	return data;
+	uint8_t byte = GetInstructionByte(cpu.IP);
+	int8_t byteSigned = static_cast<int8_t>(byte);
+	return static_cast<int16_t>(byteSigned);
 }
 
 /**
@@ -453,11 +476,13 @@ Operand InterpretModField(uint8_t mod, uint8_t rm, struct CPU &cpu)
 	} break;
 	case 0x01: // Memory Mode, 8-bit displacement
 	{
-		
+		operand = EffectiveAddressCalculation[rm];
+		operand.displacement = LoadByteData(cpu);
 	} break;
 	case 0x02: // Memory Mode, 16-bit displacement
 	{
-		
+		operand = EffectiveAddressCalculation[rm];
+		operand.displacement = LoadWordData(cpu);
 	} break;
 	case 0x03: // Register Mode, No Displacement
 	{

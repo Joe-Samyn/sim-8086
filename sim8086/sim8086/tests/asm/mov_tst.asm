@@ -31,18 +31,16 @@ mov [bx + di], cx
 mov [bp + si], cl
 
 ; Immediate to Registers
-mov ax, 3
-mov bl, 9
-mov cx, 5328
-; mov byte [bx + di], 12
-mov bx, 12
+; mov ax, 3
+; mov bl, 9
+; mov cx, 5328
+; ; mov byte [bx + di], 12
+; mov bx, 12
 
-; Memory to Accumulator
-mov ax, [12]
-mov al, [1234]
+; ; Memory to Accumulator
+; mov ax, [12]
+; mov al, [1234]
 
-; Accumulator to Memory 
-mov [12], ax
-mov [1234], al
-
-hlt
+; ; Accumulator to Memory 
+; mov [12], ax
+; mov [1234], al
