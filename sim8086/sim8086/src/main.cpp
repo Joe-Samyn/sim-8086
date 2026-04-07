@@ -336,6 +336,29 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 		else
 			file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][WIDE], instruction.src.directAddress);
 	}
+	else if (instruction.destType == REGISTER && instruction.srcType == IMMEDIATE)
+	{
+		if (instruction.dest.displacement < 0)
+			file << std::format("{} {}, -{}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], -instruction.src.immediate);
+		else
+			file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][instruction.width], instruction.src.immediate);
+	}
+	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT && instruction.srcType == IMMEDIATE)
+	{
+		if (instruction.dest.displacement < 0)
+			file << std::format("{} [{} + {} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], -instruction.dest.displacement, instruction.src.immediate);
+		else
+			file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, instruction.src.immediate);
+	}
+	else if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == IMMEDIATE)
+	{
+		if (instruction.dest.displacement < 0)
+			file << std::format("{} [-{}], {}", MnemonicToString(instruction.mnemonic), -instruction.dest.directAddress, instruction.src.immediate);
+		else
+			file << std::format("{} [{}], {}", MnemonicToString(instruction.mnemonic), instruction.dest.directAddress, instruction.src.immediate);
+	}
+	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC && instruction.srcType == IMMEDIATE)
+		file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.src.immediate);
 
 	file << std::endl;
 }
@@ -590,15 +613,19 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	struct TwoByteLogicImmediateEntry logicImmediateEntry = entry.encoding.twoByteLogicImmediateEntry;
 
 	uint8_t currentByte = GetInstructionByte(cpu.IP);
+
 	// Get width if w bit is present 
 	if (logicImmediateEntry.wMask != 0) instruction.width = (Memory[cpu.IP] & logicImmediateEntry.wMask);
-
 
 	currentByte = GetInstructionByte(cpu.IP);
 	uint8_t mod = DecodeMod(logicImmediateEntry.modMask, currentByte);
 	uint8_t rm = DecodeRm(logicImmediateEntry.rmMask, currentByte);
-	//InterpretModField(mod, rm, instruction, cpu);
-	// instruction.immediate = LoadImmediate(instruction.width, currentByte); TODO: Need to update to new style
+	instruction.dest = InterpretModField(mod, rm, cpu);
+	instruction.destType = InterpretRmOperandType(mod, rm);
+
+	instruction.src = { 0 };
+	instruction.src.immediate = instruction.width == 0 ? LoadByteData(cpu) : LoadWordData(cpu);
+	instruction.srcType = IMMEDIATE;
 }
 
 /**
@@ -613,13 +640,18 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	struct OneByteLogicImmediateEntry logicImmediateEntry = entry.encoding.oneByteLogicImmediateEncoding;
 
 	// Get width if w bit is present 
-	instruction.width = (Memory[cpu.IP] & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
+	uint8_t currentByte = GetInstructionByte(cpu.IP);
+	instruction.width = (currentByte & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
 
-	uint8_t reg = (Memory[cpu.IP] & logicImmediateEntry.regMask);
-	// TODO: Update to new style
-	// instruction.regMnemonic = std::format("{}", GetRegister(reg, instruction.width));
+	uint8_t reg = (currentByte & logicImmediateEntry.regMask);
+	
+	instruction.dest = { 0 };
+	instruction.destType = REGISTER;
 
-	// instruction.immediate = LoadImmediate(instruction.width, cpu);
+	instruction.src = { 0 };
+	instruction.srcType = IMMEDIATE;
+
+	 instruction.src.immediate = instruction.width == 0 ? LoadByteData(cpu) : LoadWordData(cpu);
 }
 
 /**
