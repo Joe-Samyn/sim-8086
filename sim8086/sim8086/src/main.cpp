@@ -615,7 +615,7 @@ void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	uint8_t currentByte = GetInstructionByte(cpu.IP);
 
 	// Get width if w bit is present 
-	if (logicImmediateEntry.wMask != 0) instruction.width = (Memory[cpu.IP] & logicImmediateEntry.wMask);
+	if (logicImmediateEntry.wMask != 0) instruction.width = (currentByte & logicImmediateEntry.wMask);
 
 	currentByte = GetInstructionByte(cpu.IP);
 	uint8_t mod = DecodeMod(logicImmediateEntry.modMask, currentByte);
