@@ -2,5 +2,8 @@
 
 bits 16
 
-mov [bx + si], cx
+; No displacement, read
+mov ax, [123]
+mov [136], ax
+
 

@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/out/build/make-debug/sim8086/sim8086",
             "args": [
-                "${workspaceFolder}/sim8086/tests/bin/mov_tst.bin"
+                "${workspaceFolder}/sim8086/tests/bin/debug_tst.bin"
             ],
             "cwd": "${workspaceFolder}"
         }

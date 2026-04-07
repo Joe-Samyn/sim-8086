@@ -294,66 +294,47 @@ void CloseAsmFile(std::ofstream &file)
 }
 
 /**
- * TODO: Need to use the IoBuffer to properly batch writes because this is going to take a lot of CPU time and cause cache misses
- * if we need to write to file every iteration of loop. 
+ * TODO: I believe we can make this even simpler with a Switch statement on the src, then each case has a single conditional to check the dest. 
+ * It would allow the first check to be done via a lookup table which is much faster than conditional jumps 
  */
 void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = false)
 {
-	switch (instruction.mnemonic)
+	if (instruction.srcType == REGISTER && instruction.destType == REGISTER)
+		file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][instruction.width]);	
+
+	else if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC)
+		file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
+
+	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC && instruction.srcType == REGISTER)
+		file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], RegisterNames[instruction.src.baseRegister][instruction.width]);
+
+	else if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT)
+	{	
+		if (instruction.src.displacement < 0)
+			file << std::format("{} {}, [{} + {} - {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], -instruction.src.displacement);	
+		else
+			file << std::format("{} {}, [{} + {} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], instruction.src.displacement);	
+	}
+	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT && instruction.srcType == REGISTER)
 	{
-		case MOV:
-		{
-			if (instruction.srcType == REGISTER && instruction.destType == REGISTER)
-				file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][instruction.width]);	
-
-			if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC)
-				file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
-
-			if (instruction.destType == EFFECTIVE_ADDRESS_CALC && instruction.srcType == REGISTER)
-				file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], RegisterNames[instruction.src.baseRegister][instruction.width]);
-
-			if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT)
-			{	
-				if (instruction.src.displacement < 0)
-					file << std::format("{} {}, [{} + {} - {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], -instruction.src.displacement);	
-				else
-					file << std::format("{} {}, [{} + {} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], instruction.src.displacement);	
-			}
-			if (instruction.destType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT && instruction.srcType == REGISTER)
-			{
-				if (instruction.dest.displacement < 0)
-					file << std::format("{} [{} + {} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], -instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
-				else
-					file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
-			}
-			if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == REGISTER)
-			{
-				if (instruction.dest.displacement < 0)
-					file << std::format("{} [-{}], {}", MnemonicToString(instruction.mnemonic), -instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
-				else
-					file << std::format("{} [{}], {}", MnemonicToString(instruction.mnemonic), instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
-			}
-			if (instruction.destType == REGISTER && instruction.srcType == DIRECT_ADDRESS)
-			{
-				if (instruction.dest.displacement < 0)
-					file << std::format("{} {}, [-{}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], -instruction.src.directAddress);
-				else
-					file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][WIDE], instruction.src.directAddress);
-			}
-		} break;
-		case ADC:
-		{
-
-		} break;
-		case ADD:
-		{
-
-		} break;
-		case SUB:
-		{
-
-		} break;
-
+		if (instruction.dest.displacement < 0)
+			file << std::format("{} [{} + {} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], -instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
+		else
+			file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
+	}
+	else if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == REGISTER)
+	{
+		if (instruction.dest.displacement < 0)
+			file << std::format("{} [-{}], {}", MnemonicToString(instruction.mnemonic), -instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
+		else
+			file << std::format("{} [{}], {}", MnemonicToString(instruction.mnemonic), instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
+	}
+	else if (instruction.destType == REGISTER && instruction.srcType == DIRECT_ADDRESS)
+	{
+		if (instruction.dest.displacement < 0)
+			file << std::format("{} {}, [-{}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], -instruction.src.directAddress);
+		else
+			file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][WIDE], instruction.src.directAddress);
 	}
 
 	file << std::endl;
@@ -525,6 +506,28 @@ OperandType InterpretRmOperandType(uint8_t mod, uint8_t rm)
 }
 
 /**
+ * When direction == 0, operandA goes into src 
+ * When direction == 1, operandB goes into src
+ */
+void InterpretOperandDirection(Operand operandA, OperandType operandAType, Operand operandB, OperandType operandBType, Instruction &instruction, uint8_t direction)
+{
+	if (direction == 0) // SRC is in REG field
+	{
+		instruction.src = operandA;
+		instruction.srcType = operandAType;
+		instruction.dest = operandB;
+		instruction.destType = operandBType;
+	}
+	else // DEST is in REG field
+	{
+		instruction.src = operandB;
+		instruction.srcType = operandBType;
+		instruction.dest = operandA;
+		instruction.destType = operandAType;
+	}
+}
+
+/**
  * @brief Decodes two-byte logic instructions (e.g., MOV reg/mem to reg/mem).
  * @param instruction The instruction structure to populate.
  * @param entry The instruction table entry with encoding details.
@@ -557,20 +560,22 @@ void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, 
 	Operand rmOperand = InterpretModField(mod, rm, cpu);
 	OperandType rmOperandType = InterpretRmOperandType(mod, rm);
 
-	if (direction == 0) // SRC is in REG field
-	{
-		instruction.src = regOperand;
-		instruction.srcType = regOperandType;
-		instruction.dest = rmOperand;
-		instruction.destType = rmOperandType;
-	}
-	else // DEST is in REG field
-	{
-		instruction.src = rmOperand;
-		instruction.srcType = rmOperandType;
-		instruction.dest = regOperand;
-		instruction.destType = regOperandType;
-	}
+	InterpretOperandDirection(regOperand, regOperandType, rmOperand, rmOperandType, instruction, direction);
+
+	// if (direction == 0) // SRC is in REG field
+	// {
+	// 	instruction.src = regOperand;
+	// 	instruction.srcType = regOperandType;
+	// 	instruction.dest = rmOperand;
+	// 	instruction.destType = rmOperandType;
+	// }
+	// else // DEST is in REG field
+	// {
+	// 	instruction.src = rmOperand;
+	// 	instruction.srcType = rmOperandType;
+	// 	instruction.dest = regOperand;
+	// 	instruction.destType = regOperandType;
+	// }
 }
 
 /**
@@ -626,16 +631,29 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
  */
 void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	// struct OneByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
-	// instruction.direction = accumulatorEntry.direction;
-	// instruction.width = (Memory[cpu.IP] & accumulatorEntry.wMask);
-    // if (accumulatorEntry.hasAddress)
-    //     instruction.address = LoadImmediate(1, cpu);
-    // else
-        
-    //     instruction.immediate = LoadImmediate(instruction.width, cpu);
-    
-	// instruction.regMnemonic = std::format("{}", GetRegister(0x00, instruction.width));
+	struct OneByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
+	uint8_t direction = accumulatorEntry.direction;
+
+	uint8_t currentByte = GetInstructionByte(cpu.IP);
+	instruction.width = (currentByte & accumulatorEntry.wMask);
+
+	Operand operandA = { 0 }; 
+	OperandType operandAType = REGISTER;
+
+	Operand operandB = { 0 };
+	OperandType operandBType;
+    if (accumulatorEntry.hasAddress)
+    {
+		operandB.directAddress = LoadWordData(cpu);
+		operandBType = DIRECT_ADDRESS;
+	}    
+    else
+    {
+		operandB.immediate = instruction.width == 0 ? LoadByteData(cpu) : LoadWordData(cpu);
+		operandBType = IMMEDIATE;
+	}   
+
+	InterpretOperandDirection(operandA, operandAType, operandB, operandBType, instruction, direction);
     
 }
 
@@ -752,7 +770,7 @@ void Disassemble(Program &program)
 	struct CPU cpu = { 0 };
 	std::ofstream file = OpenAsmFile("result.asm");
 
-	while (cpu.IP != program.size)
+	while (cpu.IP < program.size)
 	{
 		uint8_t currentByte = GetInstructionByte(cpu.IP, false);
 
