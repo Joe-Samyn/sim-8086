@@ -452,6 +452,21 @@ uint8_t DecodeBitConst(uint8_t constMask, uint8_t byte)
 	return (byte & constMask) >> 3;
 }
 
+Mnemonic DecodeMnemonic(uint8_t byte)
+{
+	switch(byte)
+	{
+		case 0:
+			return ADD;
+		case 1:
+			return SUB;
+		case 2:
+			return ADC;
+		default:
+			return MOV;
+	}
+}
+
 /**
  * @brief Decodes the MOD field and performs microcode operations for the specific mod encodings as specified in the 8086 manual.
  * @param mod The MOD value (0-3).
@@ -690,26 +705,27 @@ void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, s
     
 }
 
-void DecodeArithmeticTwoByteSigned(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
+void DecodeTwoByteArithmetic(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
 {
-	// TwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
+	TwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
 
-	// uint8_t s = (Memory[cpu.IP] & signedEntry.sMask) >> 1;
-	// instruction.width = Memory[cpu.IP] & signedEntry.wMask;
-	// instruction.sign = Memory[cpu.IP] & signedEntry.sMask;
+	uint8_t currentByte = GetInstructionByte(cpu.IP);
 
-	// // Increment because all the following data is in byte 2
-	// cpu.IP++;
-	// uint8_t mod = GetMod(signedEntry.modMask, cpu);
-	// uint8_t rm = GetRm(signedEntry.rmMask, cpu);
-	// uint8_t bitConst = GetBitConst(signedEntry.constMask, cpu);
+	uint8_t sign = currentByte & signedEntry.sMask >> 1;
+	instruction.width = currentByte & signedEntry.wMask;
+
+	// Increment because all the following data is in byte 2
+	currentByte = GetInstructionByte(cpu.IP);
+	uint8_t mod = DecodeMod(signedEntry.modMask, currentByte);
+	uint8_t rm = DecodeRm(signedEntry.rmMask, currentByte);
+	uint8_t bitConst = DecodeBitConst(signedEntry.constMask, currentByte);
     
-    // if (bitConst == 2)
-    //     instruction.mnemonic = "ADC";
-    
-	// DecodeMod(mod, rm, instruction, cpu);
+    instruction.mnemonic = DecodeMnemonic(bitConst);
+    instruction.dest = InterpretModField(mod, rm, cpu);
+	instruction.destType = InterpretRmOperandType(mod, rm);
 
-	// instruction.immediate = LoadImmediateSigned(instruction.width, instruction.sign, cpu);
+	instruction.src.immediate = (sign == 0 && instruction.width == 1) ? LoadByteData(cpu) : LoadWordData(cpu);
+	instruction.srcType = IMMEDIATE;
 }
 
 /**
@@ -788,7 +804,7 @@ Instruction Decode(InstructionTableEntry& entry, struct CPU& cpu)
 	} break;
 	case ENCODING_TWO_BYTE_IMMEDIATE_SIGNED:
 	{
-		DecodeArithmeticTwoByteSigned(instruction, entry, cpu);
+		DecodeTwoByteArithmetic(instruction, entry, cpu);
 	} break;
 	}
 
