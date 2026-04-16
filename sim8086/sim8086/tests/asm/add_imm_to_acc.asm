@@ -13,5 +13,3 @@ add ax, -270
 
 add al, 15
 add al, -18
-
-hlt

@@ -101,6 +101,7 @@ class TestDecodingMov(unittest.TestCase):
 
         # Compare binary files and assert they are equal
         self.assertEqual(testFileBinArr, resultFileBinArr)
+    
 
 if __name__ == "__main__":
     unittest.main()

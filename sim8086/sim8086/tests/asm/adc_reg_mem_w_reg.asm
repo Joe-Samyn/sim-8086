@@ -10,5 +10,3 @@ adc bx, [bx + si]
 
 adc bx, cx
 adc bl, cl
-
-hlt

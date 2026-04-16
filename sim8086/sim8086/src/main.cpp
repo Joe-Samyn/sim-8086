@@ -334,7 +334,7 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 		if (instruction.dest.displacement < 0)
 			file << std::format("{} {}, [-{}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], -instruction.src.directAddress);
 		else
-			file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][WIDE], instruction.src.directAddress);
+			file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][instruction.width], instruction.src.directAddress);
 	}
 	else if (instruction.destType == REGISTER && instruction.srcType == IMMEDIATE)
 	{
@@ -646,6 +646,7 @@ void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry
 	uint8_t reg = (currentByte & logicImmediateEntry.regMask);
 	
 	instruction.dest = { 0 };
+	instruction.dest.baseRegister = reg;
 	instruction.destType = REGISTER;
 
 	instruction.src = { 0 };
@@ -800,7 +801,7 @@ Instruction Decode(InstructionTableEntry& entry, struct CPU& cpu)
 void Disassemble(Program &program)
 {
 	struct CPU cpu = { 0 };
-	std::ofstream file = OpenAsmFile("result.asm");
+	std::ofstream file = OpenAsmFile("/Users/joey/Projects/sim-8086/sim8086/sim8086/tests/result.asm");
 
 	while (cpu.IP < program.size)
 	{

@@ -10,5 +10,3 @@ add bx, [bx + si]
 
 add bx, cx
 add bl, cl
-
-hlt

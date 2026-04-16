@@ -19,5 +19,3 @@ add word [bp + di], 8
 add word [bp + di], -8
 
 add word [bp + di + 7], -27
-
-hlt

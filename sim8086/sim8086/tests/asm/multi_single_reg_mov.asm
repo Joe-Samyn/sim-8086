@@ -9,5 +9,3 @@ bits 16
 mov ax, bx
 mov cl, dl
 mov ax, si
-
-hlt
