@@ -303,24 +303,44 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 		file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][instruction.width]);	
 
 	else if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC)
-		file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
-
+	{	
+		if (instruction.src.indexRegister != 0)
+			file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
+		else 
+			file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE]);
+	}
 	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC && instruction.srcType == REGISTER)
-		file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], RegisterNames[instruction.src.baseRegister][instruction.width]);
-
+	{	
+		if (instruction.dest.indexRegister != 0)
+			file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], RegisterNames[instruction.src.baseRegister][instruction.width]);
+		else 
+			file << std::format("{} [{}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.src.baseRegister][instruction.width]);
+	}
 	else if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT)
 	{	
 		if (instruction.src.displacement < 0)
-			file << std::format("{} {}, [{} + {} - {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], -instruction.src.displacement);	
+			if (instruction.src.indexRegister != 0)
+				file << std::format("{} {}, [{} + {} - {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], -instruction.src.displacement);
+			else 
+				file << std::format("{} {}, [{} - {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], -instruction.src.displacement);	
 		else
-			file << std::format("{} {}, [{} + {} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], instruction.src.displacement);	
+			if (instruction.src.indexRegister != 0)
+				file << std::format("{} {}, [{} + {} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], instruction.src.displacement);	
+			else 
+				file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], instruction.src.displacement);	
 	}
 	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT && instruction.srcType == REGISTER)
 	{
 		if (instruction.dest.displacement < 0)
-			file << std::format("{} [{} + {} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], -instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
+			if (instruction.dest.indexRegister != 0)
+				file << std::format("{} [{} + {} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], -instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
+			else
+				file << std::format("{} [{} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], -instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
 		else
-			file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
+			if (instruction.dest.indexRegister != 0)
+				file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
+			else 
+				file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
 	}
 	else if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == REGISTER)
 	{
@@ -711,7 +731,7 @@ void DecodeTwoByteArithmetic(Instruction& instruction, InstructionTableEntry& en
 
 	uint8_t currentByte = GetInstructionByte(cpu.IP);
 
-	uint8_t sign = currentByte & signedEntry.sMask >> 1;
+	uint8_t sign = (currentByte & signedEntry.sMask) >> 1;
 	instruction.width = currentByte & signedEntry.wMask;
 
 	// Increment because all the following data is in byte 2
@@ -724,7 +744,7 @@ void DecodeTwoByteArithmetic(Instruction& instruction, InstructionTableEntry& en
     instruction.dest = InterpretModField(mod, rm, cpu);
 	instruction.destType = InterpretRmOperandType(mod, rm);
 
-	instruction.src.immediate = (sign == 0 && instruction.width == 1) ? LoadByteData(cpu) : LoadWordData(cpu);
+	instruction.src.immediate = (sign == 0 && instruction.width == 1) ? LoadWordData(cpu) : LoadByteData(cpu);
 	instruction.srcType = IMMEDIATE;
 }
 

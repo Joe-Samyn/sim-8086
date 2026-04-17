@@ -3,6 +3,5 @@
 bits 16
 
 ; No displacement, read
-adc cx, 12
-
+adc [bx - 1234], 45
 
