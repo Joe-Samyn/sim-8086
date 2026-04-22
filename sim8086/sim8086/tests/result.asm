@@ -1,5 +1,12 @@
 bits 16
 
-ADD BX, [BX + SI]
-ADD BX, CX
-ADD BL, CL
+MOV CX, [BX + SI]
+MOV AL, [BX + DI]
+MOV BX, [1234]
+MOV CX, [BX + SI + 4]
+MOV BX, [BX + DI + 3254]
+MOV CX, BX
+MOV AL, BL
+MOV AX, SI
+MOV word [BX + DI], CX
+MOV byte [BP + SI], CL

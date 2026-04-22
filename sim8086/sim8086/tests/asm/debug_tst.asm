@@ -2,26 +2,16 @@
 
 bits 16
 
-; No displacement, read
-; No displacement, read
-mov cx, [bx + si]
-mov al, [bx + di]
+add bl, 12
+add cx, 1000
 
-; No displacement, direct address
-mov bx, [1234] 
+add [bp + di], 17
+add [bp + di + 7], 26
+add [bx - 1234], 45
 
-; 8-bit displacement
-mov cx, [bx + si + 4]
+add word [bp + di], 260
+add word [bp + di], 8
+add word [bp + di], -8
 
-; 16-bit displacement
-mov bx, [bx + di + 3254]
-
-; Register to register 
-mov cx, bx
-mov al, bl
-mov ax, si
-
-; No displacement, write
-mov [bx + di], cx
-mov [bp + si], cl
+add word [bp + di + 7], -27
 

@@ -332,6 +332,13 @@ std::string FormatInstruction(Operand operand, OperandType type, uint8_t width)
 	}
 }
 
+std::string FormatSize(Operand operand, OperandType type, uint8_t width)
+{
+	if (type == EFFECTIVE_ADDRESS_CALC || type == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT)
+		return width == 0 ? " byte " : " word ";
+	return " ";
+}
+
 /**
  * TODO: We have to make this simpler. This is way to complicated and way to much diplicated code. 
  */
@@ -340,7 +347,9 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 	std::string src = FormatInstruction(instruction.src, instruction.srcType, instruction.width);
 	std::string dest = FormatInstruction(instruction.dest, instruction.destType, instruction.width);
 
-	file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), dest, src);
+	std::string size = FormatSize(instruction.dest, instruction.destType, instruction.width);
+
+	file << std::format("{}{}{}, {}", MnemonicToString(instruction.mnemonic), size, dest, src);
 	
 	file << std::endl;
 }
