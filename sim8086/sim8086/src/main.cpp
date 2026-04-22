@@ -293,16 +293,44 @@ void CloseAsmFile(std::ofstream &file)
 	file.close();
 }
 
+std::string FormatInstruction(Operand operand, OperandType type, uint8_t width)
+{
+	switch(type)
+	{
+		case REGISTER:
+		{
+			return RegisterNames[operand.baseRegister][width];
+		} break;
+		case IMMEDIATE:
+		{
+
+		} break;
+		case EFFECTIVE_ADDRESS_CALC:
+		{
+
+		} break;
+		case EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT:
+		{
+
+		} break;
+		case DIRECT_ADDRESS:
+		{
+
+		} break;
+	}
+}
+
 /**
- * TODO: I believe we can make this even simpler with a Switch statement on the src, then each case has a single conditional to check the dest. 
- * It would allow the first check to be done via a lookup table which is much faster than conditional jumps 
+ * TODO: We have to make this simpler. This is way to complicated and way to much diplicated code. 
  */
 void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = false)
 {
-	if (instruction.srcType == REGISTER && instruction.destType == REGISTER)
-		file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][instruction.width]);	
+	std::string src = FormatInstruction(instruction.src, instruction.srcType, instruction.width);
+	std::string dest = FormatInstruction(instruction.dest, instruction.destType, instruction.width);
 
-	else if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC)
+	file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), dest, src);
+
+	if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC)
 	{	
 		if (instruction.src.indexRegister != 0)
 			file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
