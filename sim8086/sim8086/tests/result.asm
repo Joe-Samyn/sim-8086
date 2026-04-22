@@ -1,3 +1,5 @@
 bits 16
 
-ADD [BX + 200], CX
+ADD BX, [BX + SI]
+ADD BX, CX
+ADD BL, CL

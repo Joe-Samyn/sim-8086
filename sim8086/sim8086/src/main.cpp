@@ -303,16 +303,16 @@ std::string FormatInstruction(Operand operand, OperandType type, uint8_t width)
 		} break;
 		case IMMEDIATE:
 		{
-
+			return std::to_string(operand.immediate);
 		} break;
 		case EFFECTIVE_ADDRESS_CALC:
 		{
-			std::string baseReg = RegisterNames[operand.baseRegister][width];
+			std::string baseReg = RegisterNames[operand.baseRegister][WIDE];
 			return operand.indexRegister != 0 ? std::format("[{} + {}]", baseReg, RegisterNames[operand.indexRegister][WIDE]) : std::format("[{}]", baseReg);
 		} break;
 		case EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT:
 		{
-			std::string baseReg = RegisterNames[operand.baseRegister][width];
+			std::string baseReg = RegisterNames[operand.baseRegister][WIDE];
 			int16_t disp = operand.displacement;
 			if (operand.indexRegister != 0)
 			{
@@ -327,7 +327,7 @@ std::string FormatInstruction(Operand operand, OperandType type, uint8_t width)
 		} break;
 		case DIRECT_ADDRESS:
 		{
-
+			return operand.directAddress > 0 ? std::format("[{}]", operand.directAddress) : std::format("[-{}]", -operand.directAddress);
 		} break;
 	}
 }
@@ -342,45 +342,6 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 
 	file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), dest, src);
 	
-	
-	if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == REGISTER)
-	{
-		if (instruction.dest.displacement < 0)
-			file << std::format("{} [-{}], {}", MnemonicToString(instruction.mnemonic), -instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
-		else
-			file << std::format("{} [{}], {}", MnemonicToString(instruction.mnemonic), instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
-	}
-	else if (instruction.destType == REGISTER && instruction.srcType == DIRECT_ADDRESS)
-	{
-		if (instruction.dest.displacement < 0)
-			file << std::format("{} {}, [-{}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], -instruction.src.directAddress);
-		else
-			file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][instruction.width], instruction.src.directAddress);
-	}
-	else if (instruction.destType == REGISTER && instruction.srcType == IMMEDIATE)
-	{
-		if (instruction.dest.displacement < 0)
-			file << std::format("{} {}, -{}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], -instruction.src.immediate);
-		else
-			file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic),RegisterNames[instruction.dest.baseRegister][instruction.width], instruction.src.immediate);
-	}
-	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT && instruction.srcType == IMMEDIATE)
-	{
-		if (instruction.dest.displacement < 0)
-			file << std::format("{} [{} + {} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], -instruction.dest.displacement, instruction.src.immediate);
-		else
-			file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, instruction.src.immediate);
-	}
-	else if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == IMMEDIATE)
-	{
-		if (instruction.dest.displacement < 0)
-			file << std::format("{} [-{}], {}", MnemonicToString(instruction.mnemonic), -instruction.dest.directAddress, instruction.src.immediate);
-		else
-			file << std::format("{} [{}], {}", MnemonicToString(instruction.mnemonic), instruction.dest.directAddress, instruction.src.immediate);
-	}
-	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC && instruction.srcType == IMMEDIATE)
-		file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.src.immediate);
-
 	file << std::endl;
 }
 
