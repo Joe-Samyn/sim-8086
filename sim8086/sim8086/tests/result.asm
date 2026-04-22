@@ -1,3 +1,3 @@
 bits 16
 
-ADD BX, CX
+ADD [BX + 200], CX

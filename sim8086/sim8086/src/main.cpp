@@ -307,11 +307,23 @@ std::string FormatInstruction(Operand operand, OperandType type, uint8_t width)
 		} break;
 		case EFFECTIVE_ADDRESS_CALC:
 		{
-
+			std::string baseReg = RegisterNames[operand.baseRegister][width];
+			return operand.indexRegister != 0 ? std::format("[{} + {}]", baseReg, RegisterNames[operand.indexRegister][WIDE]) : std::format("[{}]", baseReg);
 		} break;
 		case EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT:
 		{
-
+			std::string baseReg = RegisterNames[operand.baseRegister][width];
+			int16_t disp = operand.displacement;
+			if (operand.indexRegister != 0)
+			{
+				return operand.displacement < 0 ? std::format("[{} + {} - {}]",baseReg, RegisterNames[operand.indexRegister][WIDE], -disp) 
+					: std::format("[{} + {} + {}]", baseReg, RegisterNames[operand.indexRegister][WIDE], disp);
+			}
+			else 
+			{
+				return operand.displacement < 0 ? std::format("[{} - {}]",baseReg, -disp) 
+					: std::format("[{} + {}]", baseReg, disp);
+			}
 		} break;
 		case DIRECT_ADDRESS:
 		{
@@ -329,48 +341,9 @@ void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = fals
 	std::string dest = FormatInstruction(instruction.dest, instruction.destType, instruction.width);
 
 	file << std::format("{} {}, {}", MnemonicToString(instruction.mnemonic), dest, src);
-
-	if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC)
-	{	
-		if (instruction.src.indexRegister != 0)
-			file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE]);
-		else 
-			file << std::format("{} {}, [{}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE]);
-	}
-	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC && instruction.srcType == REGISTER)
-	{	
-		if (instruction.dest.indexRegister != 0)
-			file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], RegisterNames[instruction.src.baseRegister][instruction.width]);
-		else 
-			file << std::format("{} [{}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.src.baseRegister][instruction.width]);
-	}
-	else if (instruction.destType == REGISTER && instruction.srcType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT)
-	{	
-		if (instruction.src.displacement < 0)
-			if (instruction.src.indexRegister != 0)
-				file << std::format("{} {}, [{} + {} - {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], -instruction.src.displacement);
-			else 
-				file << std::format("{} {}, [{} - {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], -instruction.src.displacement);	
-		else
-			if (instruction.src.indexRegister != 0)
-				file << std::format("{} {}, [{} + {} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], RegisterNames[instruction.src.indexRegister][WIDE], instruction.src.displacement);	
-			else 
-				file << std::format("{} {}, [{} + {}]", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][instruction.width], RegisterNames[instruction.src.baseRegister][WIDE], instruction.src.displacement);	
-	}
-	else if (instruction.destType == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT && instruction.srcType == REGISTER)
-	{
-		if (instruction.dest.displacement < 0)
-			if (instruction.dest.indexRegister != 0)
-				file << std::format("{} [{} + {} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], -instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
-			else
-				file << std::format("{} [{} - {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], -instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
-		else
-			if (instruction.dest.indexRegister != 0)
-				file << std::format("{} [{} + {} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], RegisterNames[instruction.dest.indexRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
-			else 
-				file << std::format("{} [{} + {}], {}", MnemonicToString(instruction.mnemonic), RegisterNames[instruction.dest.baseRegister][WIDE], instruction.dest.displacement, RegisterNames[instruction.src.baseRegister][instruction.width]);
-	}
-	else if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == REGISTER)
+	
+	
+	if (instruction.destType == DIRECT_ADDRESS && instruction.srcType == REGISTER)
 	{
 		if (instruction.dest.displacement < 0)
 			file << std::format("{} [-{}], {}", MnemonicToString(instruction.mnemonic), -instruction.dest.directAddress, RegisterNames[instruction.src.baseRegister][instruction.width]);
