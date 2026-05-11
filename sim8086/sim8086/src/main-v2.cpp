@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <string>
 
-
 /**
  * @brief Memory for the Intel 8086 simulator. Intel 8086 computers typically had 1 MB of addressable memory. Therefore this simulator is initialized with 1 MB of memory space. 
  */
@@ -45,11 +44,12 @@ struct Program {
 	uint32_t endAddr;
 };
 
-enum OperandMode {
+enum OperandType {
 	REGISTER,
 	DIRECT_ADDRESS,
 	IMMEDIATE,
-	EFFECTIVE_ADDRESS_CALC
+	EFFECTIVE_ADDRESS_CALC,
+	EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT
 };
 
 
@@ -72,37 +72,33 @@ std::string MnemonicToString(Mnemonic m)
 }
 
 /**
+ * @note The registers are uint8_t because they represent the index of the register in the CPUs register table (array)
+ */
+struct Operand {
+	uint8_t baseRegister;
+	uint8_t indexRegister;
+	int16_t displacement;
+	uint16_t directAddress;
+	int16_t immediate;
+};
+
+/**
  * Possible width field values
  */
 #define WIDE 1
 #define BYTE 0
 
 /**
- * Possible operand encoding types 
- */
-#define REGISTER 0 // Operand is a register 
-#define IMMEDIATE_OR_ADDR 1 // Operand is an immediate value or an address
-#define EFFECTIVE_ADDR 2 // Operand is an effective address calculation without displacement
-#define EFFECTIVE_ADDR_DIS 3 // Operand is an effective address calculation with displacement
-
-/**
  * @brief Represents a decoded instructions
- * @note This struct totals 15 bytes in memory, most likely will get padded to 16 bytes. 
  */
-struct DecodedInstruction
+struct Instruction
 {
-	uint8_t opcode;			// Intel 8086 opcode representing a unique instruction and mnemonic 
-	uint8_t width;			// Width of the encoded operands
-	uint8_t sign; 			// Sign of the immediate operand if an arithmetic instruction 
-	uint8_t srcType; 		// Identifies the type of operand SRC is (register, immediate, effective address calculation)
-	uint8_t srcBaseReg;		// SRC operand base register 
-	uint8_t srcIndexReg;	// SRC operand index register (if present, not all instructions have an index register value) 
-	uint8_t destType; 		// Identifies the type of operand DEST is (register, immediate, effective address calculation)
-	uint8_t destBaseReg;	// DEST operand base register
-	uint8_t destIndexReg;	// DEST operand index register (if present)
-	uint16_t address;		// 2-byte value representing a memory address
-	uint16_t displacement;	// 2-byte displacement value for effective address calculations
-	uint16_t immediate;		// 2-byte immediate value for operations on immediate values
+	Mnemonic mnemonic;
+	uint8_t width;
+	OperandType srcType;
+	Operand src;
+	OperandType destType;
+	Operand dest;
 };
 
 /**
