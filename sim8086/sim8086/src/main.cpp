@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <iostream>
 
 
 /**
@@ -116,85 +117,26 @@ enum EncodingCategory {
 	ENCODING_TWO_BYTE_IMMEDIATE_SIGNED
 };
 
-
-struct TwoByteLogicEntry
-{
-	uint8_t dMask;
-	uint8_t wMask;
-	uint8_t modMask;
-	uint8_t regMask;
-	uint8_t regShift;
-	uint8_t rmMask;
-};
-
-struct TwoByteLogicImmediateEntry
-{
-	uint8_t wMask;
-	uint8_t modMask;
-	uint8_t rmMask;
-};
-
-struct OneByteAccumulatorEntry
-{
-	uint8_t direction;
-	uint8_t wMask;
-	bool hasAddress;
-};
-
-struct OneByteLogicImmediateEntry
-{
-	uint8_t wMask;
-	uint8_t wShift;
-	uint8_t regMask;
-};
-
-struct TwoByteImmedSignedEntry 
-{
-	uint8_t sMask;
-	uint8_t wMask;
-	uint8_t modMask;
-	uint8_t rmMask;
-	uint8_t constMask;
-	uint8_t direction;
-};
-
 struct InstructionTableEntry
 {
 	uint8_t opcode;
 	uint8_t opcodeMask;
-	Mnemonic mnemonic;
 	EncodingCategory category;
-	union
-	{
-		struct TwoByteLogicEntry twoByteLogicEntry;
-		struct TwoByteLogicImmediateEntry twoByteLogicImmediateEntry;
-		struct OneByteAccumulatorEntry threeByteAccumulatorEncoding;
-		struct OneByteLogicImmediateEntry oneByteLogicImmediateEncoding;
-		struct TwoByteImmedSignedEntry arithmeticTwoByteImmedSignedEntry;
-
-	} encoding;
+	uint8_t sMask;
+	uint8_t wMask;
+	uint8_t dMask;
+	uint8_t modMask;
+	uint8_t rmMask;
+	uint8_t regMask;
+	uint8_t constMask;
+	uint8_t direction;
 };
 
-// TODO (joe): Maybe remove strings from this table and create a mapping table of opcode -> mnemonic
-#define InstructionTableEntries \
-	X(0x88, 0xFC, MOV, ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0xC6, 0xFE, MOV, ENCODING_TWO_BYTE_LOGIC_IMMEDIATE, 0x01, 0xC0, 0x07), \
-	X(0xB0, 0xF0, MOV, ENCODING_ONE_BYTE_LOGIC_IMMEDIATE, 0x08, 0x03, 0x07), \
-	X(0xA0, 0xFE, MOV, ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, true), \
-	X(0xA2, 0xFE, MOV, ENCODING_ONE_BYTE_ACCUMULATOR, 0x00, 0x01, true), \
-	X(0x00, 0xFC, ADD, ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0x80, 0xFC, ADD, ENCODING_TWO_BYTE_IMMEDIATE_SIGNED,  0x02, 0x01, 0xC0, 0x07, 0x38, 0x01), \
-    X(0x04, 0xFE, ADD, ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
-	X(0x14, 0xFE, ADC, ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false), \
-	X(0x10, 0xFC, ADC, ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0x28, 0xFC, SUB, ENCODING_TWO_BYTE_LOGIC, 0x02,  0x01, 0xC0, 0x38, 0x3, 0x07), \
-	X(0x2C, 0xFE, SUB, ENCODING_ONE_BYTE_ACCUMULATOR, 0x01, 0x01, false) \
-
-#define X(opcode, opcodeMask, mnemonic, category, ...) { opcode, opcodeMask, mnemonic, category, { __VA_ARGS__ } }
-std::vector<InstructionTableEntry> instructionTable = {
-	InstructionTableEntries
+InstructionTableEntry InstructionTable[] = {
+	{ .opcode=0x88, .opcodeMask=0xFC, .category=ENCODING_TWO_BYTE_LOGIC, .dMask=0x02, .wMask=0x01, .modMask=0xC0, .regMask=0x38, .rmMask=0x07 }
 };
-#undef X
+
+#define INST_TABLE_SIZE sizeof(InstructionTable) / sizeof(InstructionTableEntry)
 
 /**
  * Table holding human readible names of registers
@@ -204,7 +146,7 @@ std::vector<InstructionTableEntry> instructionTable = {
  * 	AL is register index 0 and width is 0: registerNames[0 + 0] = AL
  *	AX is register index 0 as well but width of 1: registerNames[0 + 1] = registerNames[1] = AX     	   
  */
-std::string RegisterNames[8][2] = {
+const char* RegisterNames[8][2] = {
 	{ "AL", "AX" },
 	{ "CL", "CX" },
 	{ "DL", "DX" },
@@ -215,17 +157,6 @@ std::string RegisterNames[8][2] = {
 	{ "BH", "DI" },
 };
 
-Operand EffectiveAddressCalculation[8] = {
-	{ 0b011, 0b110, 0, 0 }, // BX + SI
-	{ 0b011, 0b111, 0, 0, 0 }, // BX + DI
-	{ 0b101, 0b110, 0, 0, 0 }, // BP + SI
-	{ 0b101, 0b111, 0, 0, 0 }, // BP + DI
-	{ 0b110, 0, 0, 0, 0 }, // SI
-	{ 0b111, 0, 0, 0, 0 }, // DI
-	{ 0b101, 0, 0, 0, 0 }, // BP
-	{ 0b011, 0, 0, 0, 0 }, // BX
-};
-
 /**
  * @brief Search instruction table for instruction that matches the opcode in the byte. 
  * @param byte The byte containing the opcode to search for in the instruction table.
@@ -234,10 +165,10 @@ Operand EffectiveAddressCalculation[8] = {
 /* CODE REVIEW: This is a linear search. Could be better, we will optimize later. */
 std::optional<InstructionTableEntry> FindInstruction(uint8_t byte)
 {
-	for (int i = 0; i < instructionTable.size(); i++)
+	for (int i = 0; i < INST_TABLE_SIZE; i++)
 	{
 		// Get opcode from byte
-		InstructionTableEntry inst = instructionTable.at(i);
+		InstructionTableEntry inst = InstructionTable[i];
 		uint8_t b = byte & inst.opcodeMask;
 
 		// If byte matches opcode, break out and return index of instruction
@@ -272,64 +203,45 @@ void CloseAsmFile(std::ofstream &file)
 	file.close();
 }
 
-std::string FormatInstruction(Operand operand, OperandType type, uint8_t width)
+std::string FormatInstruction(OperandMode mode, uint8_t width)
 {
-	switch(type)
+	switch(mode)
 	{
 		case REGISTER:
 		{
-			return RegisterNames[operand.baseRegister][width];
 		} break;
 		case IMMEDIATE:
 		{
-			return std::to_string(operand.immediate);
 		} break;
 		case EFFECTIVE_ADDRESS_CALC:
 		{
-			std::string baseReg = RegisterNames[operand.baseRegister][WIDE];
-			return operand.indexRegister != 0 ? std::format("[{} + {}]", baseReg, RegisterNames[operand.indexRegister][WIDE]) : std::format("[{}]", baseReg);
-		} break;
-		case EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT:
-		{
-			std::string baseReg = RegisterNames[operand.baseRegister][WIDE];
-			int16_t disp = operand.displacement;
-			if (operand.indexRegister != 0)
-			{
-				return operand.displacement < 0 ? std::format("[{} + {} - {}]",baseReg, RegisterNames[operand.indexRegister][WIDE], -disp) 
-					: std::format("[{} + {} + {}]", baseReg, RegisterNames[operand.indexRegister][WIDE], disp);
-			}
-			else 
-			{
-				return operand.displacement < 0 ? std::format("[{} - {}]",baseReg, -disp) 
-					: std::format("[{} + {}]", baseReg, disp);
-			}
+
 		} break;
 		case DIRECT_ADDRESS:
 		{
-			return operand.directAddress > 0 ? std::format("[{}]", operand.directAddress) : std::format("[-{}]", -operand.directAddress);
+			
 		} break;
 	}
 }
 
-std::string FormatSize(Operand operand, OperandType type, uint8_t width)
+/** 
+TODO: Needs to be updated to match new instruction format
+*/
+std::string FormatSize()
 {
-	if (type == EFFECTIVE_ADDRESS_CALC || type == EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT)
-		return width == 0 ? " byte " : " word ";
-	return " ";
+	
 }
 
 
 /* CODE REVIEW: We should be batching these formated instructions and flushing out the buffer once it gets full to prevent constant OS calls and blocking threads */
-void WriteToFile(Instruction instruction, std::ofstream &file, bool flush = false)
+void WriteToFile(DecodedInstruction instruction, std::ofstream &file, bool flush = false)
 {
-	std::string src = FormatInstruction(instruction.src, instruction.srcType, instruction.width);
-	std::string dest = FormatInstruction(instruction.dest, instruction.destType, instruction.width);
+	std::string src; /** TODO: */
+	std::string dest; /** TODO: */
 
-	std::string size = FormatSize(instruction.dest, instruction.destType, instruction.width);
+	std::string size; /** TODO: */
 
-	file << std::format("{}{}{}, {}", MnemonicToString(instruction.mnemonic), size, dest, src);
-	
-	file << std::endl;
+	/** TODO: Write to file */
 }
 
 
