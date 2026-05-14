@@ -26,17 +26,22 @@ struct CPU {
 };
 
 /**
- * TODO: We need to define a register table to look up the human friendly name for these registers. 
+ * @brief Retrieve a byte from the specified memory address.
  */
-
+uint8_t GetByteFromMemory(uint16_t &addr) {
+	uint8_t byte = Memory[addr];
+	return byte;
+}
 
 /**
- * @brief Retrieve a byte from a prgram in memory at the specified Instruction Pointer. 
- * The instruction pointer is incremented by 1 after the byte is retrieved from memory.
+ * @brief Retrieve the byte from program memory at the instruction pointer and increment the instruction pointer. 
+ * @param ip Instruction pointer 
+ * @return Byte from program memory
  */
-uint8_t GetInstructionByte(uint16_t &ip, bool incrementIp = true) {
+uint8_t GetNextInstByte(uint16_t &ip)
+{
 	uint8_t byte = Memory[ip];
-	if (incrementIp) ip++;
+	ip++;
 	return byte;
 }
 
@@ -61,9 +66,9 @@ enum Mnemonic {
 	SUB
 };
 
-std::string MnemonicToString(Mnemonic m)
+std::string MnemonicToString(uint8_t mnemonicCode)
 {
-	switch (m)
+	switch (mnemonicCode)
 	{
 		case MOV: return "MOV";
 		case ADD: return "ADD";
@@ -71,6 +76,11 @@ std::string MnemonicToString(Mnemonic m)
 		case SUB: return "SUB";
 	}
 }
+
+/**
+ * Sentinel value for not in use
+ */
+#define NA 0xFF
 
 /**
  * Possible width field values
@@ -86,6 +96,7 @@ std::string MnemonicToString(Mnemonic m)
 #define EFFECTIVE_ADDR 2 // Operand is an effective address calculation without displacement
 #define EFFECTIVE_ADDR_DIS 3 // Operand is an effective address calculation with displacement
 
+
 /**
  * @brief Represents a decoded instructions
  * @note This struct totals 15 bytes in memory, most likely will get padded to 16 bytes. 
@@ -93,8 +104,6 @@ std::string MnemonicToString(Mnemonic m)
 struct DecodedInstruction
 {
 	uint8_t opcode;			// Intel 8086 opcode representing a unique instruction and mnemonic 
-	uint8_t width;			// Width of the encoded operands
-	uint8_t sign; 			// Sign of the immediate operand if an arithmetic instruction 
 	uint8_t srcType; 		// Identifies the type of operand SRC is (register, immediate, effective address calculation)
 	uint8_t srcBaseReg;		// SRC operand base register 
 	uint8_t srcIndexReg;	// SRC operand index register (if present, not all instructions have an index register value) 
@@ -121,19 +130,21 @@ struct InstructionTableEntry
 {
 	uint8_t opcode;
 	uint8_t opcodeMask;
-	EncodingCategory category;
+	uint8_t mnemonic;
 	uint8_t sMask;
+	uint8_t wShift; // Needed as w can be in multiple positions in byte 1.
 	uint8_t wMask;
 	uint8_t dMask;
 	uint8_t modMask;
 	uint8_t rmMask;
+	uint8_t regShift; // this is needed as reg can exist in different spots in an instruction.
+	uint8_t regByte; // Indicates if reg is in byte 1 or 2 of instruction. 
 	uint8_t regMask;
 	uint8_t constMask;
-	uint8_t direction;
 };
 
 InstructionTableEntry InstructionTable[] = {
-	{ .opcode=0x88, .opcodeMask=0xFC, .category=ENCODING_TWO_BYTE_LOGIC, .dMask=0x02, .wMask=0x01, .modMask=0xC0, .regMask=0x38, .rmMask=0x07 }
+	{ .opcode=0x88, .opcodeMask=0xFC, .mnemonic=MOV, .sMask=NA, .wShift=0, .wMask=0x01, .dMask=0x02, .modMask=0xC0, .rmMask=0x07, .regByte=2, .regShift=0x3, .regMask=0x38, .constMask=NA }
 };
 
 #define INST_TABLE_SIZE sizeof(InstructionTable) / sizeof(InstructionTableEntry)
@@ -262,8 +273,8 @@ void WriteToFile(DecodedInstruction instruction, std::ofstream &file, bool flush
  */
 int16_t LoadWordData(struct CPU &cpu)
 {
-	uint8_t lowByte = GetInstructionByte(cpu.IP);
-	uint8_t highByte = GetInstructionByte(cpu.IP);
+	uint8_t lowByte = GetNextInstByte(cpu.IP);
+	uint8_t highByte = GetNextInstByte(cpu.IP);
 
 	int16_t data = static_cast<int16_t>(highByte);
 	data = (data << 8) | lowByte;
@@ -278,7 +289,7 @@ int16_t LoadWordData(struct CPU &cpu)
  */
 int16_t LoadByteData(struct CPU &cpu)
 {
-	uint8_t byte = GetInstructionByte(cpu.IP);
+	uint8_t byte = GetNextInstByte(cpu.IP);
 	int8_t byteSigned = static_cast<int8_t>(byte);
 	return static_cast<int16_t>(byteSigned);
 }
@@ -333,271 +344,17 @@ uint8_t DecodeBitConst(uint8_t constMask, uint8_t byte)
 	return (byte & constMask) >> 3;
 }
 
-Mnemonic DecodeMnemonic(uint8_t byte)
-{
-	switch(byte)
-	{
-		case 0:
-			return ADD;
-		case 1:
-			return SUB;
-		case 2:
-			return ADC;
-		default:
-			return MOV;
-	}
-}
-
-/**
- * @brief Decodes the MOD field and performs microcode operations for the specific mod encodings as specified in the 8086 manual.
- * @param mod The MOD value (0-3).
- * @param rm The RM value (0-7).
- * @param instruction The instruction structure to update with the mnemonic.
- * @param cpu The CPU structure; PC is advanced as needed.
- * @note This function emulates 8086's microcode for parsing effective addresses, handling displacements and register modes.
- */
-Operand InterpretModField(uint8_t mod, uint8_t rm, struct CPU &cpu)
-{
-	Operand operand = { 0 };
-	switch (mod)
-	{
-	case 0x00: // Memory Mode, No Displacement
-	{
-		// Special case of MOD that indicates direct memory access with no displacement. 
-		if (rm == 0x6)
-		{
-			operand.directAddress = LoadWordData(cpu);
-		}	
-		else
-		{
-			operand = EffectiveAddressCalculation[rm];
-
-		}	
-	} break;
-	case 0x01: // Memory Mode, 8-bit displacement
-	{
-		operand = EffectiveAddressCalculation[rm];
-		operand.displacement = LoadByteData(cpu);
-	} break;
-	case 0x02: // Memory Mode, 16-bit displacement
-	{
-		operand = EffectiveAddressCalculation[rm];
-		operand.displacement = LoadWordData(cpu);
-	} break;
-	case 0x03: // Register Mode, No Displacement
-	{
-        operand.baseRegister = rm;
-	} break;
-	}
-
-	return operand;
-}
-
-OperandType InterpretRmOperandType(uint8_t mod, uint8_t rm)
-{
-	switch (mod)
-	{
-	case 0x00: // Memory Mode, No Displacement
-	{
-		// Special case of MOD that indicates direct memory access with no displacement. 
-		if (rm == 0x6)
-			return DIRECT_ADDRESS;
-		else
-			return EFFECTIVE_ADDRESS_CALC;
-	}
-	case 0x01: // Memory Mode, 8-bit displacement
-	{
-		return EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT;
-	} 
-	case 0x02: // Memory Mode, 16-bit displacement
-	{
-		return EFFECTIVE_ADDRESS_CALC_W_DISPLACEMENT;
-	} 
-	case 0x03: // Register Mode, No Displacement
-	{
-        return REGISTER;
-	} 
-	default: // Just to prevent compiler warnings, there has to be a better way to handle this
-	{
-		return REGISTER;
-	}
-	}
-}
 
 /**
  * When direction == 0, operandA goes into src 
  * When direction == 1, operandB goes into src
  */
-void InterpretOperandDirection(Operand operandA, OperandType operandAType, Operand operandB, OperandType operandBType, Instruction &instruction, uint8_t direction)
+void InterpretOperandDirection()
 {
-	if (direction == 0) // SRC is in REG field
-	{
-		instruction.src = operandA;
-		instruction.srcType = operandAType;
-		instruction.dest = operandB;
-		instruction.destType = operandBType;
-	}
-	else // DEST is in REG field
-	{
-		instruction.src = operandB;
-		instruction.srcType = operandBType;
-		instruction.dest = operandA;
-		instruction.destType = operandAType;
-	}
+	// TODO? 
 }
 
-/**
- * @brief Decodes two-byte logic instructions (e.g., MOV reg/mem to reg/mem).
- * @param instruction The instruction structure to populate.
- * @param entry The instruction table entry with encoding details.
- * @param cpu The CPU structure; PC is advanced.
- * @note Handles 8086 instructions like MOV, ADD with MOD-RM and REG operands, extracting width, direction, and operands.
- */
-void DecodeTwoByteLogic(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
-{
-	struct TwoByteLogicEntry logicEntry = entry.encoding.twoByteLogicEntry;
-	uint8_t currentByte = GetInstructionByte(cpu.IP);
 
-	// Get width if w bit is present 
-	/* CODE REVIEW: There is probably a way to do this without a conditional jump instruction */
-	if (logicEntry.wMask != 0)  instruction.width = (currentByte & logicEntry.wMask);
-
-	// Get direction if d bit is present, direction is always in bit 1 if it is present so we can just shift right by 1 to get the value
-	uint8_t direction;
-	/* CODE REVIEW: There is probably a way to do this without the conditional */
-	if (logicEntry.dMask != 0) direction = (currentByte & logicEntry.dMask) >> 1;
-
-	currentByte = GetInstructionByte(cpu.IP);
-	Operand regOperand = { 0 };
-	OperandType regOperandType;
-	/* CODE REVIEW: MIs this necesary? What happens if regMask is 0, what is the type? We may be able to remove this conditional */
-	if (logicEntry.regMask != 0) 
-	{
-		regOperand.baseRegister = DecodeReg(logicEntry.regMask, logicEntry.regShift, currentByte);
-		regOperandType = REGISTER;
-	}
-	
-	uint8_t mod = DecodeMod(logicEntry.modMask, currentByte);
-	uint8_t rm = DecodeRm(logicEntry.rmMask, currentByte);
-	Operand rmOperand = InterpretModField(mod, rm, cpu);
-	OperandType rmOperandType = InterpretRmOperandType(mod, rm);
-
-	InterpretOperandDirection(regOperand, regOperandType, rmOperand, rmOperandType, instruction, direction);
-
-}
-
-/**
- * @brief Decodes two-byte logic instructions with immediate operands (e.g., MOV immediate to reg/mem).
- * @param instruction The instruction structure to populate.
- * @param entry The instruction table entry with encoding details.
- * @param cpu The CPU structure; PC is advanced.
- * @note Emulates 8086 microcode for instructions like MOV immediate, loading the immediate value after MOD-RM.
- */
-void DecodeTwoByteLogicImmediate(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
-{
-	struct TwoByteLogicImmediateEntry logicImmediateEntry = entry.encoding.twoByteLogicImmediateEntry;
-
-	uint8_t currentByte = GetInstructionByte(cpu.IP);
-
-	// Get width if w bit is present 
-	if (logicImmediateEntry.wMask != 0) instruction.width = (currentByte & logicImmediateEntry.wMask);
-
-	currentByte = GetInstructionByte(cpu.IP);
-	uint8_t mod = DecodeMod(logicImmediateEntry.modMask, currentByte);
-	uint8_t rm = DecodeRm(logicImmediateEntry.rmMask, currentByte);
-	instruction.dest = InterpretModField(mod, rm, cpu);
-	instruction.destType = InterpretRmOperandType(mod, rm);
-
-	instruction.src = { 0 };
-	instruction.src.immediate = instruction.width == 0 ? LoadByteData(cpu) : LoadWordData(cpu);
-	instruction.srcType = IMMEDIATE;
-}
-
-/**
- * @brief Decodes one-byte logic instructions with immediate operands (e.g., MOV immediate to register).
- * @param instruction The instruction structure to populate.
- * @param entry The instruction table entry with encoding details.
- * @param cpu The CPU structure; PC is advanced.
- * @note Handles 8086 instructions like MOV AL/AX, immediate, where the register is encoded in the opcode byte.
- */
-void DecodeOneByteLogicImmediate(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
-{
-	struct OneByteLogicImmediateEntry logicImmediateEntry = entry.encoding.oneByteLogicImmediateEncoding;
-
-	// Get width if w bit is present 
-	uint8_t currentByte = GetInstructionByte(cpu.IP);
-	instruction.width = (currentByte & logicImmediateEntry.wMask) >> logicImmediateEntry.wShift;
-
-	uint8_t reg = (currentByte & logicImmediateEntry.regMask);
-	
-	instruction.dest = { 0 };
-	instruction.dest.baseRegister = reg;
-	instruction.destType = REGISTER;
-
-	instruction.src = { 0 };
-	instruction.srcType = IMMEDIATE;
-
-	 instruction.src.immediate = instruction.width == 0 ? LoadByteData(cpu) : LoadWordData(cpu);
-}
-
-/**
- * @brief Decodes accumulator instructions (e.g., MOV accumulator, memory/immediate).
- * @param instruction The instruction structure to populate.
- * @param entry The instruction table entry with encoding details.
- * @param cpu The CPU structure; PC is advanced.
- * @note Acts like microcode for 8086 accumulator operations, such as MOV AL/AX, [mem] or MOV AL/AX, immediate, where the accumulator is implied.
- */
-void DecodeAccumulator(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
-{
-	struct OneByteAccumulatorEntry accumulatorEntry = entry.encoding.threeByteAccumulatorEncoding;
-	uint8_t direction = accumulatorEntry.direction;
-
-	uint8_t currentByte = GetInstructionByte(cpu.IP);
-	instruction.width = (currentByte & accumulatorEntry.wMask);
-
-	Operand operandA = { 0 }; 
-	OperandType operandAType = REGISTER;
-
-	Operand operandB = { 0 };
-	OperandType operandBType;
-	/* CODE REVIEW: Can we reduce conditionals here? (including ternary) */
-    if (accumulatorEntry.hasAddress)
-    {
-		operandB.directAddress = LoadWordData(cpu);
-		operandBType = DIRECT_ADDRESS;
-	}    
-    else
-    {
-		operandB.immediate = instruction.width == 0 ? LoadByteData(cpu) : LoadWordData(cpu);
-		operandBType = IMMEDIATE;
-	}   
-
-	InterpretOperandDirection(operandA, operandAType, operandB, operandBType, instruction, direction);
-    
-}
-
-void DecodeTwoByteArithmetic(Instruction& instruction, InstructionTableEntry& entry, struct CPU& cpu)
-{
-	TwoByteImmedSignedEntry signedEntry = entry.encoding.arithmeticTwoByteImmedSignedEntry;
-
-	uint8_t currentByte = GetInstructionByte(cpu.IP);
-
-	uint8_t sign = (currentByte & signedEntry.sMask) >> 1;
-	instruction.width = currentByte & signedEntry.wMask;
-
-	// Increment because all the following data is in byte 2
-	currentByte = GetInstructionByte(cpu.IP);
-	uint8_t mod = DecodeMod(signedEntry.modMask, currentByte);
-	uint8_t rm = DecodeRm(signedEntry.rmMask, currentByte);
-	uint8_t bitConst = DecodeBitConst(signedEntry.constMask, currentByte);
-    
-    instruction.mnemonic = DecodeMnemonic(bitConst);
-    instruction.dest = InterpretModField(mod, rm, cpu);
-	instruction.destType = InterpretRmOperandType(mod, rm);
-
-	instruction.src.immediate = (sign == 0 && instruction.width == 1) ? LoadWordData(cpu) : LoadByteData(cpu);
-	instruction.srcType = IMMEDIATE;
-}
 
 /**
  * @brief Reads binary file into memory
@@ -640,7 +397,7 @@ Program LoadProgramIntoMemory(std::string filePath)
 */
 void Execute(struct CPU &cpu)
 {
-	std::vector<Instruction> decodedInstructions = {};
+	// TODO....
 }
 
 /**
@@ -650,36 +407,25 @@ void Execute(struct CPU &cpu)
  * @param cpu The CPU structure; PC is advanced during decoding.
  * @note This function emulates the 8086's instruction decoding pipeline, routing opcodes to appropriate microcode-like handlers.
  */
-Instruction Decode(InstructionTableEntry& entry, struct CPU& cpu)
+void Decode(InstructionTableEntry& entry, DecodedInstruction &decodedInst, struct CPU& cpu)
 {
-	Instruction instruction;
-	instruction.mnemonic = entry.mnemonic;
+	decodedInst.opcode = entry.opcode;
+	uint8_t currentByte = GetByteFromMemory(cpu.IP);
 
-	switch (entry.category)
-	{
-	case ENCODING_TWO_BYTE_LOGIC:
-	{
-		DecodeTwoByteLogic(instruction, entry, cpu);
-	} break;
-	case ENCODING_TWO_BYTE_LOGIC_IMMEDIATE:
-	{
-		DecodeTwoByteLogicImmediate(instruction, entry, cpu);
-	} break;
-	case ENCODING_ONE_BYTE_LOGIC_IMMEDIATE:
-	{
-		DecodeOneByteLogicImmediate(instruction, entry, cpu);
-	} break;
-	case ENCODING_ONE_BYTE_ACCUMULATOR:
-	{
-		DecodeAccumulator(instruction, entry, cpu);
-	} break;
-	case ENCODING_TWO_BYTE_IMMEDIATE_SIGNED:
-	{
-		DecodeTwoByteArithmetic(instruction, entry, cpu);
-	} break;
-	}
+	uint8_t direction;
+	if (entry.dMask != NA) direction = (entry.dMask & currentByte) >> 1;
 
-	return instruction;
+	uint8_t width;
+	if (entry.wMask != NA) width = (entry.wMask & currentByte);
+
+	uint8_t sign;
+	if (entry.sMask != NA) sign = (entry.sMask & currentByte) >> 1;
+
+	if (entry.regByte == 2) currentByte = 
+
+	uint8_t reg;
+	if (entry.regMask != NA) reg = (entry.regMask & currentByte) >> entry.regShift;
+
 }
 
 /**
@@ -694,7 +440,7 @@ void Disassemble(Program &program)
 
 	while (cpu.IP < program.size)
 	{
-		uint8_t currentByte = GetInstructionByte(cpu.IP, false);
+		uint8_t currentByte = GetByteFromMemory(cpu.IP);
 
 		// Get opcode from byte
 		/* CODE REVIEW: I need to dig deeper into how std::optional works, I feel like this is overkill and probably can be accomplished with simple pointers. This would avoid the dereferencing below. */
@@ -706,10 +452,10 @@ void Disassemble(Program &program)
 		}
 
 		InstructionTableEntry entry = *opcodeResult;
-
-		Instruction instruction = Decode(entry, cpu);
+		DecodedInstruction decodedInst = { 0 };
+		Decode(entry, decodedInst, cpu);
  
-		WriteToFile(instruction, file);
+		WriteToFile(decodedInst, file);
 	}
 
 	CloseAsmFile(file);
