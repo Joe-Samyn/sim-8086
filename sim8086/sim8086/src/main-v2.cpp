@@ -1,5 +1,71 @@
 // sim8086.cpp : Defines the entry point for the application.
 
+
+/**
+ * Notes
+ * 
+ * Why Hardware Approach Doesnt Work:
+ * -----------------------------------
+ * - Look into more concrete reasons for why HW approach is bad such as:
+ * 	-> HW constraints
+ *  -> Clock cycle constraints
+ *  -> Why categorization was the solution for HW 
+ * This entire approach does not work as cleanly as I had hoped. The motivation behind this implementation was
+ * to understand the hardware of the Intel 8086 processor and mock it in C code. There are many issues with this
+ * mindset. First, this is not hardware. A C program does not have the same limitations of HW. For example, HW is
+ * expensive to develop and having unique chips/gates to process all 256 varaible length instructions is not cost 
+ * or space effective. Therefore steps have to be taken to try and reduce the amount of HW being used. This is 
+ * where things like categorizing instructions, programmable logic arrays, and microcode become valuable. Hardware
+ * has other constraints like:
+ *   - Comitting to an instruction and executing it in one path, therefore HW has to be precise 
+ *   - Cannot select incorrect instruction, go back, and fix it 
+ *   - Cannot look ahead into the byte stream, its executing bits as they come in 
+ *   - Every single gate cost money and space 
+ * A C program does not have these limitations, it can do every one of these things without much consequence other
+ * than performance. 
+ * 
+ * Why Mindset Doesn't Work:
+ * -------------------------
+ * One of the goals of this program was break the object oriented thinking and train my brain to think in a more data 
+ * oriented fashion. I thought I was doing this by breaking down the simulator into two systems: Decoding & Executing. 
+ * I am processing a stream of bytes and creating a data structure of an instruction out of this data. The OOP thinking
+ * found its way in still when I introduced categories like the 8086 HW did and started domain modeling. Categories are 
+ * assigning data to a domain and positioning the entire program around this domain. It takes the philosphy of the program 
+ * from "what data do I have and what am I doing with it", to "A instruction is a __ and has a __, how do I get the data out of this byte
+ * stream to satisfy this domain." This immediately adds unnecessary complexity to a program like enums, unions, 
+ * switch statements, branches, large structs, etc. A decoder that could be less than 500 lines starts growing to 
+ * thousands of lines. There are structs to represent everything: instructions, operands, table entries, instruction
+ * categories, etc. Just like that, we have an object oriented program in a more C fashion. 
+ * 	-> Main issue was domain modeling which led to OOP program 
+ * 
+ * Break it down into something simpler.  
+ * 
+ * What is an instruction in the input? 
+ * ------------------------------------
+ * An instruction that is input into the decoder is simply an array of bytes. The only thing we need to know is what data is in each bit or group of bits. 
+ * That is it! 
+ * 
+ * How do we represent this data in the simplest way possible?
+ * -----------------------------------------------------------
+ * We just need some data structure that tells us what property is next and how many bits/bytes it needs out of the current
+ * byte. 
+ * 
+ * What does an instruction table look like?
+ * -----------------------------------------
+ * An instruction table is still valid and table lookup is still probably the easiest way to find the proper instruction
+ * being decoded. The table just becomes a 2D array of this data. Each row is an instruction and each of the rows columns
+ * are the properties and number of bits needed. 
+ * 
+ * Why is this better?
+ * --------------------
+ * This eliminates ALL of the overhead of unions, categories, and extra structs. The code becomes just about reading 
+ * a bit stream for data, and mapping the data to a decoded instruction data structure that we can use to later print
+ * out proper 8086 assembly (while also keeping in mind data needed for the execution step that comes later). 
+ * 
+ * 
+ * 
+ */
+
 #include "sim8086.h"
 
 #include <fstream>
