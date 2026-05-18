@@ -12,8 +12,12 @@
  * 
  */
 
- // End of Program 
- #define EOP -1
+// End of Program 
+#define EOP -1
+
+/** Instruction Encoding Definitions */
+#define INST(opcode, mnemonic, ...) { opcode, #mnemonic, __VA_ARGS__}
+
 
 
 uint8_t Memory[1024 * 1024];
@@ -29,29 +33,38 @@ struct Program {
 	uint32_t endAddr;
 };
 
-enum Field {
-	OPCODE,
-	D,
-	W
-};
+/**
+ * Get the next byte from the code segment in memory and increment 
+ * the instruction pointer (IP).
+ */
+uint8_t GetNextByte(uint16_t &ip)
+{
+	return Memory[ip++];
+}
 
-struct InstructionField {
-	Field field;
-	uint8_t bits;
-	
+/**
+ * Get the current byte in the code segment of memory that IP points too. 
+ * Note: Does not increment IP. 
+ */
+uint8_t GetCurrentByte(uint16_t &ip)
+{
+	return Memory[ip];
+}
+
+struct InstEntry {
+	uint8_t opcode;
+	const char* mnemonic;
 };
 
 /* Instruction Table */
 #define Instructions \
-	X()
+	INST(0b100010, MOV)
 
-#define X() { }
-
-uint8_t InstructionTable[] = {
+InstEntry InstructionTable[] = {
 	Instructions
 };
 
-#undef X
+#undef Instructions
 
 std::ofstream OpenAsmFile(std::string name)
 {
@@ -118,13 +131,24 @@ void Decode()
 {
 	// TODO....
 }
+
 /**
  * Instruction Table should drive decode, not vice versa
  * An entry tells you how many bits/bytes to pull from the stream
  */
 void Disassemble(Program &program)
-{
-	// Find instruction 
+{	
+	CPU cpu = { 0 };
+	uint8_t currentByte = GetNextByte(cpu.IP);
+
+	/**
+	 * TODO: Not a great way to determine program end. We should be looking at the 
+	 * end address or something else. This is just a stop gap to get code flowing. 
+	 */
+	while(cpu.IP < program.size)
+	{
+		// Iterate instruction table looking for the correct instruction. 
+	}
 }
 
 int main(int argc, char* argv[])
