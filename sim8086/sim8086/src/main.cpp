@@ -15,8 +15,20 @@
 // End of Program 
 #define EOP -1
 
+enum BitsProperty : uint8_t
+{
+	Literal,
+	W_bit,
+	D_bit
+};
+
+
+/** Encoding Helpers */
+#define B(bits) { (Literal), (0b##bits), (8 - (sizeof(#bits) - 1)), (sizeof(#bits) - 1) }
+
+
 /** Instruction Encoding Definitions */
-#define INST(opcode, mnemonic, ...) { opcode, #mnemonic, __VA_ARGS__}
+#define INST(mnemonic, ...) { #mnemonic, __VA_ARGS__}
 
 
 
@@ -51,20 +63,39 @@ uint8_t GetCurrentByte(uint16_t &ip)
 	return Memory[ip];
 }
 
+/**
+ * Represents the bit patterns/fields in an Intel 8086 instruction
+ */
+struct Bits 
+{
+	// Name of the field being encoded
+	BitsProperty prop;
+	// Bit literal if exists (i.e. Opcode bit pattern, const bit pattern, etc. )
+	uint8_t value;
+	// Amount to shift if required 
+	uint8_t shift;
+	// The number of bits in the entry (i.e. the `w` field has count of 1)
+	uint8_t count;
+};
+
 struct InstEntry {
-	uint8_t opcode;
 	const char* mnemonic;
+	// Bit fields contain in the instruction. Entry 0 is always opcode 
+	Bits bits[16];
 };
 
 /* Instruction Table */
 #define Instructions \
-	INST(0b100010, MOV)
+	INST(MOV, { B(100010) } ), \
+	INST(MOV, { B(1011) } ) 
 
 InstEntry InstructionTable[] = {
 	Instructions
 };
 
 #undef Instructions
+
+#define TABLE_SIZE sizeof(InstructionTable) / sizeof(InstEntry)
 
 std::ofstream OpenAsmFile(std::string name)
 {
@@ -147,7 +178,19 @@ void Disassemble(Program &program)
 	 */
 	while(cpu.IP < program.size)
 	{
-		// Iterate instruction table looking for the correct instruction. 
+		for (int i = 0; i < TABLE_SIZE; i++)
+		{	
+			InstEntry inst = InstructionTable[i];
+			Bits opcode = inst.bits[0];
+			uint8_t byte = currentByte;
+
+			if ((opcode.value & (byte >> opcode.shift)) == opcode.value)
+			{
+				printf("-- Instruction Data --\nOpcode: %b\nMnemonic: %s\nSize: %d", opcode.value, inst.mnemonic, opcode.count);
+			}
+		}
+
+		cpu.IP++;
 	}
 }
 
