@@ -30,6 +30,8 @@ enum BitsProperty : uint8_t
 /** Instruction Encoding Definitions */
 #define INST(mnemonic, ...) { #mnemonic, __VA_ARGS__}
 
+#define D_bits { D_bit, 0b1, 1, 1 }
+
 
 
 uint8_t Memory[1024 * 1024];
@@ -86,8 +88,7 @@ struct InstEntry {
 
 /* Instruction Table */
 #define Instructions \
-	INST(MOV, { B(100010) } ), \
-	INST(MOV, { B(1011) } ) 
+	INST(MOV, { B(100010), D_bits, { W_bit, 0b10, 2, 1} } ), \
 
 InstEntry InstructionTable[] = {
 	Instructions
@@ -178,6 +179,7 @@ void Disassemble(Program &program)
 	 */
 	while(cpu.IP < program.size)
 	{
+		// Get the instruction 
 		for (int i = 0; i < TABLE_SIZE; i++)
 		{	
 			InstEntry inst = InstructionTable[i];
@@ -186,9 +188,15 @@ void Disassemble(Program &program)
 
 			if ((opcode.value & (byte >> opcode.shift)) == opcode.value)
 			{
-				printf("-- Instruction Data --\nOpcode: %b\nMnemonic: %s\nSize: %d", opcode.value, inst.mnemonic, opcode.count);
+				printf("-- Instruction Data --\nOpcode: %x\nMnemonic: %s\nSize: %d\n", opcode.value, inst.mnemonic, opcode.count);
+				int bitCount = opcode.count;
+
+
 			}
 		}
+
+		// Parse rest of the instruction bytes
+
 
 		cpu.IP++;
 	}
