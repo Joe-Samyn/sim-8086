@@ -1,7 +1,5 @@
 // sim8086.cpp : Defines the entry point for the application.
 
-#include "sim8086.h"
-
 #include <stdint.h>
 #include <fstream>
 #include <iostream>
@@ -13,24 +11,6 @@
  */
 
 #define ArrayCount(array) sizeof(array)/sizeof(array[0])
-
-enum BitsProperty : uint8_t
-{
-	Literal,
-	W_bit,
-	D_bit
-};
-
-
-/** Encoding Helpers */
-#define B(bits) { (Literal), (0b##bits), (8 - (sizeof(#bits) - 1)), (sizeof(#bits) - 1) }
-
-
-/** Instruction Encoding Definitions */
-#define INST(mnemonic, ...) { #mnemonic, __VA_ARGS__}
-
-#define D_bits { D_bit, 0b1, 1, 1 }
-
 
 
 uint8_t Memory[1024 * 1024];
@@ -64,13 +44,22 @@ uint8_t GetCurrentByte(uint16_t &ip)
 	return Memory[ip];
 }
 
+enum Field : uint8_t
+{
+	Literal,
+	W_bit,
+	D_bit,
+
+	Field_count
+};
+
 /**
  * Represents the bit patterns/fields in an Intel 8086 instruction
  */
 struct Bits 
 {
-	// Name of the field being encoded
-	BitsProperty prop;
+	// Name of the field being encoded (W, D, literal, etc.)
+	Field field;
 	// Bit literal if exists (i.e. Opcode bit pattern, const bit pattern, etc. )
 	uint8_t value;
 	// Amount to shift if required 
@@ -85,15 +74,24 @@ struct InstEntry {
 	Bits bits[16];
 };
 
-/* Instruction Table */
-#define Instructions \
-	INST(MOV, { B(100010), D_bits, { W_bit, 0b10, 2, 1} } ), \
-
 InstEntry InstructionTable[] = {
-	Instructions
+	#include "InstructionTable.inl"
 };
 
-#undef Instructions
+/* Operation Definitions */
+#define INST (mnemonic, ...) mnemonic
+enum Operation {
+
+	#include "InstructionTable.inl"
+
+	Op_count
+};
+#undef INST
+
+struct ParsedInst {
+	Operation op;
+	Bits bit[16];
+};
 
 std::ofstream OpenAsmFile(std::string name)
 {
@@ -162,6 +160,19 @@ void Decode()
 }
 
 /**
+ * Used to determine if all bits in an instruction have been decoded. 
+ * If all fields are 0, then its an uninitialized struct and is the end
+ * of the bits array. 
+ */
+bool IsBitsDefined(Bits bits)
+{
+	return bits.field == Literal
+		&& bits.count == 0
+		&& bits.shift == 0
+		&& bits.value == 0;
+}
+
+/**
  * Instruction Table should drive decode, not vice versa
  * An entry tells you how many bits/bytes to pull from the stream
  */
@@ -176,7 +187,33 @@ void Disassemble(Program &program)
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
         {
             InstEntry entry = InstructionTable[i];
-            
+			// Check if opcode of instruction matches byte
+            if (entry.bits[0].field == (currentByte >> entry.bits[0].shift))
+			{
+				// Instruction opcode matched, begin decode
+
+				uint8_t bitsIndex = 0;
+				uint8_t usedBits = 0;
+				while (!IsBitsDefined(entry.bits[bitsIndex]))
+				{
+					Bits field = entry.bits[bitsIndex];
+					switch(field)
+					{
+						case Literal:
+						{
+
+						}break;
+						case W_bit:
+						{
+
+						}break;
+						case D_bit:
+						{
+
+						};
+					}
+				}
+			}
 
         }
     }

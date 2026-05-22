@@ -1,13 +1,10 @@
 ﻿# CMakeList.txt : CMake project for sim8086, include source and define
 
 # project specific logic here.
-set(SRC "src/main.cpp"
-		"src/sim8086.h"
-		"src/Decoder.h"
-		"src/FileIO.h")
+set(SRC "src/Main.cpp")
 
 # Add source to this project's executable.
-add_executable (sim8086 ${SRC} "src/InstructionTable.h" "src/Hardware.h")
+add_executable (sim8086 ${SRC})
 
 # Add compile definitions 
 add_compile_definitions(DEBUG)
