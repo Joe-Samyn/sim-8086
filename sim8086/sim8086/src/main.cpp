@@ -12,8 +12,7 @@
  * 
  */
 
-// End of Program 
-#define EOP -1
+#define ArrayCount(array) sizeof(array)/sizeof(array[0])
 
 enum BitsProperty : uint8_t
 {
@@ -96,8 +95,6 @@ InstEntry InstructionTable[] = {
 
 #undef Instructions
 
-#define TABLE_SIZE sizeof(InstructionTable) / sizeof(InstEntry)
-
 std::ofstream OpenAsmFile(std::string name)
 {
 	std::ofstream asmFile;
@@ -173,33 +170,16 @@ void Disassemble(Program &program)
 	CPU cpu = { 0 };
 	uint8_t currentByte = GetNextByte(cpu.IP);
 
-	/**
-	 * TODO: Not a great way to determine program end. We should be looking at the 
-	 * end address or something else. This is just a stop gap to get code flowing. 
-	 */
-	while(cpu.IP < program.size)
-	{
-		// Get the instruction 
-		for (int i = 0; i < TABLE_SIZE; i++)
-		{	
-			InstEntry inst = InstructionTable[i];
-			Bits opcode = inst.bits[0];
-			uint8_t byte = currentByte;
+	while (currentByte != program.endAddr)
+    {
+        // Search Instruction table for matching instruction 
+        for (int i = 0; i < ArrayCount(InstructionTable); i++)
+        {
+            InstEntry entry = InstructionTable[i];
+            
 
-			if ((opcode.value & (byte >> opcode.shift)) == opcode.value)
-			{
-				printf("-- Instruction Data --\nOpcode: %x\nMnemonic: %s\nSize: %d\n", opcode.value, inst.mnemonic, opcode.count);
-				int bitCount = opcode.count;
-
-
-			}
-		}
-
-		// Parse rest of the instruction bytes
-
-
-		cpu.IP++;
-	}
+        }
+    }
 }
 
 int main(int argc, char* argv[])
