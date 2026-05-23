@@ -60,7 +60,7 @@ struct Bits
 {
 	// Name of the field being encoded (W, D, literal, etc.)
 	Field field;
-	// Bit literal if exists (i.e. Opcode bit pattern, const bit pattern, etc. )
+	// Bit literal if exists (i.e. Opcode bit pattern, const bit pattern, etc. ), otherwise this is bit mask to extract value
 	uint8_t value;
 	// Amount to shift if required 
 	uint8_t shift;
@@ -79,14 +79,15 @@ InstEntry InstructionTable[] = {
 };
 
 /* Operation Definitions */
-#define INST (mnemonic, ...) mnemonic
+
 enum Operation {
 
+    #define INST(mnemonic, ...) Op_##mnemonic
+    #define INST_ALT(...)
 	#include "InstructionTable.inl"
 
 	Op_count
 };
-#undef INST
 
 struct ParsedInst {
 	Operation op;
@@ -179,24 +180,34 @@ bool IsBitsDefined(Bits bits)
 void Disassemble(Program &program)
 {	
 	CPU cpu = { 0 };
-	uint8_t currentByte = GetNextByte(cpu.IP);
 
-	while (currentByte != program.endAddr)
+	while (cpu.IP <= program.endAddr)
     {
+        uint8_t currentByte = GetNextByte(cpu.IP);
+
         // Search Instruction table for matching instruction 
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
         {
             InstEntry entry = InstructionTable[i];
 			// Check if opcode of instruction matches byte
-            if (entry.bits[0].field == (currentByte >> entry.bits[0].shift))
+            if (entry.bits[0].value == (currentByte >> entry.bits[0].shift))
 			{
-				// Instruction opcode matched, begin decode
+                // Get Opcode field 
+                printf("Op: %x", entry.bits[0].value);
+				printf("\n");
 
-				uint8_t bitsIndex = 0;
-				uint8_t usedBits = 0;
+				// Instruction opcode matched, begin decode
+				uint8_t bitsIndex = 1;
+				uint8_t usedBits = entry.bits[0].count;;
+
 				while (!IsBitsDefined(entry.bits[bitsIndex]))
 				{
+
+                    if (usedBits >= 8) currentByte = GetNextByte(cpu.IP);
+
 					Bits bit = entry.bits[bitsIndex];
+                    // This is an uneeded switch. Almost every operation is going to be (currentByte & bit.value) >> bit.shift
+                    // This should populate a DecodeInstruction struct that can be used for either printing or executing 
 					switch(bit.field)
 					{
 						case Literal:
@@ -206,17 +217,24 @@ void Disassemble(Program &program)
 						}break;
 						case W_bit:
 						{
-							printf("W: %d", bit.)
+                            uint8_t w = (currentByte & bit.value) >> bit.shift;
+							printf("W: %d", w);
+                            printf("\n");
 						}break;
 						case D_bit:
 						{
-
+                            uint8_t d = (currentByte & bit.value) >> bit.shift;
+                            printf("D: %d", d);
+                            printf("\n");
 						} break;
 						default:
 						{
 
 						}
 					}
+
+                    usedBits += bit.count;
+                    bitsIndex++;
 				}
 			}
 
