@@ -196,21 +196,26 @@ void Disassemble(Program &program)
 				uint8_t usedBits = 0;
 				while (!IsBitsDefined(entry.bits[bitsIndex]))
 				{
-					Bits field = entry.bits[bitsIndex];
-					switch(field)
+					Bits bit = entry.bits[bitsIndex];
+					switch(bit.field)
 					{
 						case Literal:
 						{
-
+							printf("Literal: %x", bit.value);
+							printf("\n");
 						}break;
 						case W_bit:
 						{
-
+							printf("W: %d", bit.)
 						}break;
 						case D_bit:
 						{
 
-						};
+						} break;
+						default:
+						{
+
+						}
 					}
 				}
 			}
