@@ -49,8 +49,44 @@ enum Field : uint8_t
 	Literal,
 	W_bit,
 	D_bit,
+	Reg_bit,
+	Rm_bit,
+	Mod_bit,
+	Data_bit,
+	Addr_bit,
 
 	Field_count
+};
+
+enum ModCategory: uint8_t 
+{
+	Memory_mode_no_disp,
+	Memory_mode_8_bit_disp,
+	Memory_mode_16_bit_disp,
+	Register_mode,
+
+	Mod_category_count
+};
+
+enum EffectiveAddressBase: uint8_t 
+{
+	Effective_addr_direct_address,
+
+	Effective_addr_bx_si,
+	Effective_addr_bx_di,
+	Effective_addr_bp_si,
+	Effetive_addr_bp_di,
+	Effective_addr_si,
+	Effective_addr_di,
+	Effective_addr_bx,
+
+	Effective_addr_count
+};
+
+struct EffectiveAddrExpression
+{
+	EffectiveAddressBase base;
+	int16_t displacement;
 };
 
 /**
@@ -58,20 +94,15 @@ enum Field : uint8_t
  */
 struct Bits 
 {
-	// Name of the field being encoded (W, D, literal, etc.)
 	Field field;
-	// Bit literal if exists (i.e. Opcode bit pattern, const bit pattern, etc. ), otherwise this is bit mask to extract value
 	uint8_t value;
-	// Amount to shift if required 
 	uint8_t shift;
-	// The number of bits in the entry (i.e. the `w` field has count of 1)
 	uint8_t count;
 };
 
 struct InstEntry {
 	const char* mnemonic;
-	// Bit fields contain in the instruction. Entry 0 is always opcode 
-	Bits bits[16];
+	Bits bits[16];	// bits[0] = Opcode bits
 };
 
 InstEntry InstructionTable[] = {
@@ -80,7 +111,7 @@ InstEntry InstructionTable[] = {
 
 /* Operation Definitions */
 
-enum Operation {
+enum Operation: uint8_t {
 
     #define INST(mnemonic, ...) Op_##mnemonic
     #define INST_ALT(...)
@@ -89,9 +120,9 @@ enum Operation {
 	Op_count
 };
 
-struct ParsedInst {
+struct DecodedInst {
 	Operation op;
-	Bits bit[16];
+	Bits bits[16];
 };
 
 std::ofstream OpenAsmFile(std::string name)
@@ -118,11 +149,6 @@ void CloseAsmFile(std::ofstream &file)
 
 void WriteToFile()
 {
-	std::string src; /** TODO: */
-	std::string dest; /** TODO: */
-
-	std::string size; /** TODO: */
-
 	/** TODO: Write to file */
 }
 
@@ -150,16 +176,6 @@ Program LoadProgramIntoMemory(std::string filePath)
 	return program; 
 }
 
-void Execute(struct CPU &cpu)
-{
-	// TODO....
-}
-
-void Decode()
-{
-	// TODO....
-}
-
 /**
  * Used to determine if all bits in an instruction have been decoded. 
  * If all fields are 0, then its an uninitialized struct and is the end
@@ -173,6 +189,37 @@ bool IsBitsDefined(Bits bits)
 		&& bits.value == 0;
 }
 
+void Execute(struct CPU &cpu)
+{
+	// TODO....
+}
+
+DecodedInst Decode(CPU &cpu, InstEntry entry) 
+{
+	DecodedInst inst = {};
+	uint8_t byte = GetCurrentByte(cpu.IP);
+
+	// Get Opcode field 
+	printf("Op: %x", entry.bits[0].value);
+	printf("\n");
+
+	// Instruction opcode matched, begin decode
+	uint8_t bitsIndex = 1;
+	uint8_t usedBits = entry.bits[0].count;;
+
+	while (!IsBitsDefined(entry.bits[bitsIndex]))
+	{
+
+		if (usedBits >= 8) byte = GetNextByte(cpu.IP);
+
+		Bits bit = entry.bits[bitsIndex];
+	
+	}
+
+	return inst;
+}
+
+
 /**
  * Instruction Table should drive decode, not vice versa
  * An entry tells you how many bits/bytes to pull from the stream
@@ -185,60 +232,21 @@ void Disassemble(Program &program)
     {
         uint8_t currentByte = GetNextByte(cpu.IP);
 
+		InstEntry entry = {};
         // Search Instruction table for matching instruction 
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
         {
             InstEntry entry = InstructionTable[i];
-			// Check if opcode of instruction matches byte
+
+			// Break out of loop if matching opcode is found
             if (entry.bits[0].value == (currentByte >> entry.bits[0].shift))
 			{
-                // Get Opcode field 
-                printf("Op: %x", entry.bits[0].value);
-				printf("\n");
-
-				// Instruction opcode matched, begin decode
-				uint8_t bitsIndex = 1;
-				uint8_t usedBits = entry.bits[0].count;;
-
-				while (!IsBitsDefined(entry.bits[bitsIndex]))
-				{
-
-                    if (usedBits >= 8) currentByte = GetNextByte(cpu.IP);
-
-					Bits bit = entry.bits[bitsIndex];
-                    // This is an uneeded switch. Almost every operation is going to be (currentByte & bit.value) >> bit.shift
-                    // This should populate a DecodeInstruction struct that can be used for either printing or executing 
-					switch(bit.field)
-					{
-						case Literal:
-						{
-							printf("Literal: %x", bit.value);
-							printf("\n");
-						}break;
-						case W_bit:
-						{
-                            uint8_t w = (currentByte & bit.value) >> bit.shift;
-							printf("W: %d", w);
-                            printf("\n");
-						}break;
-						case D_bit:
-						{
-                            uint8_t d = (currentByte & bit.value) >> bit.shift;
-                            printf("D: %d", d);
-                            printf("\n");
-						} break;
-						default:
-						{
-
-						}
-					}
-
-                    usedBits += bit.count;
-                    bitsIndex++;
-				}
+				break;
 			}
 
         }
+
+		DecodedInst inst = Decode(cpu, entry);
     }
 }
 
