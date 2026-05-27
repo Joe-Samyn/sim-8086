@@ -1,6 +1,6 @@
 // sim8086.cpp : Defines the entry point for the application.
 
-#include <stdint.h>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 
@@ -75,7 +75,7 @@ enum EffectiveAddressBase: uint8_t
 	Effective_addr_bx_si,
 	Effective_addr_bx_di,
 	Effective_addr_bp_si,
-	Effetive_addr_bp_di,
+	Effective_addr_bp_di,
 	Effective_addr_si,
 	Effective_addr_di,
 	Effective_addr_bx,
@@ -100,12 +100,12 @@ struct Bits
 	uint8_t count;
 };
 
-struct InstEntry {
+struct Entry {
 	const char* mnemonic;
 	Bits bits[16];	// bits[0] = Opcode bits
 };
 
-InstEntry InstructionTable[] = {
+Entry InstructionTable[] = {
 	#include "InstructionTable.inl"
 };
 
@@ -120,9 +120,26 @@ enum Operation: uint8_t {
 	Op_count
 };
 
-struct DecodedInst {
+enum OperandType {
+	OpType_register,
+	OpType_effectiveAddrCalc,
+	OpType_immediate,
+
+	OpType_count
+};
+
+struct Operand {
+	OperandType type;
+	union {
+		uint8_t reg;
+		EffectiveAddrExpression expression;
+		int16_t immediate;
+	};
+};
+
+struct Instruction {
 	Operation op;
-	Bits bits[16];
+	Operand operands[2];
 };
 
 std::ofstream OpenAsmFile(std::string name)
@@ -183,10 +200,10 @@ Program LoadProgramIntoMemory(std::string filePath)
  */
 bool IsBitsDefined(Bits bits)
 {
-	return bits.field == Literal
+	return !(bits.field == Literal
 		&& bits.count == 0
 		&& bits.shift == 0
-		&& bits.value == 0;
+		&& bits.value == 0);
 }
 
 void Execute(struct CPU &cpu)
@@ -194,10 +211,10 @@ void Execute(struct CPU &cpu)
 	// TODO....
 }
 
-DecodedInst Decode(CPU &cpu, InstEntry entry) 
+Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
 {
-	DecodedInst inst = {};
-	uint8_t byte = GetCurrentByte(cpu.IP);
+	Instruction inst = {};
+	uint8_t byte = currentByte;
 
 	// Get Opcode field 
 	printf("Op: %x", entry.bits[0].value);
@@ -205,17 +222,39 @@ DecodedInst Decode(CPU &cpu, InstEntry entry)
 
 	// Instruction opcode matched, begin decode
 	uint8_t bitsIndex = 1;
-	uint8_t usedBits = entry.bits[0].count;;
+	uint8_t usedBits = entry.bits[0].count;
+	uint8_t decodedBits[Field_count];
 
-	while (!IsBitsDefined(entry.bits[bitsIndex]))
+	while (IsBitsDefined(entry.bits[bitsIndex]))
 	{
 
-		if (usedBits >= 8) byte = GetNextByte(cpu.IP);
-
 		Bits bit = entry.bits[bitsIndex];
+		uint8_t result = (byte >> bit.shift) & bit.value;
+		decodedBits[bit.field] = result;
+		bitsIndex++;
+		usedBits += bit.count;
+
+		if (usedBits >= 8) {
+			byte = GetNextByte(cpu.IP);
+			usedBits = 0;
+		}
 	
 	}
 
+	if (decodedBits[Mod_bit])
+	{
+		printf("MOD: %x", decodedBits[Mod_bit]);
+	}
+
+	if (decodedBits[Reg_bit])
+	{
+		printf("REG: %x", decodedBits[Reg_bit]);
+	}
+
+	if (decodedBits[Rm_bit])
+	{
+		printf("RM: %x", decodedBits[Rm_bit]);
+	}
 	return inst;
 }
 
@@ -232,11 +271,11 @@ void Disassemble(Program &program)
     {
         uint8_t currentByte = GetNextByte(cpu.IP);
 
-		InstEntry entry = {};
+		Entry entry = {};
         // Search Instruction table for matching instruction 
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
         {
-            InstEntry entry = InstructionTable[i];
+            entry = InstructionTable[i];
 
 			// Break out of loop if matching opcode is found
             if (entry.bits[0].value == (currentByte >> entry.bits[0].shift))
@@ -246,7 +285,7 @@ void Disassemble(Program &program)
 
         }
 
-		DecodedInst inst = Decode(cpu, entry);
+		Instruction inst = Decode(cpu, entry, currentByte);
     }
 }
 
