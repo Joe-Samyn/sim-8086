@@ -68,7 +68,7 @@ enum ModCategory: uint8_t
 	Mod_category_count
 };
 
-enum EffectiveAddressBase: uint8_t 
+enum EffectiveAddressCalculation: uint8_t 
 {
 	Effective_addr_direct_address,
 
@@ -85,7 +85,9 @@ enum EffectiveAddressBase: uint8_t
 
 struct EffectiveAddrExpression
 {
-	EffectiveAddressBase base;
+	EffectiveAddressCalculation calculation;
+	uint8_t base;
+	uint8_t index;
 	int16_t displacement;
 };
 
@@ -139,6 +141,8 @@ struct Operand {
 
 struct Instruction {
 	Operation op;
+	uint8_t w;
+	uint8_t d;
 	Operand operands[2];
 };
 
@@ -169,29 +173,6 @@ void WriteToFile()
 	/** TODO: Write to file */
 }
 
-Program LoadProgramIntoMemory(std::string filePath)
-{
-	// Open binary file, at the end (ate)
-	std::ifstream file(filePath, std::ios::binary | std::ios::ate);
-
-	if (!file.is_open() || errno == ENOENT)
-	{
-		std::cerr << "ERROR: Could not open file. File does not exist.\n";
-		return { 0 };
-	}
-
-	// Get file size
-	uint32_t length = static_cast<uint32_t>(file.tellg());
-	file.seekg(0, file.beg);
-	file.read(reinterpret_cast<char*>(Memory), length);
-
-	Program program = {
-		.size=length,
-		.startAddr=0,
-		.endAddr=length - 1
-	};
-	return program; 
-}
 
 /**
  * Used to determine if all bits in an instruction have been decoded. 
@@ -211,6 +192,30 @@ void Execute(struct CPU &cpu)
 	// TODO....
 }
 
+void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, Operand &operand)
+{
+	switch(mod)
+	{
+		case Memory_mode_no_disp:
+		{
+
+		} break;
+		case Memory_mode_8_bit_disp:
+		{
+
+		} break;
+		case Memory_mode_16_bit_disp:
+		{
+
+		} break;
+		case Register_mode:
+		{
+			operand.type = OpType_register;
+			operand.reg = rm;
+		} break;
+	}
+}
+
 Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
 {
 	Instruction inst = {};
@@ -224,13 +229,16 @@ Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
 	uint8_t bitsIndex = 1;
 	uint8_t usedBits = entry.bits[0].count;
 	uint8_t decodedBits[Field_count];
+	uint8_t decodedFields[Field_count];
 
+	// TODO: Need something here to identify if an error occurred and bits could not be parsed
 	while (IsBitsDefined(entry.bits[bitsIndex]))
 	{
 
 		Bits bit = entry.bits[bitsIndex];
 		uint8_t result = (byte >> bit.shift) & bit.value;
 		decodedBits[bit.field] = result;
+		decodedFields[bit.field] = 1;
 		bitsIndex++;
 		usedBits += bit.count;
 
@@ -241,20 +249,23 @@ Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
 	
 	}
 
-	if (decodedBits[Mod_bit])
+
+	inst.w = decodedBits[W_bit];
+	inst.d = decodedBits[D_bit];
+
+	if (decodedFields[Mod_bit] && decodedFields[Rm_bit])
 	{
-		printf("MOD: %x", decodedBits[Mod_bit]);
+		InterpretModRm(cpu, decodedBits[Mod_bit], decodedBits[Rm_bit], inst.operands[~inst.d]);
 	}
 
-	if (decodedBits[Reg_bit])
+	if (decodedFields[Reg_bit])
 	{
-		printf("REG: %x", decodedBits[Reg_bit]);
+		inst.operands[inst.d] = {
+			.type = OpType_register,
+			.reg = decodedBits[Reg_bit]
+		};
 	}
 
-	if (decodedBits[Rm_bit])
-	{
-		printf("RM: %x", decodedBits[Rm_bit]);
-	}
 	return inst;
 }
 
@@ -287,6 +298,30 @@ void Disassemble(Program &program)
 
 		Instruction inst = Decode(cpu, entry, currentByte);
     }
+}
+
+Program LoadProgramIntoMemory(std::string filePath)
+{
+	// Open binary file, at the end (ate)
+	std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+
+	if (!file.is_open() || errno == ENOENT)
+	{
+		std::cerr << "ERROR: Could not open file. File does not exist.\n";
+		return { 0 };
+	}
+
+	// Get file size
+	uint32_t length = static_cast<uint32_t>(file.tellg());
+	file.seekg(0, file.beg);
+	file.read(reinterpret_cast<char*>(Memory), length);
+
+	Program program = {
+		.size=length,
+		.startAddr=0,
+		.endAddr=length - 1
+	};
+	return program; 
 }
 
 int main(int argc, char* argv[])
