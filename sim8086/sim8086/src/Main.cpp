@@ -3,6 +3,11 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <cstdio>
+
+/*
+    TODO: Left off determining the best way to map register Index/offset to register names for pretty printing the assembly instructions. We probably just need an array of some kind with the string constants 
+*/
 
 /**
  * Bit Stream Approach
@@ -43,6 +48,20 @@ uint8_t GetCurrentByte(uint16_t &ip)
 {
 	return Memory[ip];
 }
+
+enum RegisterIndex {
+
+    Register_a,
+    Register_b,
+    Register_c,
+    Register_d,
+    Register_sp,
+    Register_bp,
+    Register_si,
+    Register_bi,
+
+    Register_count
+};
 
 enum Field : uint8_t
 {
@@ -122,6 +141,52 @@ enum Operation: uint8_t {
 	Op_count
 };
 
+const char* Mnemonics[] = {
+    #define INST(mnemonic, ...) #mnemonic
+    #define INST_LAT(...)
+    #include "InstructionTable.inl"
+};
+
+const char* RegisterNames[Register_count][3] = {
+    {"AL", "AH", "AX"},
+    {"CL", "CH", "CX"},
+    {"DL", "DH", "DX"},
+    {"BL", "BH", "BX"}
+};
+
+struct RegisterAccess {
+    uint8_t index;      // index of the register in the 8086 manual. For example, register AX/AL is 000 while register CX/CL is 001
+    uint8_t offset;     // offset in the register, 0 - low bits, 1 - high bits, 2 - full 16 bits (no offset)
+};
+
+void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
+{
+    switch(reg)
+    {
+        case 0b000:
+        {
+            regAccess.index = Register_a;
+            regAccess.offset = w == 0 ? 2 : 0;
+        } break; 
+        case 0b001:
+            return Register_c;
+        case 0b010:
+            return Register_d;
+        case 0b011:
+            return Register_b;
+        case 0b100:
+            return w == 0 ? Register_a : Register_sp;
+        case 0b101:
+            return w == 0 ? Register_c : Register_sp;
+        case 0b110:
+            return w == 0 ? Register_d : Register_sp;
+        case 0b111:
+            return w == 0 ? Register_b : Register_sp;
+    }
+}
+
+uint8_t GetRegisterOffset(uint8_t )
+
 enum OperandType {
 	OpType_register,
 	OpType_effectiveAddrCalc,
@@ -133,7 +198,7 @@ enum OperandType {
 struct Operand {
 	OperandType type;
 	union {
-		uint8_t reg;
+		RegisterAccess reg;
 		EffectiveAddrExpression expression;
 		int16_t immediate;
 	};
@@ -171,6 +236,11 @@ void CloseAsmFile(std::ofstream &file)
 void WriteToFile()
 {
 	/** TODO: Write to file */
+}
+
+void WriteToConsole(Instruction inst) 
+{
+    std::printf("%s %s, %s", Mnemonics[inst.op], )
 }
 
 
@@ -211,7 +281,9 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, Operand &operand)
 		case Register_mode:
 		{
 			operand.type = OpType_register;
-			operand.reg = rm;
+			operand.reg = {
+                .id = rm
+            };
 		} break;
 	}
 }
