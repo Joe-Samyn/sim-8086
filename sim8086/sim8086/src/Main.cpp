@@ -152,6 +152,10 @@ const char* RegisterNames[Register_count][3] = {
 	{"BL", "BH", "BX"},
     {"CL", "CH", "CX"},
     {"DL", "DH", "DX"},
+	{"", "", "SP"},
+	{"", "", "BP"},
+	{"", "", "SI"},
+	{"", "", "DI"}
     
 };
 
@@ -338,7 +342,7 @@ Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
 		bitsIndex++;
 		usedBits += bit.count;
 
-		if (usedBits >= 8) {
+		if (usedBits >= 8 && IsBitsDefined(entry.bits[bitsIndex + 1])) {
 			byte = GetNextByte(cpu.IP);
 			usedBits = 0;
 		}

@@ -9,3 +9,5 @@ bits 16
 
 ; Register to register moves
 mov ax, bx
+mov cx, dx
+mov si, bp
