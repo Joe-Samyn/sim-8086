@@ -264,6 +264,22 @@ void CloseAsmFile(std::ofstream &file)
 	file.close();
 }
 
+void PrintOperand(Operand op)
+{
+	switch(op.type)
+	{
+		case OpType_register:
+		{
+			const char* name = RegisterNames[op.reg.index][op.reg.offset];
+			printf("%s", name);		
+		} break;
+		default:
+		{
+
+		}
+	}
+}
+
 void WriteToFile()
 {
 	/** TODO: Write to file */
@@ -271,9 +287,18 @@ void WriteToFile()
 
 void WriteToConsole(Instruction inst) 
 {
-	const char* dest = RegisterNames[inst.operands[0].reg.index][inst.operands[0].reg.offset];	
-	const char* src = RegisterNames[inst.operands[1].reg.index][inst.operands[1].reg.offset];
-    std::printf("%s %s, %s\n", Mnemonics[inst.op], dest, src);
+	// Print mnemonic/operation 
+	printf("%s ", Mnemonics[inst.op]);
+
+	// Print dest operand 
+	PrintOperand(inst.operands[0]);
+	
+	printf(", ");
+	
+	// Print src operand 
+	PrintOperand(inst.operands[1]);
+	
+	printf("\n");
 }
 
 
