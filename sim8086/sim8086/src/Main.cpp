@@ -58,7 +58,7 @@ enum RegisterIndex {
     Register_sp,
     Register_bp,
     Register_si,
-    Register_bi,
+    Register_di,
 
     Register_count
 };
@@ -149,10 +149,17 @@ const char* Mnemonics[] = {
 
 const char* RegisterNames[Register_count][3] = {
     {"AL", "AH", "AX"},
+	{"BL", "BH", "BX"},
     {"CL", "CH", "CX"},
     {"DL", "DH", "DX"},
-    {"BL", "BH", "BX"}
+    
 };
+
+// Constants to represent different parts of register access
+#define LO_BITS 0
+#define HI_BITS 1
+#define FULL_BITS 2
+
 
 struct RegisterAccess {
     uint8_t index;      // index of the register in the 8086 manual. For example, register AX/AL is 000 while register CX/CL is 001
@@ -166,26 +173,46 @@ void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
         case 0b000:
         {
             regAccess.index = Register_a;
-            regAccess.offset = w == 0 ? 2 : 0;
+            regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
         } break; 
         case 0b001:
-            return Register_c;
+        {
+        	regAccess.index = Register_c;
+			regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;	
+        } break;
         case 0b010:
-            return Register_d;
+        {
+        	regAccess.index = Register_d;
+			regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;	
+        } break;  
         case 0b011:
-            return Register_b;
+        {
+        	regAccess.index = Register_b;
+			regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;	
+        } break;  
         case 0b100:
-            return w == 0 ? Register_a : Register_sp;
+        {
+        	regAccess.index = w == 0 ? Register_a : Register_sp;
+			regAccess.offset = (w == 0) ? HI_BITS : FULL_BITS;	
+        } break;
         case 0b101:
-            return w == 0 ? Register_c : Register_sp;
+        {
+        	regAccess.index = w == 0 ? Register_c : Register_bp;
+			regAccess.offset = (w == 0) ? HI_BITS : FULL_BITS;	
+        } break;
         case 0b110:
-            return w == 0 ? Register_d : Register_sp;
+        {
+        	regAccess.index = w == 0 ? Register_a : Register_si;
+			regAccess.offset = (w == 0) ? HI_BITS : FULL_BITS;	
+        } break;
         case 0b111:
-            return w == 0 ? Register_b : Register_sp;
+        {
+        	regAccess.index = w == 0 ? Register_a : Register_di;
+			regAccess.offset = (w == 0) ? HI_BITS : FULL_BITS;	
+        } break;
     }
 }
 
-uint8_t GetRegisterOffset(uint8_t )
 
 enum OperandType {
 	OpType_register,
@@ -240,7 +267,9 @@ void WriteToFile()
 
 void WriteToConsole(Instruction inst) 
 {
-    std::printf("%s %s, %s", Mnemonics[inst.op], )
+	const char* dest = RegisterNames[inst.operands[0].reg.index][inst.operands[0].reg.offset];	
+	const char* src = RegisterNames[inst.operands[1].reg.index][inst.operands[1].reg.offset];
+    std::printf("%s %s, %s\n", Mnemonics[inst.op], dest, src);
 }
 
 
@@ -262,7 +291,7 @@ void Execute(struct CPU &cpu)
 	// TODO....
 }
 
-void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, Operand &operand)
+void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &operand)
 {
 	switch(mod)
 	{
@@ -281,9 +310,8 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, Operand &operand)
 		case Register_mode:
 		{
 			operand.type = OpType_register;
-			operand.reg = {
-                .id = rm
-            };
+			operand.reg = {};
+			DecodeRegister(rm, w, operand.reg);	
 		} break;
 	}
 }
@@ -292,10 +320,6 @@ Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
 {
 	Instruction inst = {};
 	uint8_t byte = currentByte;
-
-	// Get Opcode field 
-	printf("Op: %x", entry.bits[0].value);
-	printf("\n");
 
 	// Instruction opcode matched, begin decode
 	uint8_t bitsIndex = 1;
@@ -327,17 +351,21 @@ Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
 
 	if (decodedFields[Mod_bit] && decodedFields[Rm_bit])
 	{
-		InterpretModRm(cpu, decodedBits[Mod_bit], decodedBits[Rm_bit], inst.operands[~inst.d]);
+		Operand op = {};
+		InterpretModRm(cpu, decodedBits[Mod_bit], decodedBits[Rm_bit], inst.w, op);
+		inst.operands[!inst.d] = op;
 	}
 
 	if (decodedFields[Reg_bit])
 	{
+		RegisterAccess a = {};
+		DecodeRegister(decodedBits[Reg_bit], inst.w, a);
 		inst.operands[inst.d] = {
 			.type = OpType_register,
-			.reg = decodedBits[Reg_bit]
+			.reg = a		
 		};
 	}
-
+	
 	return inst;
 }
 
@@ -369,6 +397,7 @@ void Disassemble(Program &program)
         }
 
 		Instruction inst = Decode(cpu, entry, currentByte);
+		WriteToConsole(inst);
     }
 }
 
