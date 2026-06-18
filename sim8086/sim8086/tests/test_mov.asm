@@ -8,15 +8,16 @@
 bits 16
 
 ; Full register to register moves 
-; mov ax, bx
-; mov cx, dx
-; mov si, bp
+mov ax, bx
+mov cx, dx
+mov si, bp
 
-; ; Low bit register to register moves 
-; mov al, bl
-; mov cl, dl
+; Low bit register to register moves 
+mov al, bl
+mov cl, dl
 
-; ; Effective address calculation moves 
-; mov cx, [bx + si]
-; mov dx, [39]
+; Effective address calculation moves 
+mov cx, [bx + si]
+mov bx, [bx + di]
+mov dx, [39]
 mov cx, [-5]

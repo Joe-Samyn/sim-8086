@@ -16,7 +16,9 @@ TODO: Left off determining the best way to map register Index/offset to register
  */
 
 #define ArrayCount(array) sizeof(array)/sizeof(array[0])
-
+#define LO_BITS 0
+#define HI_BITS 1
+#define FULL_BITS 2
 
 uint8_t Memory[1024 * 1024];
 
@@ -116,6 +118,7 @@ enum EffectiveAddressCalculation: uint8_t
     Effective_addr_si,
     Effective_addr_di,
     Effective_addr_bx,
+    Effective_addr_bp,
 
     Effective_addr_count
 };
@@ -136,15 +139,60 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
             {
                 expression.calculationType = Effective_addr_bx_si;
                 expression.base.index = Register_b;
-                expression.base.offset = 2;
+                expression.base.offset = FULL_BITS ;
 
                 expression.index.index = Register_si;
-                expression.index.offset = 2;
+                expression.index.offset = FULL_BITS;
             } break;
-        default:
+        case 0b001:
             {
+                expression.calculationType = Effective_addr_bx_di;
+                expression.base.index = Register_b;
+                expression.base.offset = FULL_BITS;
 
-            }
+                expression.index.index = Register_di;
+                expression.index.offset = FULL_BITS;
+            } break;
+        case 0b010:
+            {
+                expression.calculationType = Effective_addr_bp_si;
+                expression.base.index = Register_bp;
+                expression.base.offset = FULL_BITS;
+
+                expression.index.index = Register_si;
+                expression.index.offset = FULL_BITS;
+            } break;
+        case 0b011:
+            {
+                expression.calculationType = Effective_addr_bp_di;
+                expression.base.index = Register_bp;
+                expression.base.offset = FULL_BITS;
+
+                expression.index.index = Register_di;
+                expression.index.offset = FULL_BITS;
+            } break;
+        case 0b100:
+            {
+                expression.calculationType = Effective_addr_si;
+                expression.base.index = Register_si;
+                expression.base.offset = FULL_BITS;
+            } break;
+        case 0b101:
+            {
+                expression.calculationType = Effective_addr_di;
+                expression.base.index = Register_di;
+                expression.base.offset = FULL_BITS;
+            } break;
+        case 0b110:
+            {
+                // TODO: Just handle Direct Address here: if (mod == Memory_mode_no_displacement
+            }break;
+        case 0b111:
+            {
+                expression.calculationType = Effective_addr_bx;
+                expression.base.index = Register_b;
+                expression.base.offset = FULL_BITS;
+            } break; 
     }
 }
 
@@ -197,10 +245,7 @@ const char* RegisterNames[Register_count][3] = {
 
 };
 
-// Constants to represent different parts of register access
-#define LO_BITS 0
-#define HI_BITS 1
-#define FULL_BITS 2
+
 
 
 void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
@@ -297,6 +342,38 @@ void CloseAsmFile(std::ofstream &file)
     file.close();
 }
 
+void PrintEffectiveAddressExpression(Operand op)
+{
+    switch(op.expression.calculationType)
+    {
+        case Effective_addr_direct_address:
+            {
+                printf("[%d]", op.expression.displacement); 
+            } break;
+        case Effective_addr_bx_si:
+        case Effective_addr_bx_di:
+        case Effective_addr_bp_si:
+        case Effective_addr_bp_di:
+            {
+                const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
+                const char* index = RegisterNames[op.expression.index.index][op.expression.index.offset];
+                if (op.expression.displacement == 0)
+                {
+                    printf("[%s + %s]", base, index);
+                }
+            } break;
+        case Effective_addr_si:
+        case Effective_addr_di:
+        case Effective_addr_bx:
+            {
+                const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
+                if (op.expression.displacement == 0)
+                {
+                    printf("[%s]", base);
+                }
+            } break;
+    }
+}
 void PrintOperand(Operand op)
 {
     switch(op.type)
@@ -308,19 +385,7 @@ void PrintOperand(Operand op)
             } break;
         case OpType_effectiveAddrCalc:
             {
-                if (op.expression.calculationType == EffectiveAddressCalculation::Effective_addr_direct_address)
-                {
-                    printf("[%d]", op.expression.displacement);
-                }
-                else
-                {
-                    const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
-                    const char* index = RegisterNames[op.expression.index.index][op.expression.index.offset];
-                    if (op.expression.displacement == 0)
-                    {
-                        printf("[%s + %s]", base, index);
-                    }
-                }
+                PrintEffectiveAddressExpression(op);
             } break;
         default:
             {
