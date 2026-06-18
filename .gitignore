@@ -10,6 +10,7 @@ cmake-build-*/
 *.vcxproj.user
 *.sln
 CMakeSettings.json
+.vscode/
 
 # CMake generated
 CMakeCache.txt
