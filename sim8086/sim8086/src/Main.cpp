@@ -77,6 +77,11 @@ enum Field : uint8_t
 	Field_count
 };
 
+struct RegisterAccess {
+    uint8_t index;      // index of the register in the 8086 manual. For example, register AX/AL is 000 while register CX/CL is 001
+    uint8_t offset;     // offset in the register, 0 - low bits, 1 - high bits, 2 - full 16 bits (no offset)
+};
+
 enum ModCategory: uint8_t 
 {
 	Memory_mode_no_disp,
@@ -104,11 +109,30 @@ enum EffectiveAddressCalculation: uint8_t
 
 struct EffectiveAddrExpression
 {
-	EffectiveAddressCalculation calculation;
-	uint8_t base;
-	uint8_t index;
+    EffectiveAddressCalculation calculationType;
+	RegisterAccess base;
+	RegisterAccess index;
 	int16_t displacement;
 };
+
+void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpression &expression) 
+{
+    switch(rm)
+    {
+        case 0b000:
+        {
+            expression.base.index = Register_b;
+            expression.base.offset = 2;
+
+            expression.index.index = Register_si;
+            expression.index.offset = 2;
+        } break;
+        default:
+        {
+
+        }
+    }
+}
 
 /**
  * Represents the bit patterns/fields in an Intel 8086 instruction
@@ -164,11 +188,6 @@ const char* RegisterNames[Register_count][3] = {
 #define HI_BITS 1
 #define FULL_BITS 2
 
-
-struct RegisterAccess {
-    uint8_t index;      // index of the register in the 8086 manual. For example, register AX/AL is 000 while register CX/CL is 001
-    uint8_t offset;     // offset in the register, 0 - low bits, 1 - high bits, 2 - full 16 bits (no offset)
-};
 
 void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
 {
@@ -273,6 +292,12 @@ void PrintOperand(Operand op)
 			const char* name = RegisterNames[op.reg.index][op.reg.offset];
 			printf("%s", name);		
 		} break;
+        case OpType_effectiveAddrCalc:
+        {
+            const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
+            const char* index = RegisterNames[op.expression.index.index][op.expression.index.offset];
+            printf("[%s + %s]", base, index);
+        } break;
 		default:
 		{
 
@@ -326,6 +351,10 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
 	{
 		case Memory_mode_no_disp:
 		{
+            EffectiveAddrExpression exp = {};
+            DecodeEffectiveAddrExpression(mod, rm, exp);
+            operand.type = OpType_effectiveAddrCalc;
+            operand.expression = exp;
 
 		} break;
 		case Memory_mode_8_bit_disp:
@@ -382,14 +411,14 @@ Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
 	{
 		Operand op = {};
 		InterpretModRm(cpu, decodedBits[Mod_bit], decodedBits[Rm_bit], inst.w, op);
-		inst.operands[!inst.d] = op;
+		inst.operands[inst.d] = op;
 	}
 
 	if (decodedFields[Reg_bit])
 	{
 		RegisterAccess a = {};
 		DecodeRegister(decodedBits[Reg_bit], inst.w, a);
-		inst.operands[inst.d] = {
+		inst.operands[!inst.d] = {
 			.type = OpType_register,
 			.reg = a		
 		};

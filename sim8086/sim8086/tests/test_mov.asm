@@ -15,3 +15,6 @@ mov si, bp
 ; Low bit register to register moves 
 mov al, bl
 mov cl, dl
+
+; Effective address calculation moves 
+mov cx, [bx + si]
