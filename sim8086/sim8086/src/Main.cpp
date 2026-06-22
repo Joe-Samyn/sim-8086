@@ -133,7 +133,7 @@ struct EffectiveAddrExpression
     int16_t displacement;
 };
 
-void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpression &expression) 
+void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpression &expression, CPU &cpu) 
 {
     switch(rm)
     {
@@ -187,7 +187,17 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
             } break;
         case 0b110:
             {
-                // TODO: Just handle Direct Address here: if (mod == Memory_mode_no_displacement
+                if (mod == Memory_mode_no_disp)
+                {
+                    expression.calculationType = Effective_addr_direct_address; 
+                    expression.displacement = (int16_t)GetNextWord(cpu.IP);
+                }
+                else
+                {
+                    expression.calculationType = Effective_addr_bp;
+                    expression.base.index = Register_bp;
+                    expression.base.offset = FULL_BITS;
+                }
             }break;
         case 0b111:
             {
@@ -477,18 +487,9 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
         case Memory_mode_no_disp:
             {
                 operand.type = OpType_effectiveAddrCalc;
-
-                if (rm == DIRECT_ADDRESS)
-                {
-                    operand.expression.calculationType = Effective_addr_direct_address;
-                    operand.expression.displacement = (int16_t)GetNextWord(cpu.IP);           
-                }
-                else
-                {
-                    EffectiveAddrExpression exp = {};
-                    DecodeEffectiveAddrExpression(mod, rm, exp);
-                    operand.expression = exp;
-                }
+                EffectiveAddrExpression exp = {};
+                DecodeEffectiveAddrExpression(mod, rm, exp, cpu);
+                operand.expression = exp;
             } break;
         case Memory_mode_8_bit_disp:
             {
