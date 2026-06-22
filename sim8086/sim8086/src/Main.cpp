@@ -19,6 +19,8 @@ TODO: Left off determining the best way to map register Index/offset to register
 #define LO_BITS 0
 #define HI_BITS 1
 #define FULL_BITS 2
+#define TRUE 1
+#define FALSE 0
 
 uint8_t Memory[1024 * 1024];
 
@@ -48,7 +50,7 @@ uint8_t GetNextByte(uint16_t &ip)
  */
 uint8_t GetCurrentByte(uint16_t &ip)
 {
-    return Memory[ip];
+    return Memory[ip - 1];
 }
 
 /**
@@ -209,7 +211,7 @@ struct Bits
 
 struct Entry {
     const char* mnemonic;
-    Bits bits[16];	// bits[0] = Opcode bits
+    Bits bits[Field::Field_count];	// bits[0] = Opcode bits TODO: Need to get rid of 16 and use proper constant like Field::Field_count 
 };
 
 Entry InstructionTable[] = {
@@ -421,6 +423,7 @@ void WriteToConsole(Instruction inst)
  * If all fields are 0, then its an uninitialized struct and is the end
  * of the bits array. 
  */
+// Does this get inlined and become a preprocessor directive? 
 bool IsBitsDefined(Bits bits)
 {
     return !(bits.field == Literal
@@ -472,31 +475,44 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
     }
 }
 
-Instruction Decode(CPU &cpu, Entry entry, uint8_t currentByte)
+// TODO: Is Entry small enough to be passed via stack? I believe its 64 bytes that can be passed via stack without 
+// any cost overhead. We just want to make sure that its not being passed on heap or via pointer 
+Instruction Decode(CPU &cpu, Entry entry)
 {
     Instruction inst = {};
-    uint8_t byte = currentByte;
+    uint8_t byte = GetCurrentByte(cpu.IP);
 
     // Instruction opcode matched, begin decode
     uint8_t bitsIndex = 1;
+    // Replace magic '0' with proper constant OpCode_bits or something
     uint8_t usedBits = entry.bits[0].count;
+
     uint8_t decodedBits[Field_count];
     uint8_t decodedFields[Field_count];
 
-    // TODO: Need something here to identify if an error occurred and bits could not be parsed
-    while (IsBitsDefined(entry.bits[bitsIndex]))
+    // NOTE (Joe): I feel like there is a cleaner way to do this entire loop. 
+    while (bitsIndex < Field::Field_count)
     {
 
         Bits bit = entry.bits[bitsIndex];
         uint8_t result = (byte >> bit.shift) & bit.value;
         decodedBits[bit.field] = result;
-        decodedFields[bit.field] = 1;
+        decodedFields[bit.field] = TRUE; 
         bitsIndex++;
         usedBits += bit.count;
 
-        if (usedBits >= 8 && IsBitsDefined(entry.bits[bitsIndex + 1])) {
-            byte = GetNextByte(cpu.IP);
-            usedBits = 0;
+        bool isNextBitDefined = IsBitsDefined(entry.bits[bitsIndex]);
+        
+        if (isNextBitDefined)
+        {
+            if (usedBits >= 8)
+            {
+                byte = GetNextByte(cpu.IP);
+                usedBits = 0;
+            }
+        }
+        else {
+            break;
         }
 
     }
@@ -539,12 +555,14 @@ void Disassemble(Program &program)
         uint8_t currentByte = GetNextByte(cpu.IP);
 
         Entry entry = {};
+
         // Search Instruction table for matching instruction 
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
         {
             entry = InstructionTable[i];
 
             // Break out of loop if matching opcode is found
+            // TODO: Need to replace magic '0' with proper constant like OpCode_Bits or something
             if (entry.bits[0].value == (currentByte >> entry.bits[0].shift))
             {
                 break;
@@ -552,7 +570,7 @@ void Disassemble(Program &program)
 
         }
 
-        Instruction inst = Decode(cpu, entry, currentByte);
+        Instruction inst = Decode(cpu, entry);
         WriteToConsole(inst);
     }
 }
