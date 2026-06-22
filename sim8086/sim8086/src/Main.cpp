@@ -276,23 +276,55 @@ void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
             } break;  
         case 0b100:
             {
-                regAccess.index = w == 0 ? Register_a : Register_sp;
-                regAccess.offset = (w == 0) ? HI_BITS : FULL_BITS;	
+                if (w == 0)
+                {
+                    regAccess.index = Register_a;
+                    regAccess.offset = HI_BITS;
+                }
+                else
+                {
+                    regAccess.index = Register_sp;
+                    regAccess.offset = FULL_BITS;
+                }
             } break;
         case 0b101:
             {
-                regAccess.index = w == 0 ? Register_c : Register_bp;
-                regAccess.offset = (w == 0) ? HI_BITS : FULL_BITS;	
+                if (w == 0)
+                {
+                    regAccess.index = Register_c;
+                    regAccess.offset = HI_BITS;
+                }
+                else
+                {
+                    regAccess.index = Register_bp;
+                    regAccess.offset = FULL_BITS;
+                }
             } break;
         case 0b110:
             {
-                regAccess.index = w == 0 ? Register_a : Register_si;
-                regAccess.offset = (w == 0) ? HI_BITS : FULL_BITS;	
+                if (w == 0)
+                {
+                    regAccess.index = Register_d;
+                    regAccess.offset = HI_BITS;
+                }
+                else
+                {
+                    regAccess.index = Register_si;
+                    regAccess.offset = FULL_BITS;
+                }
             } break;
         case 0b111:
             {
-                regAccess.index = w == 0 ? Register_a : Register_di;
-                regAccess.offset = (w == 0) ? HI_BITS : FULL_BITS;	
+                if (w == 0)
+                {
+                    regAccess.index = Register_b;
+                    regAccess.offset = HI_BITS;
+                }
+                else
+                {
+                    regAccess.index = Register_di;
+                    regAccess.offset = FULL_BITS;
+                }
             } break;
     }
 }
