@@ -113,5 +113,19 @@
                 }
             }
         }
+    ],
+    "testPresets": [
+        {
+            "name": "make-test",
+            "description": "Run automated tests for 8086 simulator in Linux environment using Makefiles",
+            "displayName": "Makefile Test",
+            "configurePreset": "make-debug",
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "stopOnFailure": true
+            }
+        }
     ]
 }
