@@ -5,9 +5,6 @@
 #include <iostream>
 #include <cstdio>
 
-/*
-TODO: Left off determining the best way to map register Index/offset to register names for pretty printing the assembly instructions. We probably just need an array of some kind with the string constants 
- */
 
 /**
  * Bit Stream Approach
@@ -130,6 +127,7 @@ struct EffectiveAddrExpression
     EffectiveAddressCalculation calculationType;
     RegisterAccess base;
     RegisterAccess index;
+    uint8_t hasDisplacement;
     int16_t displacement;
 };
 
@@ -401,23 +399,47 @@ void PrintEffectiveAddressExpression(Operand op)
             {
                 const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
                 const char* index = RegisterNames[op.expression.index.index][op.expression.index.offset];
-                if (op.expression.displacement == 0)
+                if (op.expression.hasDisplacement == FALSE)
                 {
                     printf("[%s + %s]", base, index);
+                }
+                else
+                {   
+                    if (op.expression.displacement < 0)
+                    {
+                        printf("[%s + %s - %d]", base, index, -op.expression.displacement);
+                    }
+                    else
+                    {
+                        printf("[%s + %s + %d]", base, index, op.expression.displacement);
+                    }
                 }
             } break;
         case Effective_addr_si:
         case Effective_addr_di:
         case Effective_addr_bx:
+        case Effective_addr_bp:
             {
                 const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
                 if (op.expression.displacement == 0)
                 {
                     printf("[%s]", base);
                 }
+                else
+                {
+                    if (op.expression.displacement < 0)
+                    {
+                        printf("[%s - %d]", base, -op.expression.displacement);
+                    }
+                    else 
+                    {
+                        printf("[%s + %d]", base, op.expression.displacement);
+                    }
+                }
             } break;
     }
 }
+
 void PrintOperand(Operand op)
 {
     switch(op.type)
@@ -489,11 +511,18 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
                 operand.type = OpType_effectiveAddrCalc;
                 EffectiveAddrExpression exp = {};
                 DecodeEffectiveAddrExpression(mod, rm, exp, cpu);
+                exp.hasDisplacement = FALSE;
                 operand.expression = exp;
             } break;
         case Memory_mode_8_bit_disp:
             {
-
+                operand.type = OpType_effectiveAddrCalc;
+                EffectiveAddrExpression exp = {};
+                DecodeEffectiveAddrExpression(mod, rm, exp, cpu);
+                int8_t disp  = (int8_t)GetNextByte(cpu.IP);
+                exp.displacement = (int16_t)disp;
+                exp.hasDisplacement = TRUE;
+                operand.expression = exp;
             } break;
         case Memory_mode_16_bit_disp:
             {

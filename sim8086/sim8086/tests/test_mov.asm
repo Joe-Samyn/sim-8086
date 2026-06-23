@@ -21,3 +21,9 @@ mov cx, [bx + si]
 mov bx, [bx + di]
 mov dx, [39]
 mov cx, [-5]
+
+; Effective address calculation with displacement moves
+mov bx, [bx + si + 12]
+mov cx, [bp + di + 115]
+mov dx, [bp - 2]
+mov cx, [bp + di - 115]
