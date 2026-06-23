@@ -526,7 +526,12 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
             } break;
         case Memory_mode_16_bit_disp:
             {
-
+                operand.type = OpType_effectiveAddrCalc;
+                EffectiveAddrExpression exp = {};
+                DecodeEffectiveAddrExpression(mod, rm, exp, cpu);
+                exp.displacement = (int16_t)GetNextWord(cpu.IP);
+                exp.hasDisplacement = TRUE;
+                operand.expression = exp;
             } break;
         case Register_mode:
             {

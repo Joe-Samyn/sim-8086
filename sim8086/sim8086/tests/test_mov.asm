@@ -22,8 +22,13 @@ mov bx, [bx + di]
 mov dx, [39]
 mov cx, [-5]
 
-; Effective address calculation with displacement moves
+; Effective address calculation with 8-bit displacement moves
 mov bx, [bx + si + 12]
 mov cx, [bp + di + 115]
 mov dx, [bp - 2]
 mov cx, [bp + di - 115]
+
+; Effective address calculation with 16-bit displacement moves
+mov cx, [bp + di + 1024]
+mov dx, [bx + si - 520]
+mov bx, [si + 1040]
