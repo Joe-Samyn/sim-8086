@@ -591,42 +591,6 @@ Instruction Decode(CPU &cpu, Entry entry)
     }
 
 
-    // // NOTE (Joe): I feel like there is a cleaner way to do this entire loop. 
-    // while (bitsIndex < Field::Field_count)
-    // {
-
-    //     Bits bit = entry.bits[bitsIndex];
-    //     uint8_t result;
-    //     if (bit.field == Literal)
-    //     {
-    //         result = bit.value;
-    //     }
-    //     else
-    //     {
-    //         result = (byte >> bit.shift) & bit.value;
-    //     }
-    //     decodedBits[bit.field] = result;
-    //     decodedFields[bit.field] = TRUE; 
-    //     bitsIndex++;
-    //     usedBits += bit.count;
-
-    //     bool isNextBitDefined = IsBitsDefined(entry.bits[bitsIndex]);
-        
-    //     if (isNextBitDefined)
-    //     {
-    //         if (usedBits >= 8)
-    //         {
-    //             byte = GetNextByte(cpu.IP);
-    //             usedBits = 0;
-    //         }
-    //     }
-    //     else {
-    //         break;
-    //     }
-
-    // }
-
-
     inst.w = decodedBits[W_bit];
     inst.d = decodedBits[D_bit];
 
