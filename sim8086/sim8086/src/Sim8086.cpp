@@ -79,7 +79,7 @@ enum RegisterIndex {
 
 enum Field : uint8_t
 {
-    Literal,
+    Op,
     W_bit,
     D_bit,
     Reg_bit,
@@ -87,6 +87,7 @@ enum Field : uint8_t
     Mod_bit,
     Imm_bit,
     Addr_bit,
+    Const_bit,
 
     Field_count
 };
@@ -212,6 +213,7 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
 struct Bits 
 {
     Field field;
+    bool isLiteral;
     uint8_t value;
     uint8_t shift;
     uint8_t count;
@@ -554,8 +556,8 @@ Instruction Decode(CPU &cpu, Entry entry)
     // Replace magic '0' with proper constant OpCode_bits or something
     uint8_t usedBits = entry.bits[0].count;
 
-    uint8_t decodedBits[Field_count];
-    uint8_t decodedFields[Field_count];
+    uint8_t decodedBits[Field_count] = { 0 };
+    uint8_t decodedFields[Field_count] = { 0 };
     
     // Note (Joe): Trying an expirement with a different loop structure
     while(IsBitsDefined(entry.bits[bitsIndex]))
@@ -574,7 +576,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             bitsIndex++;
             continue;
         }
-        else if (bit.field == Literal)
+        else if (bit.field == Literal || bit.field == DLiteral_bit)
         {
             // Get literal constant 
             result = bit.value;
@@ -592,7 +594,16 @@ Instruction Decode(CPU &cpu, Entry entry)
 
 
     inst.w = decodedBits[W_bit];
-    inst.d = decodedBits[D_bit];
+
+    if (decodedFields[D_bit])
+    {
+        inst.d = decodedBits[D_bit];
+    }
+    
+    if (decodedFields[DLiteral_bit])
+    {
+        inst.d = decodedBits[DLiteral_bit];
+    }
 
     if (decodedFields[Mod_bit] && decodedFields[Rm_bit])
     {
@@ -624,6 +635,8 @@ Instruction Decode(CPU &cpu, Entry entry)
         {
             op.immediate = (int16_t) GetNextByte(cpu.IP);
         }
+
+        inst.operands[!inst.d] = op;
     }
 
     return inst;
