@@ -32,3 +32,6 @@ mov cx, [bp + di - 115]
 mov cx, [bp + di + 1024]
 mov dx, [bx + si - 520]
 mov bx, [si + 1040]
+
+; Immediate to reg/mem move
+; mov bx, 17

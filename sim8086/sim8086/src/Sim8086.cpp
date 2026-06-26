@@ -85,7 +85,7 @@ enum Field : uint8_t
     Reg_bit,
     Rm_bit,
     Mod_bit,
-    Data_bit,
+    Imm_bit,
     Addr_bit,
 
     Field_count
@@ -556,33 +556,75 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     uint8_t decodedBits[Field_count];
     uint8_t decodedFields[Field_count];
-
-    // NOTE (Joe): I feel like there is a cleaner way to do this entire loop. 
-    while (bitsIndex < Field::Field_count)
-    {
-
-        Bits bit = entry.bits[bitsIndex];
-        uint8_t result = (byte >> bit.shift) & bit.value;
-        decodedBits[bit.field] = result;
-        decodedFields[bit.field] = TRUE; 
-        bitsIndex++;
-        usedBits += bit.count;
-
-        bool isNextBitDefined = IsBitsDefined(entry.bits[bitsIndex]);
-        
-        if (isNextBitDefined)
+    
+    // Note (Joe): Trying an expirement with a different loop structure
+    while(IsBitsDefined(entry.bits[bitsIndex]))
+    {   
+        if (usedBits >= 8)
         {
-            if (usedBits >= 8)
-            {
-                byte = GetNextByte(cpu.IP);
-                usedBits = 0;
-            }
+            byte = GetNextByte(cpu.IP);
+            usedBits = 0;
         }
-        else {
-            break;
+        
+        Bits bit = entry.bits[bitsIndex];
+        decodedFields[bit.field] = TRUE;
+        uint8_t result;
+        if (bit.field == Imm_bit || bit.field == Addr_bit)
+        {
+            bitsIndex++;
+            continue;
         }
-
+        else if (bit.field == Literal)
+        {
+            // Get literal constant 
+            result = bit.value;
+        }
+        else
+        {
+            result = (byte >> bit.shift) & bit.value;
+        }
+        
+        decodedBits[bit.field] = result;
+        usedBits += bit.count;
+        bitsIndex++;
+        
     }
+
+
+    // // NOTE (Joe): I feel like there is a cleaner way to do this entire loop. 
+    // while (bitsIndex < Field::Field_count)
+    // {
+
+    //     Bits bit = entry.bits[bitsIndex];
+    //     uint8_t result;
+    //     if (bit.field == Literal)
+    //     {
+    //         result = bit.value;
+    //     }
+    //     else
+    //     {
+    //         result = (byte >> bit.shift) & bit.value;
+    //     }
+    //     decodedBits[bit.field] = result;
+    //     decodedFields[bit.field] = TRUE; 
+    //     bitsIndex++;
+    //     usedBits += bit.count;
+
+    //     bool isNextBitDefined = IsBitsDefined(entry.bits[bitsIndex]);
+        
+    //     if (isNextBitDefined)
+    //     {
+    //         if (usedBits >= 8)
+    //         {
+    //             byte = GetNextByte(cpu.IP);
+    //             usedBits = 0;
+    //         }
+    //     }
+    //     else {
+    //         break;
+    //     }
+
+    // }
 
 
     inst.w = decodedBits[W_bit];
@@ -603,6 +645,21 @@ Instruction Decode(CPU &cpu, Entry entry)
             .type = OpType_register,
             .reg = a		
         };
+    }
+
+    if (decodedFields[Imm_bit])
+    {
+        Operand op = {};
+        op.type = OpType_immediate;
+
+        if (inst.w == 1)
+        {
+            op.immediate = (int16_t) GetNextWord(cpu.IP);
+        }
+        else
+        {
+            op.immediate = (int16_t) GetNextByte(cpu.IP);
+        }
     }
 
     return inst;
@@ -630,7 +687,7 @@ void Disassemble(Program &program)
 
             // Break out of loop if matching opcode is found
             // TODO: Need to replace magic '0' with proper constant like OpCode_Bits or something
-            if (entry.bits[0].value == (currentByte >> entry.bits[0].shift))
+            if (entry.bits[0].value == (currentByte >> (8 - entry.bits[0].count)))
             {
                 break;
             }

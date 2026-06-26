@@ -42,6 +42,6 @@ int main(int argc, char* argv[]) {
     
     Test_IsBitsDefined_ReturnsFalseWhenNotDefined();
     Test_IsBitsDefined_ReturnsTrueWhenDefined();
-    printf("-------- End Tests --------\n");
+    printf("\n-------- End Tests --------\n");
     return 0;
 }
