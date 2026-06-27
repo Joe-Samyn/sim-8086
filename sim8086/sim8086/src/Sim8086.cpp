@@ -1,5 +1,4 @@
 
-
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -213,7 +212,6 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
 struct Bits 
 {
     Field field;
-    bool isLiteral;
     uint8_t value;
     uint8_t shift;
     uint8_t count;
@@ -455,6 +453,10 @@ void PrintOperand(Operand op)
             {
                 PrintEffectiveAddressExpression(op);
             } break;
+        case OpType_immediate:
+        {
+            printf("%d", op.immediate);
+        } break;
         default:
             {
 
@@ -471,6 +473,12 @@ void WriteToConsole(Instruction inst)
 {
     // Print mnemonic/operation 
     printf("%s ", Mnemonics[inst.op]);
+
+    // If either operand type is immediate, we should print size 
+    if (inst.operands[0].type == OpType_immediate || inst.operands[1].type == OpType_immediate)
+    {
+        printf("%s ", inst.w == 0 ? "byte" : "word");
+    }
 
     // Print dest operand 
     PrintOperand(inst.operands[0]);
@@ -492,7 +500,7 @@ void WriteToConsole(Instruction inst)
 // Does this get inlined and become a preprocessor directive? 
 bool IsBitsDefined(Bits bits)
 {
-    return !(bits.field == Literal
+    return !(bits.field == Op
             && bits.count == 0
             && bits.shift == 0
             && bits.value == 0);
@@ -561,22 +569,25 @@ Instruction Decode(CPU &cpu, Entry entry)
     
     // Note (Joe): Trying an expirement with a different loop structure
     while(IsBitsDefined(entry.bits[bitsIndex]))
-    {   
-        if (usedBits >= 8)
-        {
-            byte = GetNextByte(cpu.IP);
-            usedBits = 0;
-        }
-        
+    {  
+
         Bits bit = entry.bits[bitsIndex];
         decodedFields[bit.field] = TRUE;
         uint8_t result;
+
         if (bit.field == Imm_bit || bit.field == Addr_bit)
         {
             bitsIndex++;
             continue;
         }
-        else if (bit.field == Literal || bit.field == DLiteral_bit)
+
+        if (usedBits >= 8)
+        {
+            byte = GetNextByte(cpu.IP);
+            usedBits = 0;
+        }
+
+        if (bit.count == 0)
         {
             // Get literal constant 
             result = bit.value;
@@ -600,10 +611,6 @@ Instruction Decode(CPU &cpu, Entry entry)
         inst.d = decodedBits[D_bit];
     }
     
-    if (decodedFields[DLiteral_bit])
-    {
-        inst.d = decodedBits[DLiteral_bit];
-    }
 
     if (decodedFields[Mod_bit] && decodedFields[Rm_bit])
     {
