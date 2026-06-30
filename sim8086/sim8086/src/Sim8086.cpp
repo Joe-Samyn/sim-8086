@@ -230,17 +230,20 @@ Entry InstructionTable[] = {
 
 enum Operation: uint8_t {
 
-#define INST(mnemonic, ...) Op_##mnemonic
+#define INST(mnemonic, ...) Op_##mnemonic,
 #define INST_ALT(...)
 #include "InstructionTable.inl"
-
+#undef INST
+#undef INST_ALT
     Op_count
 };
 
 const char* Mnemonics[] = {
-#define INST(mnemonic, ...) #mnemonic
-#define INST_LAT(...)
+#define INST(mnemonic, ...) #mnemonic,
+#define INST_ALT(...)
 #include "InstructionTable.inl"
+#undef INST
+#undef INST_ALT
 };
 
 const char* RegisterNames[Register_count][3] = {
@@ -642,8 +645,15 @@ Instruction Decode(CPU &cpu, Entry entry)
         {
             op.immediate = (int16_t) GetNextByte(cpu.IP);
         }
-
-        inst.operands[!inst.d] = op;
+        
+        if (decodedFields[Reg_bit])
+        {
+            inst.operands[inst.d] = op;
+        }
+        else
+        {
+            inst.operands[!inst.d] = op;
+        }
     }
 
     return inst;
