@@ -584,12 +584,6 @@ Instruction Decode(CPU &cpu, Entry entry)
             continue;
         }
 
-        if (usedBits >= 8)
-        {
-            byte = GetNextByte(cpu.IP);
-            usedBits = 0;
-        }
-
         if (bit.count == 0)
         {
             // Get literal constant 
@@ -597,6 +591,13 @@ Instruction Decode(CPU &cpu, Entry entry)
         }
         else
         {
+
+            if (usedBits >= 8)
+            {
+                byte = GetNextByte(cpu.IP);
+                usedBits = 0;
+            }
+            
             result = (byte >> bit.shift) & bit.value;
         }
         
@@ -654,6 +655,19 @@ Instruction Decode(CPU &cpu, Entry entry)
         {
             inst.operands[!inst.d] = op;
         }
+    }
+
+    if (decodedFields[Addr_bit])
+    {
+        EffectiveAddrExpression ex = {
+            .calculationType = Effective_addr_direct_address,
+            .displacement = (int16_t)GetNextWord(cpu.IP)
+        };
+
+        inst.operands[inst.d] = {
+            .type = OpType_effectiveAddrCalc,
+            .expression = ex
+        };
     }
 
     return inst;

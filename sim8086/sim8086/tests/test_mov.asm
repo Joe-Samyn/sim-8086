@@ -40,3 +40,11 @@ mov word [bx + 1024], 1243
 
 ; Immediate to register 
 mov bx, 18
+
+; Move memory to accumulator
+mov ax, [18]
+mov al, [56]
+
+; Move accumulator to memory
+mov [1024], ax
+mov [-5], al
