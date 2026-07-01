@@ -206,26 +206,6 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
     }
 }
 
-/**
- * Represents the bit patterns/fields in an Intel 8086 instruction
- */
-struct Bits 
-{
-    Field field;
-    uint8_t value;
-    uint8_t shift;
-    uint8_t count;
-};
-
-struct Entry {
-    const char* mnemonic;
-    Bits bits[Field::Field_count];	// bits[0] = Opcode bits TODO: Need to get rid of 16 and use proper constant like Field::Field_count 
-};
-
-Entry InstructionTable[] = {
-#include "InstructionTable.inl"
-};
-
 /* Operation Definitions */
 
 enum Operation: uint8_t {
@@ -244,6 +224,26 @@ const char* Mnemonics[] = {
 #include "InstructionTable.inl"
 #undef INST
 #undef INST_ALT
+};
+
+/**
+ * Represents the bit patterns/fields in an Intel 8086 instruction
+ */
+struct Bits 
+{
+    Field field;
+    uint8_t value;
+    uint8_t shift;
+    uint8_t count;
+};
+
+struct Entry {
+    Operation mnemonic;
+    Bits bits[Field::Field_count];	// bits[0] = Opcode bits TODO: Need to get rid of 16 and use proper constant like Field::Field_count 
+};
+
+Entry InstructionTable[] = {
+#include "InstructionTable.inl"
 };
 
 const char* RegisterNames[Register_count][3] = {
@@ -560,6 +560,7 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
 Instruction Decode(CPU &cpu, Entry entry)
 {
     Instruction inst = {};
+    inst.op = entry.mnemonic;
     uint8_t byte = GetCurrentByte(cpu.IP);
 
     // Instruction opcode matched, begin decode

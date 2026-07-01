@@ -1,7 +1,7 @@
 
 /** Instruction Encoding Definitions */
 #ifndef INST
-#define INST(mnemonic, ...) { #mnemonic, __VA_ARGS__ },
+#define INST(mnemonic, ...) { Op_##mnemonic, __VA_ARGS__ },
 #endif
 
 #ifndef INST_ALT
@@ -26,6 +26,8 @@ INST_ALT(MOV, { B(Op, 1100011), Const(D_bit, 0b0), { W_bit, 0b1, 0, 1 }, Mod_bit
 INST_ALT(MOV, { B(Op, 1011), Const(D_bit, 0b1), { W_bit, 1, 3, 1 }, { Reg_bit, 0b111, 0, 3 }, Imm_bits } )
 INST_ALT(MOV, { B(Op, 1010000), Const(D_bit, 0b1), {W_bit, 1, 0, 1}, Const(Reg_bit, 0b00), Addr_bits } )
 INST_ALT(MOV, { B(Op, 1010001), Const(D_bit, 0b0), {W_bit, 1, 0, 1}, Const(Reg_bit, 0b00), Addr_bits } )
+
+INST(ADD, {B(Op, 000000), D_bits, { W_bit, 0b1, 0, 1}, Mod_bits, Reg_bits, Rm_bits})
 
 #undef INST
 #undef INST_ALT
