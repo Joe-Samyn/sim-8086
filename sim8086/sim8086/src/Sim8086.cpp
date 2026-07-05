@@ -79,6 +79,7 @@ enum RegisterIndex {
 enum Field : uint8_t
 {
     Op,
+    OpExtension,
     W_bit,
     D_bit,
     Reg_bit,
@@ -87,6 +88,7 @@ enum Field : uint8_t
     Imm_bit,
     Addr_bit,
     Const_bit,
+    S_bit,
 
     Field_count
 };
@@ -478,7 +480,7 @@ void WriteToConsole(Instruction inst)
     printf("%s ", Mnemonics[inst.op]);
 
     // If either operand type is immediate, we should print size 
-    if (inst.operands[0].type == OpType_immediate || inst.operands[1].type == OpType_immediate)
+    if (inst.operands[1].type == OpType_immediate && inst.operands[0].type == OpType_effectiveAddrCalc)
     {
         printf("%s ", inst.w == 0 ? "byte" : "word");
     }
@@ -559,8 +561,6 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
 // any cost overhead. We just want to make sure that its not being passed on heap or via pointer 
 Instruction Decode(CPU &cpu, Entry entry)
 {
-    Instruction inst = {};
-    inst.op = entry.mnemonic;
     uint8_t byte = GetCurrentByte(cpu.IP);
 
     // Instruction opcode matched, begin decode
@@ -607,8 +607,18 @@ Instruction Decode(CPU &cpu, Entry entry)
         bitsIndex++;
         
     }
+    
+    Instruction inst = {};
 
 
+    if (decodedFields[OpExtension])
+    {
+        inst.op = (Operation)decodedBits[OpExtension];
+    }
+    else
+    {
+        inst.op = entry.mnemonic;
+    }
     inst.w = decodedBits[W_bit];
 
     if (decodedFields[D_bit])
@@ -638,14 +648,25 @@ Instruction Decode(CPU &cpu, Entry entry)
     {
         Operand op = {};
         op.type = OpType_immediate;
-
-        if (inst.w == 1)
+        
+        if (decodedFields[S_bit])
         {
-            op.immediate = (int16_t) GetNextWord(cpu.IP);
+            uint8_t s = decodedBits[S_bit];
+            if (inst.w == 1 && s == 1)
+                op.immediate = (int16_t) GetNextByte(cpu.IP);
+            else
+                op.immediate = (int16_t) GetNextWord(cpu.IP);
         }
         else
         {
-            op.immediate = (int16_t) GetNextByte(cpu.IP);
+            if (inst.w == 1)
+            {
+                op.immediate = (int16_t) GetNextWord(cpu.IP);
+            }
+            else
+            {
+                op.immediate = (int16_t) GetNextByte(cpu.IP);
+            }
         }
         
         if (decodedFields[Reg_bit])
