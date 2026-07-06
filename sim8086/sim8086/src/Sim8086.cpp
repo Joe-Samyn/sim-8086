@@ -31,6 +31,11 @@ struct Program {
     uint32_t endAddr;
 };
 
+void DecrementIP(CPU &cpu)
+{
+    cpu.IP--;
+}
+
 /**
  * Get the next byte from the code segment in memory and increment 
  * the instruction pointer (IP).
@@ -211,7 +216,7 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
 /* Operation Definitions */
 
 enum Operation: uint8_t {
-
+    None,
 #define INST(mnemonic, ...) Op_##mnemonic,
 #define INST_ALT(...)
 #include "InstructionTable.inl"
@@ -221,6 +226,7 @@ enum Operation: uint8_t {
 };
 
 const char* Mnemonics[] = {
+    "none",
 #define INST(mnemonic, ...) #mnemonic,
 #define INST_ALT(...)
 #include "InstructionTable.inl"
@@ -598,8 +604,21 @@ Instruction Decode(CPU &cpu, Entry entry)
                 byte = GetNextByte(cpu.IP);
                 usedBits = 0;
             }
+
+            if (bit.field == OpExtension)
+            {
+                result = (byte >> bit.shift) & 0b111;
+                if (result != bit.value)
+                {
+                    DecrementIP(cpu);
+                    return {};
+                }    
+            }
+            else
+            {
+                result = (byte >> bit.shift) & bit.value;
+            }
             
-            result = (byte >> bit.shift) & bit.value;
         }
         
         decodedBits[bit.field] = result;
@@ -609,16 +628,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     }
     
     Instruction inst = {};
-
-
-    if (decodedFields[OpExtension])
-    {
-        inst.op = (Operation)decodedBits[OpExtension];
-    }
-    else
-    {
-        inst.op = entry.mnemonic;
-    }
+    inst.op = entry.mnemonic;
     inst.w = decodedBits[W_bit];
 
     if (decodedFields[D_bit])
@@ -719,13 +729,15 @@ void Disassemble(Program &program)
             // TODO: Need to replace magic '0' with proper constant like OpCode_Bits or something
             if (entry.bits[0].value == (currentByte >> (8 - entry.bits[0].count)))
             {
-                break;
+                Instruction result = Decode(cpu, entry);
+                if (result.op)
+                {
+                    WriteToConsole(result);
+                    break;
+                }
             }
 
         }
-
-        Instruction inst = Decode(cpu, entry);
-        WriteToConsole(inst);
     }
 }
 
