@@ -49,6 +49,11 @@ INST(CMP, {B(Op, 001110), D_bits, { W_bit, 0b1, 0, 1}, Mod_bits, Reg_bits, Rm_bi
 INST_ALT(CMP, { B(Op, 100000), S_bits, Const(D_bit, 0b0), { W_bit, 0b1, 0, 1 }, Mod_bits, OpExtension_bits(111), Rm_bits, Imm_bits })
 INST_ALT(CMP, { B(Op, 0011110), Const(D_bit, 0b0), { W_bit, 0b1, 0, 1 }, Const(Reg_bit, 0b000), Imm_bits })
 
+INST(DEC, {B(Op, 1111111), Const(D_bit, 0b0), { W_bit, 0b1, 0, 1}, Mod_bits, OpExtension_bits(001), Rm_bits})
+INST_ALT(DEC, { B(Op, 01001), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, 0b111, 0, 3} })
+
+INST(NEG, { B(Op, 1111011), Const(D_bit, 0b0), { W_bit, 0b1, 0, 1 }, Mod_bits, OpExtension_bits(011), Rm_bits })
+
 #undef INST
 #undef INST_ALT
 

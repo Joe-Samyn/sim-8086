@@ -68,7 +68,7 @@ uint16_t GetNextWord(uint16_t &ip)
 }
 
 enum RegisterIndex {
-
+    
     Register_a,
     Register_b,
     Register_c,
@@ -350,6 +350,8 @@ void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
 
 
 enum OperandType {
+    OpType_none, 
+
     OpType_register,
     OpType_effectiveAddrCalc,
     OpType_immediate,
@@ -455,6 +457,10 @@ void PrintOperand(Operand op)
 {
     switch(op.type)
     {
+        case OpType_none:
+        {
+            return;
+        } break;
         case OpType_register:
             {
                 const char* name = RegisterNames[op.reg.index][op.reg.offset];
@@ -494,7 +500,10 @@ void WriteToConsole(Instruction inst)
     // Print dest operand 
     PrintOperand(inst.operands[0]);
 
-    printf(", ");
+    if (inst.operands[1].type != OpType_none)
+    {
+        printf(", ");
+    }   
 
     // Print src operand 
     PrintOperand(inst.operands[1]);
