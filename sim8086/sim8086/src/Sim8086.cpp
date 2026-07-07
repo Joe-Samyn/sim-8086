@@ -492,7 +492,7 @@ void WriteToConsole(Instruction inst)
     printf("%s ", Mnemonics[inst.op]);
 
     // If either operand type is immediate, we should print size 
-    if (inst.operands[1].type == OpType_immediate && inst.operands[0].type == OpType_effectiveAddrCalc)
+    if ((inst.operands[1].type == OpType_immediate || inst.operands[1].type == OpType_none) && inst.operands[0].type == OpType_effectiveAddrCalc)
     {
         printf("%s ", inst.w == 0 ? "byte" : "word");
     }

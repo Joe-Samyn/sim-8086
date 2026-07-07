@@ -54,6 +54,9 @@ INST_ALT(DEC, { B(Op, 01001), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, 0b
 
 INST(NEG, { B(Op, 1111011), Const(D_bit, 0b0), { W_bit, 0b1, 0, 1 }, Mod_bits, OpExtension_bits(011), Rm_bits })
 
+INST(INC, { B(Op, 1111111), Const(D_bit, 0b0), { W_bit, 0b1, 0, 1 }, Mod_bits, OpExtension_bits(000), Rm_bits })
+INST_ALT(INC, { B(Op, 01000), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, 0b111, 0, 3} })
+
 #undef INST
 #undef INST_ALT
 
