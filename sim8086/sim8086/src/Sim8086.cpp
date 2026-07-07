@@ -584,14 +584,14 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t usedBits = entry.bits[0].count;
 
     uint8_t decodedBits[Field_count] = { 0 };
-    uint8_t decodedFields[Field_count] = { 0 };
+    uint8_t hasFields[Field_count] = { 0 };
     
     // Note (Joe): Trying an expirement with a different loop structure
     while(IsBitsDefined(entry.bits[bitsIndex]))
     {  
 
         Bits bit = entry.bits[bitsIndex];
-        decodedFields[bit.field] = TRUE;
+        hasFields[bit.field] = TRUE;
         uint8_t result;
 
         if (bit.field == Imm_bit || bit.field == Addr_bit)
@@ -635,50 +635,58 @@ Instruction Decode(CPU &cpu, Entry entry)
         bitsIndex++;
         
     }
+
+    uint8_t hasS = hasFields[S_bit];
+    uint8_t hasMod = hasFields[Mod_bit];
+    uint8_t hasRm = hasFields[Rm_bit];
+    uint8_t hasReg = hasFields[Reg_bit];
+    uint8_t hasImm = hasFields[Imm_bit];
+    uint8_t hasAddr = hasFields[Addr_bit];
+
+    uint8_t d = decodedBits[D_bit];
+    uint8_t w = decodedBits[W_bit];
+    uint8_t s = decodedBits[S_bit];
+    uint8_t mod = decodedBits[Mod_bit];
+    uint8_t rm = decodedBits[Rm_bit];
+    uint8_t reg = decodedBits[Reg_bit];
     
     Instruction inst = {};
     inst.op = entry.mnemonic;
-    inst.w = decodedBits[W_bit];
+    inst.d = d;
+    inst.w = w;
 
-    if (decodedFields[D_bit])
-    {
-        inst.d = decodedBits[D_bit];
-    }
-    
-
-    if (decodedFields[Mod_bit] && decodedFields[Rm_bit])
+    if (hasMod)
     {
         Operand op = {};
-        InterpretModRm(cpu, decodedBits[Mod_bit], decodedBits[Rm_bit], inst.w, op);
-        inst.operands[inst.d] = op;
+        InterpretModRm(cpu, mod, rm, w, op);
+        inst.operands[d] = op;
     }
 
-    if (decodedFields[Reg_bit])
+    if (hasReg)
     {
         RegisterAccess a = {};
-        DecodeRegister(decodedBits[Reg_bit], inst.w, a);
-        inst.operands[!inst.d] = {
+        DecodeRegister(reg, w, a);
+        inst.operands[!d] = {
             .type = OpType_register,
             .reg = a		
         };
     }
 
-    if (decodedFields[Imm_bit])
+    if (hasImm)
     {
         Operand op = {};
         op.type = OpType_immediate;
         
-        if (decodedFields[S_bit])
+        if (hasS)
         {
-            uint8_t s = decodedBits[S_bit];
-            if (inst.w == 1 && s == 1)
+            if (w == 1 && s == 1)
                 op.immediate = (int16_t) GetNextByte(cpu.IP);
             else
                 op.immediate = (int16_t) GetNextWord(cpu.IP);
         }
         else
         {
-            if (inst.w == 1)
+            if (w == 1)
             {
                 op.immediate = (int16_t) GetNextWord(cpu.IP);
             }
@@ -688,17 +696,17 @@ Instruction Decode(CPU &cpu, Entry entry)
             }
         }
         
-        if (decodedFields[Reg_bit])
+        if (hasFields[Reg_bit])
         {
-            inst.operands[inst.d] = op;
+            inst.operands[d] = op;
         }
         else
         {
-            inst.operands[!inst.d] = op;
+            inst.operands[!d] = op;
         }
     }
 
-    if (decodedFields[Addr_bit])
+    if (hasAddr)
     {
         EffectiveAddrExpression ex = {
             .calculationType = Effective_addr_direct_address,
