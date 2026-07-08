@@ -25,8 +25,8 @@
 
 /* Instruction Table */
 INST(MOV, { B(Op, 100010), D, { W_bit, 1, 0, 1 }, Mod, Rm, Reg } )
-INST_ALT(MOV, { B(Op, 1100011), Const(D_bit, 0b0), W, Mod, Const(Const_bit, 0b000), Rm, Imm } )
-INST_ALT(MOV, { B(Op, 1011), Const(D_bit, 0b1), { W_bit, 1, 3, 1 }, { Reg_bit, 0b111, 0, 3 }, Imm } )
+INST_ALT(MOV, { B(Op, 1100011), W, Mod, Const(Const_bit, 0b000), Rm, Imm } )
+INST_ALT(MOV, { B(Op, 1011), { W_bit, 1, 3, 1 }, { Reg_bit, 0b111, 0, 3 }, Imm } )
 INST_ALT(MOV, { B(Op, 1010000), Const(D_bit, 0b1), {W_bit, 1, 0, 1}, Const(Reg_bit, 0b00), Addr } )
 INST_ALT(MOV, { B(Op, 1010001), Const(D_bit, 0b0), {W_bit, 1, 0, 1}, Const(Reg_bit, 0b00), Addr } )
 

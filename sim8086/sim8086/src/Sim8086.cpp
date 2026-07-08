@@ -17,6 +17,8 @@
 #define FULL_BITS 2
 #define TRUE 1
 #define FALSE 0
+#define SRC 0
+#define DEST 1
 
 uint8_t Memory[1024 * 1024];
 
@@ -492,21 +494,21 @@ void WriteToConsole(Instruction inst)
     printf("%s ", Mnemonics[inst.op]);
 
     // If either operand type is immediate, we should print size 
-    if ((inst.operands[1].type == OpType_immediate || inst.operands[1].type == OpType_none) && inst.operands[0].type == OpType_effectiveAddrCalc)
+    if ((inst.operands[SRC].type == OpType_immediate || inst.operands[SRC].type == OpType_none) && inst.operands[DEST].type == OpType_effectiveAddrCalc)
     {
         printf("%s ", inst.w == 0 ? "byte" : "word");
     }
 
     // Print dest operand 
-    PrintOperand(inst.operands[0]);
+    PrintOperand(inst.operands[1]);
 
-    if (inst.operands[1].type != OpType_none)
+    if (inst.operands[0].type != OpType_none)
     {
         printf(", ");
     }   
 
     // Print src operand 
-    PrintOperand(inst.operands[1]);
+    PrintOperand(inst.operands[0]);
 
     printf("\n");
 }
@@ -636,6 +638,7 @@ Instruction Decode(CPU &cpu, Entry entry)
         
     }
 
+    uint8_t hasD = hasFields[D_bit];
     uint8_t hasS = hasFields[S_bit];
     uint8_t hasMod = hasFields[Mod_bit];
     uint8_t hasRm = hasFields[Rm_bit];
@@ -659,51 +662,43 @@ Instruction Decode(CPU &cpu, Entry entry)
     {
         Operand op = {};
         InterpretModRm(cpu, mod, rm, w, op);
-        inst.operands[d] = op;
+        inst.operands[!d] = op;
     }
 
     if (hasReg)
     {
         RegisterAccess a = {};
         DecodeRegister(reg, w, a);
-        inst.operands[!d] = {
+        Operand op = {
             .type = OpType_register,
             .reg = a		
         };
+
+        if (hasD)
+            inst.operands[d] = op;
+        else
+            inst.operands[DEST] = op;
     }
 
     if (hasImm)
     {
         Operand op = {};
         op.type = OpType_immediate;
-        
-        if (hasS)
+
+        if (w == 1 && s == 1)
         {
-            if (w == 1 && s == 1)
-                op.immediate = (int16_t) GetNextByte(cpu.IP);
-            else
-                op.immediate = (int16_t) GetNextWord(cpu.IP);
+            op.immediate = (int16_t) GetNextByte(cpu.IP);
+        }
+        else if (w == 1)
+        {
+            op.immediate = (int16_t) GetNextWord(cpu.IP);
         }
         else
         {
-            if (w == 1)
-            {
-                op.immediate = (int16_t) GetNextWord(cpu.IP);
-            }
-            else
-            {
-                op.immediate = (int16_t) GetNextByte(cpu.IP);
-            }
+             op.immediate = (int16_t) GetNextByte(cpu.IP);
         }
         
-        if (hasFields[Reg_bit])
-        {
-            inst.operands[d] = op;
-        }
-        else
-        {
-            inst.operands[!d] = op;
-        }
+        inst.operands[SRC] = op;
     }
 
     if (hasAddr)
@@ -713,7 +708,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             .displacement = (int16_t)GetNextWord(cpu.IP)
         };
 
-        inst.operands[inst.d] = {
+        inst.operands[!d] = {
             .type = OpType_effectiveAddrCalc,
             .expression = ex
         };
