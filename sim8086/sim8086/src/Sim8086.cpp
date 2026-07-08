@@ -19,6 +19,7 @@
 #define FALSE 0
 #define SRC 0
 #define DEST 1
+#define OP_EXTENSION_MASK 0b111
 
 uint8_t Memory[1024 * 1024];
 
@@ -580,15 +581,11 @@ Instruction Decode(CPU &cpu, Entry entry)
 {
     uint8_t byte = GetCurrentByte(cpu.IP);
 
-    // Instruction opcode matched, begin decode
     uint8_t bitsIndex = 1;
-    // Replace magic '0' with proper constant OpCode_bits or something
     uint8_t usedBits = entry.bits[0].count;
-
     uint8_t decodedBits[Field_count] = { 0 };
     uint8_t hasFields[Field_count] = { 0 };
     
-    // Note (Joe): Trying an expirement with a different loop structure
     while(IsBitsDefined(entry.bits[bitsIndex]))
     {  
 
@@ -596,12 +593,19 @@ Instruction Decode(CPU &cpu, Entry entry)
         hasFields[bit.field] = TRUE;
         uint8_t result;
 
-        if (bit.field == Imm_bit || bit.field == Addr_bit)
+        // Note: If extension doesn't match, no need to continue with any other logic. Just return an
+        // Look for next matching instruction.
+        if (bit.field == OpExtension)
         {
-            bitsIndex++;
-            continue;
+            result = (byte >> bit.shift) & OP_EXTENSION_MASK;
+            if (result != bit.value)
+            {
+                DecrementIP(cpu);
+                return {};
+            }    
         }
 
+        // Checking for constant bits 
         if (bit.count == 0)
         {
             // Get literal constant 
@@ -609,26 +613,13 @@ Instruction Decode(CPU &cpu, Entry entry)
         }
         else
         {
-
             if (usedBits >= 8)
             {
                 byte = GetNextByte(cpu.IP);
                 usedBits = 0;
             }
-
-            if (bit.field == OpExtension)
-            {
-                result = (byte >> bit.shift) & 0b111;
-                if (result != bit.value)
-                {
-                    DecrementIP(cpu);
-                    return {};
-                }    
-            }
-            else
-            {
-                result = (byte >> bit.shift) & bit.value;
-            }
+            
+            result = (byte >> bit.shift) & bit.value;
             
         }
         
