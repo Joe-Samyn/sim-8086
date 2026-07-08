@@ -586,6 +586,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t decodedBits[Field_count] = { 0 };
     uint8_t hasFields[Field_count] = { 0 };
     
+    // TODO: We need to make this loop be purely about extracting bits. The OpExtension check needs to move out somehow. 
     while(IsBitsDefined(entry.bits[bitsIndex]))
     {  
 
@@ -604,9 +605,8 @@ Instruction Decode(CPU &cpu, Entry entry)
                 return {};
             }    
         }
-
         // Checking for constant bits 
-        if (bit.count == 0)
+        else if (bit.count == 0)
         {
             // Get literal constant 
             result = bit.value;
@@ -636,6 +636,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t hasReg = hasFields[Reg_bit];
     uint8_t hasImm = hasFields[Imm_bit];
     uint8_t hasAddr = hasFields[Addr_bit];
+    uint8_t hasOpExt = hasFields[OpExtension];
 
     uint8_t d = decodedBits[D_bit];
     uint8_t w = decodedBits[W_bit];
@@ -643,6 +644,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t mod = decodedBits[Mod_bit];
     uint8_t rm = decodedBits[Rm_bit];
     uint8_t reg = decodedBits[Reg_bit];
+    uint8_t opExt = decodedBits[Reg_bit];
     
     Instruction inst = {};
     inst.op = entry.mnemonic;
