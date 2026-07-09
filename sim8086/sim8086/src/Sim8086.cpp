@@ -244,6 +244,7 @@ struct Bits
 {
     Field field;
     uint8_t value;
+    uint8_t mask;
     uint8_t shift;
     uint8_t count;
 };
@@ -583,30 +584,19 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     uint8_t bitsIndex = 1;
     uint8_t usedBits = entry.bits[0].count;
-    uint8_t decodedBits[Field_count] = { 0 };
-    uint8_t hasFields[Field_count] = { 0 };
+    uint8_t extractedBits[Field_count] = { 0 };     // Actual bits extracted from byte stream using entry Bits
+    uint8_t expectedValues[Field_count] = { 0 };    // The 'value' property from all the entry Bits, used to verify constants (Values) if needed
+    uint8_t hasFields[Field_count] = { 0 };         // Tracks which fields an entry actually has 
     
     // TODO: We need to make this loop be purely about extracting bits. The OpExtension check needs to move out somehow. 
     while(IsBitsDefined(entry.bits[bitsIndex]))
     {  
 
         Bits bit = entry.bits[bitsIndex];
-        hasFields[bit.field] = TRUE;
         uint8_t result;
 
-        // Note: If extension doesn't match, no need to continue with any other logic. Just return an
-        // Look for next matching instruction.
-        if (bit.field == OpExtension)
-        {
-            result = (byte >> bit.shift) & OP_EXTENSION_MASK;
-            if (result != bit.value)
-            {
-                DecrementIP(cpu);
-                return {};
-            }    
-        }
         // Checking for constant bits 
-        else if (bit.count == 0)
+        if (bit.count == 0)
         {
             // Get literal constant 
             result = bit.value;
@@ -619,11 +609,13 @@ Instruction Decode(CPU &cpu, Entry entry)
                 usedBits = 0;
             }
             
-            result = (byte >> bit.shift) & bit.value;
+            result = (byte >> bit.shift) & bit.mask;
             
         }
         
-        decodedBits[bit.field] = result;
+        hasFields[bit.field] = TRUE;
+        extractedBits[bit.field] = result;
+        expectedValues[bit.field] = bit.value;
         usedBits += bit.count;
         bitsIndex++;
         
@@ -638,13 +630,22 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t hasAddr = hasFields[Addr_bit];
     uint8_t hasOpExt = hasFields[OpExtension];
 
-    uint8_t d = decodedBits[D_bit];
-    uint8_t w = decodedBits[W_bit];
-    uint8_t s = decodedBits[S_bit];
-    uint8_t mod = decodedBits[Mod_bit];
-    uint8_t rm = decodedBits[Rm_bit];
-    uint8_t reg = decodedBits[Reg_bit];
-    uint8_t opExt = decodedBits[Reg_bit];
+    uint8_t d = extractedBits[D_bit];
+    uint8_t w = extractedBits[W_bit];
+    uint8_t s = extractedBits[S_bit];
+    uint8_t mod = extractedBits[Mod_bit];
+    uint8_t rm = extractedBits[Rm_bit];
+    uint8_t reg = extractedBits[Reg_bit];
+    uint8_t opExt = extractedBits[OpExtension];
+
+    // If the instruction has an Opcode Extension, we need to ensure the opcode extension also matches the instruction entry. 
+    if (hasOpExt)
+    {
+        if (opExt != expectedValues[OpExtension])
+        {
+            return {};
+        }
+    }
     
     Instruction inst = {};
     inst.op = entry.mnemonic;
@@ -734,12 +735,16 @@ void Disassemble(Program &program)
             // TODO: Need to replace magic '0' with proper constant like OpCode_Bits or something
             if (entry.bits[0].value == (currentByte >> (8 - entry.bits[0].count)))
             {
+                CPU preDecodeState = cpu;
                 Instruction result = Decode(cpu, entry);
                 if (result.op)
                 {
                     WriteToConsole(result);
                     break;
                 }
+                
+                // Restore predecode CPU state before looking for another entry match
+                cpu = preDecodeState;
             }
 
         }
