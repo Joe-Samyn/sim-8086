@@ -34,11 +34,6 @@ struct Program {
     uint32_t endAddr;
 };
 
-void DecrementIP(CPU &cpu)
-{
-    cpu.IP--;
-}
-
 /**
  * Get the next byte from the code segment in memory and increment 
  * the instruction pointer (IP).
