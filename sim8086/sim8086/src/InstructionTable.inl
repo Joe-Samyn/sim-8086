@@ -17,6 +17,7 @@
 #define Const(type, bits) { type, bits, NONE, NONE, NONE }
 #define OpExtension(bits) { OpExtension, 0b##bits, 0b111, 3, 3 }
 #define Imm { Imm_bit, NONE, NONE, NONE, NONE }
+#define Incr { IPInc_bit, NONE, NONE, NONE, NONE }
 #define Addr { Addr_bit, NONE, NONE, NONE, NONE }
 #define D { D_bit, NONE, 0b1, 1, 1 }
 #define W { W_bit, NONE, 0b1, NONE, 1 }
@@ -65,6 +66,9 @@ INST_ALT(PUSH, { B(Op, 01010), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, N
 
 INST(POP, { B(Op, 10001111), Const(D_bit, 0b0), Const(W_bit, 0b1), Mod, OpExtension(000), Rm })
 INST_ALT(POP, { B(Op, 01011), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3} })
+
+INST(JMP, {B(Op, 11101001)})
+INST_ALT(JMP, { B(Op, 11101011), Const(W_bit, 0), Incr })
 
 #undef INST
 #undef INST_ALT

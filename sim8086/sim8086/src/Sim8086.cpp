@@ -12,16 +12,20 @@
  */
 
 #define ArrayCount(array) sizeof(array)/sizeof(array[0])
+
 #define LO_BITS 0
 #define HI_BITS 1
 #define FULL_BITS 2
+
 #define TRUE 1
 #define FALSE 0
+
 #define SRC 0
 #define DEST 1
-#define OP_EXTENSION_MASK 0b111
 
-uint8_t Memory[1024 * 1024];
+static uint8_t Memory[1024 * 1024];
+static uint8_t Labels[100];
+static uint8_t labelCount;
 
 struct CPU {
     uint16_t IP;
@@ -92,6 +96,7 @@ enum Field : uint8_t
     Addr_bit,
     Const_bit,
     S_bit,
+    IPInc_bit,
 
     Field_count
 };
@@ -354,6 +359,7 @@ enum OperandType {
     OpType_register,
     OpType_effectiveAddrCalc,
     OpType_immediate,
+    OpType_label,
 
     OpType_count
 };
@@ -364,6 +370,7 @@ struct Operand {
         RegisterAccess reg;
         EffectiveAddrExpression expression;
         int16_t immediate;
+        uint8_t label;
     };
 };
 
@@ -371,6 +378,7 @@ struct Instruction {
     Operation op;
     uint8_t w;
     uint8_t d;
+    int16_t ipInc;
     Operand operands[2];
 };
 
@@ -472,6 +480,10 @@ void PrintOperand(Operand op)
         case OpType_immediate:
         {
             printf("%d", op.immediate);
+        } break;
+        case OpType_label:
+        {
+            printf("L%d", op.label);
         } break;
         default:
             {
@@ -624,6 +636,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t hasImm = hasFields[Imm_bit];
     uint8_t hasAddr = hasFields[Addr_bit];
     uint8_t hasOpExt = hasFields[OpExtension];
+    uint8_t hasIpIncr = hasFields[IPInc_bit];
 
     uint8_t d = extractedBits[D_bit];
     uint8_t w = extractedBits[W_bit];
@@ -701,6 +714,25 @@ Instruction Decode(CPU &cpu, Entry entry)
             .type = OpType_effectiveAddrCalc,
             .expression = ex
         };
+    }
+
+    if (hasIpIncr)
+    {   
+        inst.operands[DEST] = {
+            .type = OpType_label,
+            .label = labelCount
+        };
+
+        labelCount++;
+        
+        if (w == 1)
+        {
+            inst.ipInc = (int16_t)GetNextWord(cpu.IP);
+        }
+        else
+        {
+            inst.ipInc = (int16_t)GetNextByte(cpu.IP);
+        }
     }
 
     return inst;
