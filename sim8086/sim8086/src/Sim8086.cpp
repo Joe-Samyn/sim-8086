@@ -23,9 +23,18 @@
 #define SRC 0
 #define DEST 1
 
-static uint8_t Memory[1024 * 1024];
-static uint8_t Labels[100];
-static uint8_t labelCount;
+#define MEMORY_SIZE 1024 * 1024
+#define BUFFER_SIZE 1000
+#define INST_LENGTH 30
+
+
+char AsmBuffer[BUFFER_SIZE][INST_LENGTH];     // String instruction buffer. Holds all ASM instructions to be printed 
+uint16_t AsmIp[BUFFER_SIZE];            // The IP for each instruction to be printed. 
+uint16_t LabelId[BUFFER_SIZE];          // Container holding labels and the correspinding IP. Used during printing to determine where labels should be printed in the output.
+static uint8_t LabelCount;
+static uint16_t AsmBufferIndex = 0;
+
+static uint8_t Memory[MEMORY_SIZE];
 
 struct CPU {
     uint16_t IP;
@@ -496,11 +505,23 @@ void WriteToFile()
 {
     /** TODO: Write to file */
 }
+/*
+    TODO: This needs to be rewritten to support writing to a buffer. 
+    We essentially need to fill out the parts of an assembly instruction 
+    mnemonic = ""
+    keyword = ""
+    comma = ""
+    operandA = ""
+    operandB = ""
 
+    sprintf_s(AsmBuffer[AsmBufferIndex], ASM_LENGTH, "%s %s %s%s %s") -> follows [MOV] [byte] [AX][,] [BX]
+*/
 void WriteToConsole(Instruction inst) 
 {
+    // Print start label 
+    
     // Print mnemonic/operation 
-    printf("%s ", Mnemonics[inst.op]);
+    printf("\t%s ", Mnemonics[inst.op]);
 
     // If either operand type is immediate, we should print size 
     if ((inst.operands[SRC].type == OpType_immediate || inst.operands[SRC].type == OpType_none) && inst.operands[DEST].type == OpType_effectiveAddrCalc)
@@ -719,12 +740,9 @@ Instruction Decode(CPU &cpu, Entry entry)
     if (hasIpIncr)
     {   
         inst.operands[DEST] = {
-            .type = OpType_label,
-            .label = labelCount
+            .type = OpType_label
         };
 
-        labelCount++;
-        
         if (w == 1)
         {
             inst.ipInc = (int16_t)GetNextWord(cpu.IP);

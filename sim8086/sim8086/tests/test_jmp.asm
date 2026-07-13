@@ -2,7 +2,7 @@
 
 bits 16
 
-jmp test_function
+    jmp test_function
     add cx, 18
 test_function:
     mov bx, cx
