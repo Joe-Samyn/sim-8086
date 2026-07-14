@@ -2,6 +2,7 @@
 
 bits 16
 
+fun_one:
     jmp test_function
     add cx, 18
 test_function:
@@ -10,3 +11,4 @@ test_function:
 
 test_function_2:
     mov cx, dx
+    jmp fun_one

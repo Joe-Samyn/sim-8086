@@ -373,7 +373,7 @@ struct Operand {
         RegisterAccess reg;
         EffectiveAddrExpression expression;
         int16_t immediate;
-        uint8_t label;
+        uint16_t label;
     };
 };
 
@@ -388,7 +388,7 @@ struct Instruction {
 Instruction DecodedInstructions[BUFFER_SIZE];     // String instruction buffer. Holds all ASM instructions to be printed 
 uint16_t DecodedInstIp[BUFFER_SIZE];            // The IP for each instruction to be printed. 
 uint16_t LabelId[BUFFER_SIZE];          // Container holding labels and the correspinding IP. Used during printing to determine where labels should be printed in the output.
-static uint8_t LabelCount;
+static uint8_t LabelCount = 1;
 static uint16_t DecodedInstIndex = 0;
 
 std::ofstream OpenAsmFile(std::string name)
@@ -521,6 +521,13 @@ void WriteToConsole()
     // Print start label 
     for (int i = 0; i < DecodedInstIndex; i++)
     {
+        // Check if a label needs to be printed first. 
+        uint16_t instIP = DecodedInstIp[i];
+        if (LabelId[instIP])
+        {
+            printf("L%d: \n", LabelId[instIP]);
+        }
+
         Instruction inst = DecodedInstructions[i];
         // Print mnemonic/operation 
         printf("\t%s ", Mnemonics[inst.op]);
@@ -742,9 +749,6 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     if (hasIpIncr)
     {   
-        inst.operands[DEST] = {
-            .type = OpType_label
-        };
 
         if (w == 1)
         {
@@ -752,8 +756,20 @@ Instruction Decode(CPU &cpu, Entry entry)
         }
         else
         {
-            inst.ipInc = (int16_t)GetNextByte(cpu.IP);
+            int8_t inc = (int8_t)GetNextByte(cpu.IP);
+            inst.ipInc = (int16_t)inc;
         }
+
+        uint16_t labelIndex = cpu.IP + inst.ipInc;
+        if (LabelId[labelIndex] == 0)
+        {
+            LabelId[labelIndex] = LabelCount++;
+        }
+
+        inst.operands[DEST] = {
+            .type = OpType_label,
+            .label = LabelId[labelIndex]
+        };
     }
 
     return inst;
@@ -764,6 +780,11 @@ Instruction Decode(CPU &cpu, Entry entry)
  * Instruction Table should drive decode, not vice versa
  * An entry tells you how many bits/bytes to pull from the stream
  */
+/*
+    TODO: We should determine which buffer size is most optimal. Once the buffer is full, just flush it and start over. 
+        This would allow the program to be as long as we want without any limit on the number of instructions. Also, batching 
+        is probably more performant than leaving a giant buffer of decoded instructions in memory. 
+*/
 void Disassemble(Program &program)
 {	
     CPU cpu = { 0 };
