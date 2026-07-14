@@ -28,12 +28,6 @@
 #define INST_LENGTH 30
 
 
-char AsmBuffer[BUFFER_SIZE][INST_LENGTH];     // String instruction buffer. Holds all ASM instructions to be printed 
-uint16_t AsmIp[BUFFER_SIZE];            // The IP for each instruction to be printed. 
-uint16_t LabelId[BUFFER_SIZE];          // Container holding labels and the correspinding IP. Used during printing to determine where labels should be printed in the output.
-static uint8_t LabelCount;
-static uint16_t AsmBufferIndex = 0;
-
 static uint8_t Memory[MEMORY_SIZE];
 
 struct CPU {
@@ -391,6 +385,12 @@ struct Instruction {
     Operand operands[2];
 };
 
+Instruction DecodedInstructions[BUFFER_SIZE];     // String instruction buffer. Holds all ASM instructions to be printed 
+uint16_t DecodedInstIp[BUFFER_SIZE];            // The IP for each instruction to be printed. 
+uint16_t LabelId[BUFFER_SIZE];          // Container holding labels and the correspinding IP. Used during printing to determine where labels should be printed in the output.
+static uint8_t LabelCount;
+static uint16_t DecodedInstIndex = 0;
+
 std::ofstream OpenAsmFile(std::string name)
 {
     std::ofstream asmFile;
@@ -516,31 +516,34 @@ void WriteToFile()
 
     sprintf_s(AsmBuffer[AsmBufferIndex], ASM_LENGTH, "%s %s %s%s %s") -> follows [MOV] [byte] [AX][,] [BX]
 */
-void WriteToConsole(Instruction inst) 
+void WriteToConsole() 
 {
     // Print start label 
-    
-    // Print mnemonic/operation 
-    printf("\t%s ", Mnemonics[inst.op]);
-
-    // If either operand type is immediate, we should print size 
-    if ((inst.operands[SRC].type == OpType_immediate || inst.operands[SRC].type == OpType_none) && inst.operands[DEST].type == OpType_effectiveAddrCalc)
+    for (int i = 0; i < DecodedInstIndex; i++)
     {
-        printf("%s ", inst.w == 0 ? "byte" : "word");
+        Instruction inst = DecodedInstructions[i];
+        // Print mnemonic/operation 
+        printf("\t%s ", Mnemonics[inst.op]);
+
+        // If either operand type is immediate, we should print size 
+        if ((inst.operands[SRC].type == OpType_immediate || inst.operands[SRC].type == OpType_none) && inst.operands[DEST].type == OpType_effectiveAddrCalc)
+        {
+            printf("%s ", inst.w == 0 ? "byte" : "word");
+        }
+
+        // Print dest operand 
+        PrintOperand(inst.operands[1]);
+
+        if (inst.operands[0].type != OpType_none)
+        {
+            printf(", ");
+        }   
+
+        // Print src operand 
+        PrintOperand(inst.operands[0]);
+
+        printf("\n");
     }
-
-    // Print dest operand 
-    PrintOperand(inst.operands[1]);
-
-    if (inst.operands[0].type != OpType_none)
-    {
-        printf(", ");
-    }   
-
-    // Print src operand 
-    PrintOperand(inst.operands[0]);
-
-    printf("\n");
 }
 
 
@@ -784,7 +787,9 @@ void Disassemble(Program &program)
                 Instruction result = Decode(cpu, entry);
                 if (result.op)
                 {
-                    WriteToConsole(result);
+                    DecodedInstructions[DecodedInstIndex] = result;
+                    DecodedInstIp[DecodedInstIndex] = preDecodeState.IP - 1;    // IP always points to the next byte. If we want the byte that the instruction started at, we need to subtract 1. 
+                    DecodedInstIndex++;
                     break;
                 }
                 
@@ -794,6 +799,8 @@ void Disassemble(Program &program)
 
         }
     }
+
+    WriteToConsole();
 }
 
 Program LoadProgramIntoMemory(std::string filePath)
