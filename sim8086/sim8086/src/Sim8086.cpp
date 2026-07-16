@@ -506,17 +506,7 @@ void WriteToFile()
 {
     /** TODO: Write to file */
 }
-/*
-    TODO: This needs to be rewritten to support writing to a buffer. 
-    We essentially need to fill out the parts of an assembly instruction 
-    mnemonic = ""
-    keyword = ""
-    comma = ""
-    operandA = ""
-    operandB = ""
 
-    sprintf_s(AsmBuffer[AsmBufferIndex], ASM_LENGTH, "%s %s %s%s %s") -> follows [MOV] [byte] [AX][,] [BX]
-*/
 void WriteToConsole() 
 {
     // Print start label 
@@ -560,7 +550,6 @@ void WriteToConsole()
  * If all fields are 0, then its an uninitialized struct and is the end
  * of the bits array. 
  */
-// Does this get inlined and become a preprocessor directive? 
 bool IsBitsDefined(Bits bits)
 {
     return !(bits.field == Op
