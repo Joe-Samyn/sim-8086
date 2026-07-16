@@ -2,13 +2,35 @@
 
 bits 16
 
+
 fun_one:
-    jmp test_function
+    jmp label
     add cx, 18
-test_function:
+label:
     mov bx, cx
     jmp test_function_2
 
 test_function_2:
     mov cx, dx
     jmp fun_one
+    jmp 500
+    jz label
+    jng label
+    jnge label
+    jnae label
+    jna label
+    jpe label
+    jo label
+    js label
+    jnz label
+    jge label
+    jg label
+    jae label
+    ja label
+    jpo label
+    jno label
+    
+    jmp bx
+    jmp [bx + si]
+    jmp [bx + si + 17]
+    ret

@@ -16,8 +16,8 @@
 #define B(type, bits) { type, 0b##bits, NONE, NONE, (sizeof(#bits) - 1) }
 #define Const(type, bits) { type, bits, NONE, NONE, NONE }
 #define OpExtension(bits) { OpExtension, 0b##bits, 0b111, 3, 3 }
+#define Inc(type) {type, NONE, NONE, NONE, NONE }
 #define Imm { Imm_bit, NONE, NONE, NONE, NONE }
-#define Incr { IPInc_bit, NONE, NONE, NONE, NONE }
 #define Addr { Addr_bit, NONE, NONE, NONE, NONE }
 #define D { D_bit, NONE, 0b1, 1, 1 }
 #define W { W_bit, NONE, 0b1, NONE, 1 }
@@ -67,8 +67,43 @@ INST_ALT(PUSH, { B(Op, 01010), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, N
 INST(POP, { B(Op, 10001111), Const(D_bit, 0b0), Const(W_bit, 0b1), Mod, OpExtension(000), Rm })
 INST_ALT(POP, { B(Op, 01011), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3} })
 
-INST(JMP, {B(Op, 11101001)})
-INST_ALT(JMP, { B(Op, 11101011), Const(W_bit, 0), Incr })
+INST(JMP, {B(Op, 11101001), Const(W_bit, 1), Inc(IPInc_bit) })
+INST_ALT(JMP, { B(Op, 11101011), Const(W_bit, 0), Inc(IPInc_bit) })
+INST_ALT(JMP, { B(Op, 11111111), Const(W_bit, 1), Mod, OpExtension(100), Rm })
+INST_ALT(JMP, { B(Op, 11101011), Const(W_bit, 0), Inc(IPInc_bit), Inc(CSInc_bit) })
+INST_ALT(JMP, { B(Op, 11111111), Const(W_bit, 1), Mod, OpExtension(101), Rm })
+
+INST(JZ, { B(Op, 01110100), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JNGE, { B(Op, 01111100), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JNG, { B(Op, 01111110), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JNAE, { B(Op, 01110010), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JNA, { B(Op, 01110110), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JPE, { B(Op, 01111010), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JO, { B(Op, 01110000), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JS, { B(Op, 01111000), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JNZ, { B(Op, 01110101), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JGE, { B(Op, 01111101), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JG, { B(Op, 01111111), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JAE, { B(Op, 01110011), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JA, { B(Op, 01110111), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JPO, { B(Op, 01111011), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JNO, { B(Op, 01110001), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(RET, { B(Op, 11000011), Const(W_bit, 0) })
 
 #undef INST
 #undef INST_ALT

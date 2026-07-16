@@ -6,11 +6,10 @@
 
 
 /**
- * Bit Stream Approach
- * -------------------
- * 
+ * NOTE
+ *  - Pay attention to JMP instructions when we get to execution stage. There are intersegment and within segment jumps. These 
+ *      could get interesting since the instruction format is identical only different OpExtension bits. 
  */
-
 #define ArrayCount(array) sizeof(array)/sizeof(array[0])
 
 #define LO_BITS 0
@@ -100,6 +99,7 @@ enum Field : uint8_t
     Const_bit,
     S_bit,
     IPInc_bit,
+    CSInc_bit,
 
     Field_count
 };
@@ -382,6 +382,7 @@ struct Instruction {
     uint8_t w;
     uint8_t d;
     int16_t ipInc;
+    int16_t csInc;
     Operand operands[2];
 };
 
@@ -668,6 +669,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t hasAddr = hasFields[Addr_bit];
     uint8_t hasOpExt = hasFields[OpExtension];
     uint8_t hasIpIncr = hasFields[IPInc_bit];
+    uint8_t hasCsInc = hasFields[CSInc_bit];
 
     uint8_t d = extractedBits[D_bit];
     uint8_t w = extractedBits[W_bit];
@@ -770,6 +772,11 @@ Instruction Decode(CPU &cpu, Entry entry)
             .type = OpType_label,
             .label = LabelId[labelIndex]
         };
+    }
+
+    if (hasCsInc)
+    {
+        inst.csInc = (int16_t)GetNextWord(cpu.IP);
     }
 
     return inst;
