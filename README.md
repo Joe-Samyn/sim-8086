@@ -1,66 +1,116 @@
-# sim-8086
+# sim8086
 
-Intel 8086 instruction-set simulator used to follow along with Casey Muratori's "Computer Enhance" series.
+sim8086 is a small 8086 instruction decoder and disassembler written in modern C++. It loads a binary program image, walks the instruction stream, and prints a readable assembly-style listing for supported opcodes.
 
-## Overview
+## What it does
 
-This small simulator implements core 8086 functionality to experiment with real assembly examples and to follow the lessons in the Computer Enhance series. It is intended as a learning tool and reference implementation; longer-term the project may be evolved into a production-quality 8086 emulator after completing the series.
+The project currently focuses on decoding and disassembly of a subset of 8086 instructions, including:
 
-## Status
+- Data movement: `MOV`
+- Arithmetic: `ADD`, `ADC`, `SUB`, `SBB`, `CMP`, `DEC`, `NEG`, `INC`
+- Stack: `PUSH`, `POP`
+- Control flow: `JMP` and common conditional jumps such as `JZ`, `JNZ`, `JGE`, `JNG`, `JA`, `JNA`, `JO`, `JNO`, `JS`, `JPE`, and related variants
 
-- Minimal instruction decoding and execution implemented.
-- Includes a few sample programs under `sim8086/res` for testing.
+The implementation is driven by an instruction table in [sim8086/src/InstructionTable.inl](sim8086/src/InstructionTable.inl), and the main entry point is [sim8086/src/Main.cpp](sim8086/src/Main.cpp).
 
-## Prerequisites
+> The current codebase is primarily a decoder/disassembler. The execution path is still a work in progress, and the `Execute` routine remains a stub. Full instruction support for disassembly is still being expanded.
 
-- CMake 3.15+
-- A C++17-capable compiler (Visual Studio on Windows, or clang/gcc on other platforms)
-- Ninja (optional, recommended for faster command-line builds)
+## Current support status
 
-## Building (Windows example)
+### Implemented / supported today
 
-Open a Developer Command Prompt or PowerShell and run:
+- [x] `MOV`
+- [x] `ADD`
+- [x] `ADC`
+- [x] `SUB`
+- [x] `SBB`
+- [x] `CMP`
+- [x] `INC`
+- [x] `DEC`
+- [x] `NEG`
+- [x] `PUSH`
+- [x] `POP`
+- [x] `JMP`
+- [x] Common conditional jumps such as `JZ`, `JNZ`, `JGE`, `JNG`, `JA`, `JNA`, `JO`, `JNO`, `JS`, `JPE`, and related variants
 
-```powershell
-mkdir build
-cd build
-cmake .. -G "Ninja"    # or omit -G to use default Visual Studio generator
-cmake --build . --config Release
+### Planned / not yet fully supported
+
+- [ ] Additional 8086 instructions such as `MUL`, `DIV`, `XCHG`, `LEA`, `XLAT`, `INT`, `CALL`, `RET`, `LOOP`, and `LOOPE`/`LOOPNE`
+- [ ] Full coverage for all memory addressing forms and edge-case encodings
+- [ ] More complete handling of segment register, far-jump, and inter-segment behaviors
+- [ ] Execution-stage support and runtime emulation, beyond disassembly
+
+## Repository layout
+
+- [CMakeLists.txt](CMakeLists.txt) — top-level CMake project file
+- [sim8086/CMakeLists.txt](sim8086/CMakeLists.txt) — subproject build rules and test registration
+- [sim8086/src](sim8086/src) — implementation and instruction table
+- [sim8086/tests](sim8086/tests) — sample assembly and binary fixtures plus the unit test entry point
+
+## Build
+
+This project uses CMake.
+
+From the repository root, configure and build it with:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j2
 ```
 
-After a successful build the executable will be located in the build output folder (for example `build\\sim8086.exe` or inside the Visual Studio `Debug`/`Release` subfolder).
+The verified build output in this workspace produces:
 
-## Running a sample program
+- [build/sim8086/sim8086](build/sim8086/sim8086)
+- [build/sim8086/sim_tests](build/sim8086/sim_tests)
 
-There is a sample assembly file in `sim8086/res/single_reg_mov.asm`.
+## Run the disassembler
 
-Run the simulator and point it at the sample file, for example:
+The simulator expects a binary file as input:
 
-```powershell
-.\\path\\to\\built\\sim8086.exe ..\\sim8086\\res\\single_reg_mov.asm
+```bash
+./build/sim8086/sim8086 ./sim8086/tests/test_jmp.bin
 ```
 
-Adjust the path to the built executable according to your generator and configuration.
+Example output includes a disassembled listing such as:
 
-## Project structure
+```asm
+L3:
+	JMP L1
+	ADD CX, 18
+L1:
+	MOV BX, CX
+	JMP L2
+```
 
-- `sim8086/src/` — simulator sources (`main.cpp`, headers, decoder)
-- `sim8086/res/` — sample assembly programs used for testing and demos
-- `CMakeLists.txt` — top-level build configuration
+## Test
 
-See the source entry point at [sim8086/src/main.cpp](sim8086/src/main.cpp).
+The project registers a CTest target for the simulator test executable.
 
-## Development notes
+Run the tests with:
 
-- The decoder and instruction implementations live under `sim8086/src` and `sim8086/` headers. Add small, focused test ASM files to `sim8086/res` when experimenting with a new instruction.
-- Keep changes small and document any deviations from the series to make it easy to follow along.
+```bash
+ctest --test-dir build/sim8086 --output-on-failure
+```
 
-## Contribution
+In the current workspace, this reported:
 
-Contributions are not welcome at this time. The project is being developed privately and will remain closed to external pull requests until further notice.
+- 1 test run
+- 1 passed
+- 0 failed
 
-## Attribution
+## Generate sample binaries
 
-This repository is intended to follow Casey Muratori's Computer Enhance series; refer to that series for lesson guidance and sequencing.
+If you want to create your own binaries for testing, you can assemble `.asm` files with NASM. For example:
 
+```bash
+cd sim8086/tests
+nasm test_jmp.asm -o test_jmp.bin
+```
 
+The repository already contains sample `.asm` and `.bin` files under [sim8086/tests](sim8086/tests).
+
+## Notes
+
+This project is best viewed as a decoder/disassembler prototype. It is useful for exploring 8086 instruction encoding and for generating readable assembly listings from raw machine code bytes.
+
+Contributions are not accepted at this time. However, anyone is welcome to fork this repository and use it as they please under the terms of the repository’s existing license.
