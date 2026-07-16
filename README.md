@@ -114,3 +114,5 @@ The repository already contains sample `.asm` and `.bin` files under [sim8086/te
 This project is best viewed as a decoder/disassembler prototype. It is useful for exploring 8086 instruction encoding and for generating readable assembly listings from raw machine code bytes.
 
 Contributions are not accepted at this time. However, anyone is welcome to fork this repository and use it as they please under the terms of the repository’s existing license.
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
