@@ -722,7 +722,8 @@ Instruction Decode(CPU &cpu, Entry entry)
 
         if (w == 1 && s == 1)
         {
-            op.immediate = (int16_t) GetNextByte(cpu.IP);
+            int8_t imm = (int8_t) GetNextByte(cpu.IP);
+            op.immediate = (int16_t) imm;
         }
         else if (w == 1)
         {
