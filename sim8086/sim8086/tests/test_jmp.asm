@@ -29,8 +29,15 @@ test_function_2:
     ja label
     jpo label
     jno label
-    
+    jns label
+
     jmp bx
     jmp [bx + si]
     jmp [bx + si + 17]
+
+    loop label
+    loopz label
+    loopnz label
+
+    jcxz label
     ret

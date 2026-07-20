@@ -103,7 +103,18 @@ INST(JPO, { B(Op, 01111011), Const(W_bit, 0), Inc(IPInc_bit) })
 
 INST(JNO, { B(Op, 01110001), Const(W_bit, 0), Inc(IPInc_bit) })
 
+INST(JNS, { B(Op, 01111001), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(LOOP, { B(Op, 11100010), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(LOOPZ, { B(Op, 11100001), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(LOOPNZ, { B(Op, 11100000), Const(W_bit, 0), Inc(IPInc_bit) })
+
+INST(JCXZ, { B(Op, 11100011), Const(W_bit, 0), Inc(IPInc_bit) })
+
 INST(RET, { B(Op, 11000011), Const(W_bit, 0) })
+INST_ALT(RET, { B(Op, 11000011), Const(W_bit, 1), Imm })
 
 #undef INST
 #undef INST_ALT
