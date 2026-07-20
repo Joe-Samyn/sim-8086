@@ -26,6 +26,8 @@
 #define BUFFER_SIZE 1000
 #define INST_LENGTH 30
 
+#define ACCUMULATOR_REGISTER { 0, FULL_BITS }
+
 
 static uint8_t Memory[MEMORY_SIZE];
 
@@ -100,6 +102,7 @@ enum Field : uint8_t
     S_bit,
     IPInc_bit,
     CSInc_bit,
+    Acc_bit,
 
     Field_count
 };
@@ -659,6 +662,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t hasOpExt = hasFields[OpExtension];
     uint8_t hasIpIncr = hasFields[IPInc_bit];
     uint8_t hasCsInc = hasFields[CSInc_bit];
+    uint8_t hasAccumulator = hasFields[Acc_bit];
 
     uint8_t d = extractedBits[D_bit];
     uint8_t w = extractedBits[W_bit];
@@ -767,6 +771,14 @@ Instruction Decode(CPU &cpu, Entry entry)
     if (hasCsInc)
     {
         inst.csInc = (int16_t)GetNextWord(cpu.IP);
+    }
+
+    if (hasAccumulator)
+    {
+        inst.operands[DEST] = {
+            .type = OpType_register, 
+            .reg = ACCUMULATOR_REGISTER
+        };
     }
 
     return inst;
