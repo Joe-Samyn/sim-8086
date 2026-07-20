@@ -50,7 +50,7 @@
 #define Reg { Reg_bit, NONE, 0b111, 3, 3 }
 #define Rm { Rm_bit, NONE, 0b111, 0, 3 }
 #define S {S_bit, NONE, 0b1, 1, 1}
-#define Accumulator {Acc_bit, 0b00, NONE, NONE, NONE }
+#define Accumulator {Acc_bit, AX, NONE, NONE, NONE }
 #define Data8 {Data8_bit, NONE, NONE, NONE, NONE }
 #define Dx {Dx_bit, NONE, NONE, NONE, NONE }
 
@@ -64,8 +64,11 @@ INST_ALT(MOV, { B(Op, 1010001), Const(D_bit, 0b1), {W_bit, NONE, 1, 0, 1}, Const
 INST(XCHG, { B(Op, 1000011), Const(D_bit, 0b1), W, Mod, Reg, Rm })
 INST_ALT(XCHG, { B(Op, 10010), Const(D_bit, 0b0), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3}, Accumulator })
 
-INST(IN, {B(Op, 1110010), W, Accumulator, Data8 })
+INST(IN, {B(Op, 1110010), Const(D_bit, 0b0), W, Accumulator, Data8 })
 INST_ALT(IN, { B(Op, 1110110), Const(D_bit, 0b0), W, Accumulator, Dx})
+
+INST(OUT, { B(Op, 1110011), Const(D_bit, 0b1), W, Accumulator, Data8 })
+INST_ALT(OUT, { B(Op, 1110111), Const(D_bit, 0b1), W, Accumulator, Dx})
 
 INST(ADD, {B(Op, 000000), D, W, Mod, Reg, Rm})
 INST_ALT(ADD, { B(Op, 100000), S, Const(D_bit, 0b0), W, Mod, OpExtension(000), Rm, Imm })

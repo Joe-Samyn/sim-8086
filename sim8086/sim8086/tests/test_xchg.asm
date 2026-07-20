@@ -13,3 +13,8 @@ in al, 122
 
 in ax, dx
 in al, dx
+
+out 9, ax
+out 122, al
+out dx, ax
+out dx, al

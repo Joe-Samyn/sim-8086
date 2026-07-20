@@ -778,7 +778,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     if (hasAccumulator)
     {
         uint8_t offset = (w == 1) ? FULL_BITS : LO_BITS;
-        inst.operands[DEST] = {
+        inst.operands[!d] = {
             .type = OpType_register, 
             .reg = {
                 .index = Register_a,
@@ -789,7 +789,7 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     if (hasData8)
     {
-        inst.operands[SRC] = {
+        inst.operands[d] = {
             .type = OpType_immediate,
             .immediate = (int16_t) GetNextByte(cpu.IP)
         };
@@ -797,7 +797,7 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     if (hasDx)
     {
-        inst.operands[SRC] = {
+        inst.operands[d] = {
             .type = OpType_register,
             .reg = {
                 .index = Register_d,
