@@ -26,8 +26,6 @@
 #define BUFFER_SIZE 1000
 #define INST_LENGTH 30
 
-#define ACCUMULATOR_REGISTER { 0, FULL_BITS }
-
 
 static uint8_t Memory[MEMORY_SIZE];
 
@@ -103,6 +101,8 @@ enum Field : uint8_t
     IPInc_bit,
     CSInc_bit,
     Acc_bit,
+    Dx_bit,
+    Data8_bit,
 
     Field_count
 };
@@ -663,6 +663,8 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t hasIpIncr = hasFields[IPInc_bit];
     uint8_t hasCsInc = hasFields[CSInc_bit];
     uint8_t hasAccumulator = hasFields[Acc_bit];
+    uint8_t hasData8 = hasFields[Data8_bit];
+    uint8_t hasDx = hasFields[Dx_bit];
 
     uint8_t d = extractedBits[D_bit];
     uint8_t w = extractedBits[W_bit];
@@ -775,9 +777,32 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     if (hasAccumulator)
     {
+        uint8_t offset = (w == 1) ? FULL_BITS : LO_BITS;
         inst.operands[DEST] = {
             .type = OpType_register, 
-            .reg = ACCUMULATOR_REGISTER
+            .reg = {
+                .index = Register_a,
+                .offset = offset
+            }
+        };
+    }
+
+    if (hasData8)
+    {
+        inst.operands[SRC] = {
+            .type = OpType_immediate,
+            .immediate = (int16_t) GetNextByte(cpu.IP)
+        };
+    }
+
+    if (hasDx)
+    {
+        inst.operands[SRC] = {
+            .type = OpType_register,
+            .reg = {
+                .index = Register_d,
+                .offset = FULL_BITS
+            }
         };
     }
 

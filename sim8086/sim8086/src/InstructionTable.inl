@@ -10,6 +10,31 @@
 
 #define NONE 0
 
+// Registers 
+#define AX 0
+#define AL 0
+
+#define CX 1
+#define CL 1
+
+#define DX 2
+#define DL 2
+
+#define BX 3
+#define BL 3
+
+#define SP 4
+#define AH 4
+
+#define BP 5
+#define CH 5
+
+#define SI 6
+#define DH 6
+
+#define DI 7
+#define BH 7
+
 /** Encoding Helpers */
 // Note (Joe): The shift in a Literal bit is irrelevant because we are specifying exactly what the bits are. Not shift needed
 // Format: Type, value, mask, shift, count
@@ -26,6 +51,8 @@
 #define Rm { Rm_bit, NONE, 0b111, 0, 3 }
 #define S {S_bit, NONE, 0b1, 1, 1}
 #define Accumulator {Acc_bit, 0b00, NONE, NONE, NONE }
+#define Data8 {Data8_bit, NONE, NONE, NONE, NONE }
+#define Dx {Dx_bit, NONE, NONE, NONE, NONE }
 
 /* Instruction Table */
 INST(MOV, { B(Op, 100010), D, W, Mod, Rm, Reg } )
@@ -36,6 +63,9 @@ INST_ALT(MOV, { B(Op, 1010001), Const(D_bit, 0b1), {W_bit, NONE, 1, 0, 1}, Const
 
 INST(XCHG, { B(Op, 1000011), Const(D_bit, 0b1), W, Mod, Reg, Rm })
 INST_ALT(XCHG, { B(Op, 10010), Const(D_bit, 0b0), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3}, Accumulator })
+
+INST(IN, {B(Op, 1110010), W, Accumulator, Data8 })
+INST_ALT(IN, { B(Op, 1110110), Const(D_bit, 0b0), W, Accumulator, Dx})
 
 INST(ADD, {B(Op, 000000), D, W, Mod, Reg, Rm})
 INST_ALT(ADD, { B(Op, 100000), S, Const(D_bit, 0b0), W, Mod, OpExtension(000), Rm, Imm })
