@@ -555,10 +555,7 @@ void WriteToConsole()
  */
 bool IsBitsDefined(Bits bits)
 {
-    return !(bits.field == Op
-            && bits.count == 0
-            && bits.shift == 0
-            && bits.value == 0);
+    return !(bits.field == Op && bits.count == 0);
 }
 
 void Execute(struct CPU &cpu)
