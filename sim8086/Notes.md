@@ -19,4 +19,6 @@
 - Need to leverage pointers more, we heavily rely on passing by value
 - Can we optimize the bit extraction to be a bit cleaner and simpler?
 - Can we simplify all of the has__ and data extraction piece after the bit extraction loop. Lots of uint8_t variables there that are probably unnecessary. 
-- Need to start moving like functionality to their own header/cpp file to make it easier to read/understand project. 
+- Need to start moving like functionality to their own header/cpp file to make it easier to read/understand project. \
+- Can we simplify the disassembly by removing the two pass system and just doing one pass?
+- We need to determine a better way to handle jmps and IP increments

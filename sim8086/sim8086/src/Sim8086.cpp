@@ -365,9 +365,20 @@ enum OperandType {
     OpType_register,
     OpType_effectiveAddrCalc,
     OpType_immediate,
-    OpType_label,
+    OpType_jmp,
 
     OpType_count
+};
+
+enum Flags {
+    Wide = (1 << 0),
+    IPInc = (1 << 1),
+    CSInc = (1 << 2)
+};
+
+struct Jump {
+    uint16_t ipAddress;
+    uint16_t csAddress;
 };
 
 struct Operand {
@@ -376,16 +387,14 @@ struct Operand {
         RegisterAccess reg;
         EffectiveAddrExpression expression;
         int16_t immediate;
-        uint16_t label;
+        uint16_t address;
+        Jump jmp;
     };
 };
 
 struct Instruction {
     Operation op;
-    uint8_t w;
-    uint8_t d;
-    int16_t ipInc;
-    int16_t csInc;
+    uint16_t flags;
     Operand operands[2];
 };
 
@@ -494,9 +503,18 @@ void PrintOperand(Operand op)
         {
             printf("%d", op.immediate);
         } break;
-        case OpType_label:
+        case OpType_jmp:
         {
-            printf("L%d", op.label);
+            if (op.jmp.csAddress == 0)
+            {
+                uint16_t label = LabelId[op.immediate];
+                printf("L%d", label);
+            }
+            else
+            {
+                // TODO: We do not offically support CS + IP jumps (far jumps) at this time. 
+            }
+            
         } break;
         default:
             {
@@ -529,7 +547,7 @@ void WriteToConsole()
         // If either operand type is immediate, we should print size 
         if ((inst.operands[SRC].type == OpType_immediate || inst.operands[SRC].type == OpType_none) && inst.operands[DEST].type == OpType_effectiveAddrCalc)
         {
-            printf("%s ", inst.w == 0 ? "byte" : "word");
+            printf("%s ", inst.flags & Flags::Wide == 0 ? "byte" : "word");
         }
 
         // Print dest operand 
@@ -545,17 +563,6 @@ void WriteToConsole()
 
         printf("\n");
     }
-}
-
-
-/**
- * Used to determine if all bits in an instruction have been decoded. 
- * If all fields are 0, then its an uninitialized struct and is the end
- * of the bits array. 
- */
-bool IsBitsDefined(Bits bits)
-{
-    return !(bits.field == Op && bits.count == 0);
 }
 
 void Execute(struct CPU &cpu)
@@ -615,19 +622,20 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t extractedBits[Field_count] = { 0 };     // Actual bits extracted from byte stream using entry Bits
     uint8_t expectedValues[Field_count] = { 0 };    // The 'value' property from all the entry Bits, used to verify constants (Values) if needed
     uint8_t hasFields[Field_count] = { 0 };         // Tracks which fields an entry actually has 
+
+    Bits currentBits = entry.bits[bitsIndex];
+    uint8_t valid = true;
     
     // TODO: We need to make this loop be purely about extracting bits. The OpExtension check needs to move out somehow. 
-    while(IsBitsDefined(entry.bits[bitsIndex]))
+    while(valid)
     {  
-
-        Bits bit = entry.bits[bitsIndex];
         uint8_t result;
 
         // Checking for constant bits 
-        if (bit.count == 0)
+        if (currentBits.count == 0)
         {
             // Get literal constant 
-            result = bit.value;
+            result = currentBits.value;
         }
         else
         {
@@ -637,22 +645,26 @@ Instruction Decode(CPU &cpu, Entry entry)
                 usedBits = 0;
             }
             
-            result = (byte >> bit.shift) & bit.mask;
+            result = (byte >> currentBits.shift) & currentBits.mask;
             
         }
         
-        hasFields[bit.field] = TRUE;
-        extractedBits[bit.field] = result;
-        expectedValues[bit.field] = bit.value;
-        usedBits += bit.count;
+        hasFields[currentBits.field] = TRUE;
+        extractedBits[currentBits.field] = result;
+        expectedValues[currentBits.field] = currentBits.value;
+        usedBits += currentBits.count;
         bitsIndex++;
-        
+
+        currentBits = entry.bits[bitsIndex];
+
+        if (currentBits.field == Op && currentBits.count == 0) 
+        {
+            valid = false;
+        }
     }
 
-    uint8_t hasD = hasFields[D_bit];
     uint8_t hasS = hasFields[S_bit];
     uint8_t hasMod = hasFields[Mod_bit];
-    uint8_t hasRm = hasFields[Rm_bit];
     uint8_t hasReg = hasFields[Reg_bit];
     uint8_t hasImm = hasFields[Imm_bit];
     uint8_t hasAddr = hasFields[Addr_bit];
@@ -682,8 +694,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     
     Instruction inst = {};
     inst.op = entry.mnemonic;
-    inst.d = d;
-    inst.w = w;
+    inst.flags |= w;
 
     if (hasMod)
     {
@@ -701,10 +712,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             .reg = a		
         };
 
-        if (hasD)
-            inst.operands[d] = op;
-        else
-            inst.operands[DEST] = op;
+        inst.operands[d] = op;
     }
 
     if (hasImm)
@@ -744,32 +752,38 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     if (hasIpIncr)
     {   
-
+        int16_t increment = 0;
         if (w == 1)
         {
-            inst.ipInc = (int16_t)GetNextWord(cpu.IP);
+            increment = (int16_t)GetNextWord(cpu.IP);
         }
         else
         {
             int8_t inc = (int8_t)GetNextByte(cpu.IP);
-            inst.ipInc = (int16_t)inc;
+            increment = (int16_t)inc;
         }
 
-        uint16_t labelIndex = cpu.IP + inst.ipInc;
-        if (LabelId[labelIndex] == 0)
+        uint16_t jmpAddress = cpu.IP + increment;
+        if (LabelId[jmpAddress] == 0)
         {
-            LabelId[labelIndex] = LabelCount++;
+            LabelId[jmpAddress] = LabelCount++;
         }
 
         inst.operands[DEST] = {
-            .type = OpType_label,
-            .label = LabelId[labelIndex]
+            .type = OpType_jmp,
+            .jmp = {
+                .ipAddress = jmpAddress,
+                .csAddress = 0
+            }
         };
+
+        inst.flags |= IPInc;
     }
 
     if (hasCsInc)
     {
-        inst.csInc = (int16_t)GetNextWord(cpu.IP);
+        uint16_t csAddress = GetNextWord(cpu.IP);
+        inst.operands[DEST].jmp.csAddress = csAddress;
     }
 
     if (hasAccumulator)
