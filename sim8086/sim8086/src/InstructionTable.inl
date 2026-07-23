@@ -53,6 +53,7 @@
 #define Accumulator {Acc_bit, AX, NONE, NONE, NONE }
 #define Data8 {Data8_bit, NONE, NONE, NONE, NONE }
 #define Dx {Dx_bit, NONE, NONE, NONE, NONE }
+#define ImpW(value) {W_bit, value, NONE, NONE, NONE }
 
 /* Instruction Table */
 INST(MOV, { B(Op, 100010), D, W, Mod, Rm, Reg } )
@@ -62,7 +63,7 @@ INST_ALT(MOV, { B(Op, 1010000), Const(D_bit, 0b1), {W_bit, NONE, 1, 0, 1}, Const
 INST_ALT(MOV, { B(Op, 1010001), Const(D_bit, 0b1), {W_bit, NONE, 1, 0, 1}, Const(Reg_bit, 0b00), Addr } )
 
 INST(XCHG, { B(Op, 1000011), Const(D_bit, 0b1), W, Mod, Reg, Rm })
-INST_ALT(XCHG, { B(Op, 10010), Const(D_bit, 0b0), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3}, Accumulator })
+INST_ALT(XCHG, { B(Op, 10010), Const(D_bit, 0b0), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3}, Accumulator })
 
 INST(IN, {B(Op, 1110010), Const(D_bit, 0b0), W, Accumulator, Data8 })
 INST_ALT(IN, { B(Op, 1110110), Const(D_bit, 0b0), W, Accumulator, Dx})
@@ -91,18 +92,18 @@ INST_ALT(CMP, { B(Op, 100000), S, Const(D_bit, 0b0), W, Mod, OpExtension(111), R
 INST_ALT(CMP, { B(Op, 0011110), Const(D_bit, 0b0), W, Const(Reg_bit, 0b000), Imm })
 
 INST(DEC, {B(Op, 1111111), Const(D_bit, 0b0), { W_bit, NONE, 0b1, 0, 1}, Mod, OpExtension(001), Rm})
-INST_ALT(DEC, { B(Op, 01001), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3} })
+INST_ALT(DEC, { B(Op, 01001), Const(D_bit, 0b1), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3} })
 
 INST(NEG, { B(Op, 1111011), Const(D_bit, 0b0), W, Mod, OpExtension(011), Rm })
 
 INST(INC, { B(Op, 1111111), Const(D_bit, 0b0), W, Mod, OpExtension(000), Rm })
-INST_ALT(INC, { B(Op, 01000), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3} })
+INST_ALT(INC, { B(Op, 01000), Const(D_bit, 0b1), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3} })
 
-INST(PUSH, { B(Op, 11111111), Const(D_bit, 0b0), Const(W_bit, 0b1), Mod, OpExtension(110), Rm })
-INST_ALT(PUSH, { B(Op, 01010), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3} })
+INST(PUSH, { B(Op, 11111111), Const(D_bit, 0b0), ImpW(0b1), Mod, OpExtension(110), Rm })
+INST_ALT(PUSH, { B(Op, 01010), Const(D_bit, 0b1), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3} })
 
-INST(POP, { B(Op, 10001111), Const(D_bit, 0b0), Const(W_bit, 0b1), Mod, OpExtension(000), Rm })
-INST_ALT(POP, { B(Op, 01011), Const(D_bit, 0b1), Const(W_bit, 0b1), {Reg_bit, NONE, 0b111, 0, 3} })
+INST(POP, { B(Op, 10001111), Const(D_bit, 0b0), ImpW(0b1), Mod, OpExtension(000), Rm })
+INST_ALT(POP, { B(Op, 01011), Const(D_bit, 0b1), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3} })
 
 INST(JMP, {B(Op, 11101001), Const(W_bit, 1), Inc(IPInc_bit) })
 INST_ALT(JMP, { B(Op, 11101011), Const(W_bit, 0), Inc(IPInc_bit) })
