@@ -9,7 +9,8 @@
 #endif
 
 #define NONE 0
-#define ACCUMULATOR 0b00
+#define BYTE 0
+#define WIDE 1
 
 /** Encoding Helpers */
 // Note (Joe): The shift in a Literal bit is irrelevant because we are specifying exactly what the bits are. Not shift needed
@@ -26,48 +27,48 @@
 #define Reg { Reg_bit, NONE, 0b111, 3, 3 }
 #define Rm { Rm_bit, NONE, 0b111, 0, 3 }
 #define S {S_bit, NONE, 0b1, 1, 1}
-#define Accumulator {Acc_bit, 0b00, NONE, NONE, NONE }
-#define Data8 {Data8_bit, NONE, NONE, NONE, NONE }
-#define Dx {Dx_bit, NONE, NONE, NONE, NONE }
+#define Data(size) {Data_bit, NONE, NONE, NONE, NONE }
 #define ImpW(value) {W_bit, value, NONE, NONE, NONE }
 #define ImpReg(register) { Reg_bit, register, NONE, NONE, NONE }
 #define ImpD(value) {D_bit, value, NONE, NONE, NONE }
+#define ImpMod(value) { Mod_bit, value, NONE, NONE, NONE }
+#define ImpRm(value) { Rm_bit, value, NONE, NONE, NONE}
 
 /* Instruction Table */
 INST(MOV, { B(Op, 100010), D, W, Mod, Rm, Reg } )
 INST_ALT(MOV, { B(Op, 1100011), W, Mod, OpExtension(000), Rm, Imm } )
 INST_ALT(MOV, { B(Op, 1011), ImpD(0b1), { W_bit, NONE, 1, 3, 1 }, { Reg_bit, NONE, 0b111, 0, 3 }, Imm } )
-INST_ALT(MOV, { B(Op, 1010000), ImpD(0b1), {W_bit, NONE, 1, 0, 1}, ImpReg(ACCUMULATOR), Addr } )
-INST_ALT(MOV, { B(Op, 1010001), ImpD(0b1), {W_bit, NONE, 1, 0, 1}, ImpReg(ACCUMULATOR), Addr } )
+INST_ALT(MOV, { B(Op, 1010000), ImpD(0b1), {W_bit, NONE, 1, 0, 1}, ImpReg(0b000), Addr } )
+INST_ALT(MOV, { B(Op, 1010001), ImpD(0b1), {W_bit, NONE, 1, 0, 1}, ImpReg(0b000), Addr } )
 
 INST(XCHG, { B(Op, 1000011), ImpD(0b1), W, Mod, Reg, Rm })
-INST_ALT(XCHG, { B(Op, 10010), ImpD(0b0), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3}, Accumulator })
+INST_ALT(XCHG, { B(Op, 10010), ImpD(0b0), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3}, ImpMod(0b11), ImpRm(0b000) })
 
-INST(IN, {B(Op, 1110010), ImpD(0b0), W, Accumulator, Data8 })
-INST_ALT(IN, { B(Op, 1110110), ImpD(0b0), W, Accumulator, Dx})
+INST(IN, {B(Op, 1110010), ImpD(0b1), W, ImpReg(0b000), Data(BYTE) })
+INST_ALT(IN, { B(Op, 1110110), ImpD(0b1), W, ImpReg(0b000), ImpMod(0b11), ImpRm(0b010) })
 
-INST(OUT, { B(Op, 1110011), ImpD(0b1), W, Accumulator, Data8 })
-INST_ALT(OUT, { B(Op, 1110111), ImpD(0b1), W, Accumulator, Dx})
+INST(OUT, { B(Op, 1110011), ImpD(0b0), W, ImpReg(0b000), Data(BYTE) })
+INST_ALT(OUT, { B(Op, 1110111), ImpD(0b0), W, ImpReg(0b000), ImpMod(0b11), ImpRm(0b010) })
 
 INST(ADD, {B(Op, 000000), D, W, Mod, Reg, Rm})
 INST_ALT(ADD, { B(Op, 100000), S, ImpD(0b0), W, Mod, OpExtension(000), Rm, Imm })
-INST_ALT(ADD, { B(Op, 0001010), ImpD(0b0), W, ImpReg(ACCUMULATOR), Imm })
+INST_ALT(ADD, { B(Op, 0001010), ImpD(0b0), W, ImpReg(0b000), Imm })
 
 INST(ADC, {B(Op, 000100), D, W, Mod, Reg, Rm})
 INST_ALT(ADC, { B(Op, 100000), S, ImpD(0b0), W, Mod, OpExtension(010), Rm, Imm })
-INST_ALT(ADC, { B(Op, 0001010), ImpD(0b0), W, ImpReg(ACCUMULATOR), Imm })
+INST_ALT(ADC, { B(Op, 0001010), ImpD(0b0), W, ImpReg(0b000), Imm })
 
 INST(SUB, {B(Op, 001010), D, W, Mod, Reg, Rm})
 INST_ALT(SUB, { B(Op, 100000), S, ImpD(0b0), W, Mod, OpExtension(101), Rm, Imm })
-INST_ALT(SUB, { B(Op, 0010110), ImpD(0b0), W, ImpReg(ACCUMULATOR), Imm })
+INST_ALT(SUB, { B(Op, 0010110), ImpD(0b0), W, ImpReg(0b000), Imm })
 
 INST(SBB, {B(Op, 000110), D, W, Mod, Reg, Rm})
 INST_ALT(SBB, { B(Op, 100000), S, ImpD(0b0), W, Mod, OpExtension(011), Rm, Imm })
-INST_ALT(SBB, { B(Op, 0001110), ImpD(0b0), W, ImpReg(ACCUMULATOR), Imm })
+INST_ALT(SBB, { B(Op, 0001110), ImpD(0b0), W, ImpReg(0b000), Imm })
 
 INST(CMP, {B(Op, 001110), D, W, Mod, Reg, Rm})
 INST_ALT(CMP, { B(Op, 100000), S, ImpD(0b0), W, Mod, OpExtension(111), Rm, Imm })
-INST_ALT(CMP, { B(Op, 0011110), ImpD(0b0), W, ImpReg(ACCUMULATOR), Imm })
+INST_ALT(CMP, { B(Op, 0011110), ImpD(0b0), W, ImpReg(0b000), Imm })
 
 INST(DEC, {B(Op, 1111111), ImpD(0b0), { W_bit, NONE, 0b1, 0, 1}, Mod, OpExtension(001), Rm})
 INST_ALT(DEC, { B(Op, 01001), ImpD(0b1), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3} })

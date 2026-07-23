@@ -100,9 +100,7 @@ enum Field : uint8_t
     S_bit,
     IPInc_bit,
     CSInc_bit,
-    Acc_bit,
-    Dx_bit,
-    Data8_bit,
+    Data_bit,
 
     Field_count
 };
@@ -670,9 +668,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t hasOpExt = hasFields[OpExtension];
     uint8_t hasIpIncr = hasFields[IPInc_bit];
     uint8_t hasCsInc = hasFields[CSInc_bit];
-    uint8_t hasAccumulator = hasFields[Acc_bit];
-    uint8_t hasData8 = hasFields[Data8_bit];
-    uint8_t hasDx = hasFields[Dx_bit];
+    uint8_t hasData = hasFields[Data_bit];
 
     uint8_t d = extractedBits[D_bit];
     uint8_t w = extractedBits[W_bit];
@@ -719,18 +715,15 @@ Instruction Decode(CPU &cpu, Entry entry)
         Operand op = {};
         op.type = OpType_immediate;
 
-        if (w == 1 && s == 1)
+        bool isByte = (w == 1 && s == 1) || (w == 0);
+        if (isByte)
         {
             int8_t imm = (int8_t) GetNextByte(cpu.IP);
             op.immediate = (int16_t) imm;
         }
-        else if (w == 1)
-        {
-            op.immediate = (int16_t) GetNextWord(cpu.IP);
-        }
         else
         {
-             op.immediate = (int16_t) GetNextByte(cpu.IP);
+            op.immediate = (int16_t) GetNextWord(cpu.IP);
         }
         
         inst.operands[SRC] = op;
@@ -785,34 +778,11 @@ Instruction Decode(CPU &cpu, Entry entry)
         inst.operands[DEST].jmp.csAddress = csAddress;
     }
 
-    if (hasAccumulator)
+    if (hasData)
     {
-        uint8_t offset = (w == 1) ? FULL_BITS : LO_BITS;
         inst.operands[!d] = {
-            .type = OpType_register, 
-            .reg = {
-                .index = Register_a,
-                .offset = offset
-            }
-        };
-    }
-
-    if (hasData8)
-    {
-        inst.operands[d] = {
             .type = OpType_immediate,
             .immediate = (int16_t) GetNextByte(cpu.IP)
-        };
-    }
-
-    if (hasDx)
-    {
-        inst.operands[d] = {
-            .type = OpType_register,
-            .reg = {
-                .index = Register_d,
-                .offset = FULL_BITS
-            }
         };
     }
 
