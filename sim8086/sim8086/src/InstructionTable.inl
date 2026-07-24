@@ -37,7 +37,7 @@
 /* Instruction Table */
 INST(MOV, { B(Op, 100010), D, W, Mod, Rm, Reg } )
 INST_ALT(MOV, { B(Op, 1100011), W, Mod, OpExtension(000), Rm, Imm } )
-INST_ALT(MOV, { B(Op, 1011), ImpD(0b1), { W_bit, NONE, 1, 3, 1 }, { Reg_bit, NONE, 0b111, 0, 3 }, Imm } )
+INST_ALT(MOV, { B(Op, 1011), ImpD(0b1), { W_bit, NONE, 1, 3, 1 }, { Reg_bit, 1, 0b111, 0, 3 }, Imm } )
 INST_ALT(MOV, { B(Op, 1010000), ImpD(0b1), {W_bit, NONE, 1, 0, 1}, ImpReg(0b000), Addr } )
 INST_ALT(MOV, { B(Op, 1010001), ImpD(0b1), {W_bit, NONE, 1, 0, 1}, ImpReg(0b000), Addr } )
 
@@ -87,7 +87,7 @@ INST_ALT(POP, { B(Op, 01011), ImpD(0b1), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3}
 INST(JMP, {B(Op, 11101001), ImpW(1), Inc(IPInc_bit) })
 INST_ALT(JMP, { B(Op, 11101011), ImpW(0), Inc(IPInc_bit) })
 INST_ALT(JMP, { B(Op, 11111111), ImpW(1), Mod, OpExtension(100), Rm })
-INST_ALT(JMP, { B(Op, 11101011), ImpW(0), Inc(IPInc_bit), Inc(CSInc_bit) })
+INST_ALT(JMP, { B(Op, 11101011), ImpW(0), Inc(IPInc_bit), Inc(CS_bit) })
 INST_ALT(JMP, { B(Op, 11111111), ImpW(1), Mod, OpExtension(101), Rm })
 
 INST(JZ, { B(Op, 01110100), ImpW(0), Inc(IPInc_bit) })

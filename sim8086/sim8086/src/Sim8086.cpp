@@ -96,10 +96,9 @@ enum Field : uint8_t
     Mod_bit,
     Imm_bit,
     Addr_bit,
-    Const_bit,
     S_bit,
     IPInc_bit,
-    CSInc_bit,
+    CS_bit,
     Data_bit,
 
     Field_count
@@ -544,7 +543,7 @@ void WriteToConsole()
         // If either operand type is immediate, we should print size 
         if ((inst.operands[SRC].type == OpType_immediate || inst.operands[SRC].type == OpType_none) && inst.operands[DEST].type == OpType_effectiveAddrCalc)
         {
-            printf("%s ", inst.flags & Flags::Wide == 0 ? "byte" : "word");
+            printf("%s ", (inst.flags & Flags::Wide) == 0 ? "byte" : "word");
         }
 
         // Print dest operand 
@@ -616,9 +615,8 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     uint8_t bitsIndex = 1;
     uint8_t usedBits = entry.bits[0].count;
-    uint8_t extractedBits[Field_count] = { 0 };     // Actual bits extracted from byte stream using entry Bits
-    uint8_t expectedValues[Field_count] = { 0 };    // The 'value' property from all the entry Bits, used to verify constants (Values) if needed
-    uint8_t hasFields[Field_count] = { 0 };         // Tracks which fields an entry actually has 
+    uint8_t extractedData[Field_count] = { 0 };     // Actual bits extracted from byte stream using entry Bits
+    uint32_t hasBits = 0;
 
     Bits currentBits = entry.bits[bitsIndex];
     uint8_t valid = true;
@@ -645,10 +643,16 @@ Instruction Decode(CPU &cpu, Entry entry)
             result = (byte >> currentBits.shift) & currentBits.mask;
             
         }
+
+        // Just break out if the opcode extension does not match because we are decoding the wrong instruction entry.
+        if (currentBits.field == OpExtension && (result != currentBits.value))
+        {
+            valid = false;
+            return {};
+        }
         
-        hasFields[currentBits.field] = TRUE;
-        extractedBits[currentBits.field] = result;
-        expectedValues[currentBits.field] = currentBits.value;
+        extractedData[currentBits.field] = result;
+        hasBits |= (1 << currentBits.field);
         usedBits += currentBits.count;
         bitsIndex++;
 
@@ -660,32 +664,17 @@ Instruction Decode(CPU &cpu, Entry entry)
         }
     }
 
-    uint8_t hasS = hasFields[S_bit];
-    uint8_t hasMod = hasFields[Mod_bit];
-    uint8_t hasReg = hasFields[Reg_bit];
-    uint8_t hasImm = hasFields[Imm_bit];
-    uint8_t hasAddr = hasFields[Addr_bit];
-    uint8_t hasOpExt = hasFields[OpExtension];
-    uint8_t hasIpIncr = hasFields[IPInc_bit];
-    uint8_t hasCsInc = hasFields[CSInc_bit];
-    uint8_t hasData = hasFields[Data_bit];
+    uint8_t d = extractedData[D_bit];
+    uint8_t w = extractedData[W_bit];
+    uint8_t s = extractedData[S_bit];
 
-    uint8_t d = extractedBits[D_bit];
-    uint8_t w = extractedBits[W_bit];
-    uint8_t s = extractedBits[S_bit];
-    uint8_t mod = extractedBits[Mod_bit];
-    uint8_t rm = extractedBits[Rm_bit];
-    uint8_t reg = extractedBits[Reg_bit];
-    uint8_t opExt = extractedBits[OpExtension];
+    uint32_t hasMod = (hasBits & (1 << Mod_bit));
+    uint32_t hasIpInc = (hasBits & (1 << IPInc_bit));
+    uint32_t hasImm = (hasBits & (1 << Imm_bit));
+    uint32_t hasAddr = (hasBits & (1 << Addr_bit));
+    uint32_t hasReg = (hasBits & (1 << Reg_bit));
+    uint32_t hasData = (hasBits & (1 << Data_bit));
 
-    // If the instruction has an Opcode Extension, we need to ensure the opcode extension also matches the instruction entry. 
-    if (hasOpExt)
-    {
-        if (opExt != expectedValues[OpExtension])
-        {
-            return {};
-        }
-    }
     
     Instruction inst = {};
     inst.op = entry.mnemonic;
@@ -693,6 +682,9 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     if (hasMod)
     {
+        uint8_t mod = extractedData[Mod_bit];
+        uint8_t rm = extractedData[Rm_bit];
+
         Operand op = {};
         InterpretModRm(cpu, mod, rm, w, op);
         inst.operands[!d] = op;
@@ -700,6 +692,8 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     if (hasReg)
     {
+        uint8_t reg = extractedData[Reg_bit];
+
         RegisterAccess a = {};
         DecodeRegister(reg, w, a);
         Operand op = {
@@ -742,7 +736,7 @@ Instruction Decode(CPU &cpu, Entry entry)
         };
     }
 
-    if (hasIpIncr)
+    if (hasIpInc)
     {   
         int16_t increment = 0;
         if (w == 1)
@@ -770,12 +764,6 @@ Instruction Decode(CPU &cpu, Entry entry)
         };
 
         inst.flags |= IPInc;
-    }
-
-    if (hasCsInc)
-    {
-        uint16_t csAddress = GetNextWord(cpu.IP);
-        inst.operands[DEST].jmp.csAddress = csAddress;
     }
 
     if (hasData)
