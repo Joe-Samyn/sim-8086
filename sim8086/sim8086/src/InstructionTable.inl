@@ -18,7 +18,6 @@
 #define B(type, bits) { type, 0b##bits, NONE, NONE, (sizeof(#bits) - 1) }
 #define Const(type, bits) { type, bits, NONE, NONE, NONE }
 #define OpExtension(bits) { OpExtension, 0b##bits, 0b111, 3, 3 }
-#define Inc(type) {type, NONE, NONE, NONE, NONE }
 #define Imm { Imm_bit, NONE, NONE, NONE, NONE }
 #define Addr { Addr_bit, NONE, NONE, NONE, NONE }
 #define D { D_bit, NONE, 0b1, 1, 1 }
@@ -28,6 +27,7 @@
 #define Rm { Rm_bit, NONE, 0b111, 0, 3 }
 #define S {S_bit, NONE, 0b1, 1, 1}
 #define Data(size) {Data_bit, NONE, NONE, NONE, NONE }
+#define Displacement { Displacement_bit, NONE, NONE, NONE }
 #define ImpW(value) {W_bit, value, NONE, NONE, NONE }
 #define ImpReg(register) { Reg_bit, register, NONE, NONE, NONE }
 #define ImpD(value) {D_bit, value, NONE, NONE, NONE }
@@ -84,51 +84,51 @@ INST_ALT(PUSH, { B(Op, 01010), ImpD(0b1), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3
 INST(POP, { B(Op, 10001111), ImpD(0b0), ImpW(0b1), Mod, OpExtension(000), Rm })
 INST_ALT(POP, { B(Op, 01011), ImpD(0b1), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3} })
 
-INST(JMP, {B(Op, 11101001), ImpW(1), Inc(IPInc_bit) })
-INST_ALT(JMP, { B(Op, 11101011), ImpW(0), Inc(IPInc_bit) })
+INST(JMP, {B(Op, 11101001), ImpW(1), Displacement})
+INST_ALT(JMP, { B(Op, 11101011), ImpW(0), Displacement})
 INST_ALT(JMP, { B(Op, 11111111), ImpW(1), Mod, OpExtension(100), Rm })
-INST_ALT(JMP, { B(Op, 11101011), ImpW(0), Inc(IPInc_bit), Inc(CS_bit) })
+// INST_ALT(JMP, { B(Op, 11101011), ImpW(0), Inc(IPInc_bit), Inc(CS_bit) })
 INST_ALT(JMP, { B(Op, 11111111), ImpW(1), Mod, OpExtension(101), Rm })
 
-INST(JZ, { B(Op, 01110100), ImpW(0), Inc(IPInc_bit) })
+INST(JZ, { B(Op, 01110100), ImpW(0), Displacement})
 
-INST(JNGE, { B(Op, 01111100), ImpW(0), Inc(IPInc_bit) })
+INST(JNGE, { B(Op, 01111100), ImpW(0), Displacement})
 
-INST(JNG, { B(Op, 01111110), ImpW(0), Inc(IPInc_bit) })
+INST(JNG, { B(Op, 01111110), ImpW(0), Displacement})
 
-INST(JNAE, { B(Op, 01110010), ImpW(0), Inc(IPInc_bit) })
+INST(JNAE, { B(Op, 01110010), ImpW(0), Displacement})
 
-INST(JNA, { B(Op, 01110110), ImpW(0), Inc(IPInc_bit) })
+INST(JNA, { B(Op, 01110110), ImpW(0), Displacement})
 
-INST(JPE, { B(Op, 01111010), ImpW(0), Inc(IPInc_bit) })
+INST(JPE, { B(Op, 01111010), ImpW(0), Displacement})
 
-INST(JO, { B(Op, 01110000), ImpW(0), Inc(IPInc_bit) })
+INST(JO, { B(Op, 01110000), ImpW(0), Displacement})
 
-INST(JS, { B(Op, 01111000), ImpW(0), Inc(IPInc_bit) })
+INST(JS, { B(Op, 01111000), ImpW(0), Displacement})
 
-INST(JNZ, { B(Op, 01110101), ImpW(0), Inc(IPInc_bit) })
+INST(JNZ, { B(Op, 01110101), ImpW(0), Displacement})
 
-INST(JGE, { B(Op, 01111101), ImpW(0), Inc(IPInc_bit) })
+INST(JGE, { B(Op, 01111101), ImpW(0), Displacement})
 
-INST(JG, { B(Op, 01111111), ImpW(0), Inc(IPInc_bit) })
+INST(JG, { B(Op, 01111111), ImpW(0), Displacement})
 
-INST(JAE, { B(Op, 01110011), ImpW(0), Inc(IPInc_bit) })
+INST(JAE, { B(Op, 01110011), ImpW(0), Displacement})
 
-INST(JA, { B(Op, 01110111), ImpW(0), Inc(IPInc_bit) })
+INST(JA, { B(Op, 01110111), ImpW(0), Displacement})
 
-INST(JPO, { B(Op, 01111011), ImpW(0), Inc(IPInc_bit) })
+INST(JPO, { B(Op, 01111011), ImpW(0), Displacement})
 
-INST(JNO, { B(Op, 01110001), ImpW(0), Inc(IPInc_bit) })
+INST(JNO, { B(Op, 01110001), ImpW(0), Displacement})
 
-INST(JNS, { B(Op, 01111001), ImpW(0), Inc(IPInc_bit) })
+INST(JNS, { B(Op, 01111001), ImpW(0), Displacement})
 
-INST(LOOP, { B(Op, 11100010), ImpW(0), Inc(IPInc_bit) })
+INST(LOOP, { B(Op, 11100010), ImpW(0), Displacement})
 
-INST(LOOPZ, { B(Op, 11100001), ImpW(0), Inc(IPInc_bit) })
+INST(LOOPZ, { B(Op, 11100001), ImpW(0), Displacement})
 
-INST(LOOPNZ, { B(Op, 11100000), ImpW(0), Inc(IPInc_bit) })
+INST(LOOPNZ, { B(Op, 11100000), ImpW(0), Displacement})
 
-INST(JCXZ, { B(Op, 11100011), ImpW(0), Inc(IPInc_bit) })
+INST(JCXZ, { B(Op, 11100011), ImpW(0), Displacement})
 
 INST(RET, { B(Op, 11000011), ImpW(0) })
 INST_ALT(RET, { B(Op, 11000011), ImpW(1), Imm })

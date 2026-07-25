@@ -97,9 +97,8 @@ enum Field : uint8_t
     Imm_bit,
     Addr_bit,
     S_bit,
-    IPInc_bit,
-    CS_bit,
     Data_bit,
+    Displacement_bit,
 
     Field_count
 };
@@ -383,7 +382,7 @@ struct Operand {
         RegisterAccess reg;
         EffectiveAddrExpression expression;
         int16_t immediate;
-        uint16_t address;
+        uint32_t address;
         Jump jmp;
     };
 };
@@ -475,6 +474,9 @@ void PrintEffectiveAddressExpression(Operand op)
                     }
                 }
             } break;
+            case Effective_addr_count:
+            { 
+            } break;
     }
 }
 
@@ -501,15 +503,7 @@ void PrintOperand(Operand op)
         } break;
         case OpType_jmp:
         {
-            if (op.jmp.csAddress == 0)
-            {
-                uint16_t label = LabelId[op.immediate];
-                printf("L%d", label);
-            }
-            else
-            {
-                // TODO: We do not offically support CS + IP jumps (far jumps) at this time. 
-            }
+            printf("$%+d", op.address);
             
         } break;
         default:
@@ -669,7 +663,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     uint8_t s = extractedData[S_bit];
 
     uint32_t hasMod = (hasBits & (1 << Mod_bit));
-    uint32_t hasIpInc = (hasBits & (1 << IPInc_bit));
+    uint32_t hasDisplacement = (hasBits & (1 << Displacement_bit));
     uint32_t hasImm = (hasBits & (1 << Imm_bit));
     uint32_t hasAddr = (hasBits & (1 << Addr_bit));
     uint32_t hasReg = (hasBits & (1 << Reg_bit));
@@ -736,31 +730,22 @@ Instruction Decode(CPU &cpu, Entry entry)
         };
     }
 
-    if (hasIpInc)
+    if (hasDisplacement)
     {   
-        int16_t increment = 0;
+        int16_t displacement = 0;
         if (w == 1)
         {
-            increment = (int16_t)GetNextWord(cpu.IP);
+            displacement = (int16_t)GetNextWord(cpu.IP);
         }
         else
         {
             int8_t inc = (int8_t)GetNextByte(cpu.IP);
-            increment = (int16_t)inc;
-        }
-
-        uint16_t jmpAddress = cpu.IP + increment;
-        if (LabelId[jmpAddress] == 0)
-        {
-            LabelId[jmpAddress] = LabelCount++;
+            displacement = (int16_t)inc;
         }
 
         inst.operands[DEST] = {
             .type = OpType_jmp,
-            .jmp = {
-                .ipAddress = jmpAddress,
-                .csAddress = 0
-            }
+            .address = (uint32_t)displacement
         };
 
         inst.flags |= IPInc;
