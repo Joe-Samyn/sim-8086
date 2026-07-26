@@ -593,8 +593,7 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
     }
 }
 
-// TODO: Is Entry small enough to be passed via stack? I believe its 64 bytes that can be passed via stack without 
-// any cost overhead. We just want to make sure that its not being passed on heap or via pointer 
+
 Instruction Decode(CPU &cpu, Entry entry)
 {
     uint8_t byte = GetCurrentByte(cpu.IP);
@@ -602,14 +601,14 @@ Instruction Decode(CPU &cpu, Entry entry)
 
     uint8_t bitsIndex = 1;
     uint8_t usedBits = entry.bits[0].count;
+
     uint8_t extractedData[Field_count] = { 0 };     // Actual bits extracted from byte stream using entry Bits
     uint32_t hasBits = 0;
 
     Bits currentBits = entry.bits[bitsIndex];
     uint8_t valid = true;
     
-    // TODO: We need to make this loop be purely about extracting bits. The OpExtension check needs to move out somehow. 
-    while(valid)
+    while(!(currentBits.field == Op && currentBits.count == 0))
     {  
         uint8_t result;
 
@@ -635,7 +634,6 @@ Instruction Decode(CPU &cpu, Entry entry)
         if (currentBits.field == OpExtension && (result != currentBits.value))
         {
             valid = false;
-            return {};
         }
         
         extractedData[currentBits.field] = result;
@@ -644,118 +642,116 @@ Instruction Decode(CPU &cpu, Entry entry)
         bitsIndex++;
 
         currentBits = entry.bits[bitsIndex];
-
-        if (currentBits.field == Op && currentBits.count == 0) 
-        {
-            valid = false;
-        }
     }
 
-    uint8_t d = extractedData[D_bit];
-    uint8_t w = extractedData[W_bit];
-    uint8_t s = extractedData[S_bit];
-
-    uint32_t hasMod = (hasBits & (1 << Mod_bit));
-    uint32_t hasDisplacement = (hasBits & (1 << Displacement_bit));
-    uint32_t hasImm = (hasBits & (1 << Imm_bit));
-    uint32_t hasAddr = (hasBits & (1 << Addr_bit));
-    uint32_t hasReg = (hasBits & (1 << Reg_bit));
-    uint32_t hasData = (hasBits & (1 << Data_bit));
-
-    
     Instruction inst = {};
-    inst.op = entry.mnemonic;
-    inst.flags |= w;
-    inst.address = startingAddress;
-    inst.size = cpu.IP - startingAddress;
 
-    if (hasMod)
+    if (valid)
     {
-        uint8_t mod = extractedData[Mod_bit];
-        uint8_t rm = extractedData[Rm_bit];
+        uint8_t d = extractedData[D_bit];
+        uint8_t w = extractedData[W_bit];
+        uint8_t s = extractedData[S_bit];
 
-        Operand op = {};
-        InterpretModRm(cpu, mod, rm, w, op);
-        inst.operands[!d] = op;
-    }
+        uint32_t hasMod = (hasBits & (1 << Mod_bit));
+        uint32_t hasDisplacement = (hasBits & (1 << Displacement_bit));
+        uint32_t hasImm = (hasBits & (1 << Imm_bit));
+        uint32_t hasAddr = (hasBits & (1 << Addr_bit));
+        uint32_t hasReg = (hasBits & (1 << Reg_bit));
+        uint32_t hasData = (hasBits & (1 << Data_bit));
 
-    if (hasReg)
-    {
-        uint8_t reg = extractedData[Reg_bit];
+        
+        inst.op = entry.mnemonic;
+        inst.flags |= w;
+        inst.address = startingAddress;
 
-        RegisterAccess a = {};
-        DecodeRegister(reg, w, a);
-        Operand op = {
-            .type = OpType_register,
-            .reg = a		
-        };
+        if (hasMod)
+        {
+            uint8_t mod = extractedData[Mod_bit];
+            uint8_t rm = extractedData[Rm_bit];
 
-        inst.operands[d] = op;
-    }
+            Operand op = {};
+            InterpretModRm(cpu, mod, rm, w, op);
+            inst.operands[!d] = op;
+        }
 
-    if (hasImm)
-    {
-        Operand op = {};
-        op.type = OpType_immediate;
+        if (hasReg)
+        {
+            uint8_t reg = extractedData[Reg_bit];
 
-        bool isByte = (w == 1 && s == 1) || (w == 0);
-        if (isByte)
+            RegisterAccess a = {};
+            DecodeRegister(reg, w, a);
+            Operand op = {
+                .type = OpType_register,
+                .reg = a		
+            };
+
+            inst.operands[d] = op;
+        }
+
+        if (hasImm)
+        {
+            Operand op = {};
+            op.type = OpType_immediate;
+
+            bool isByte = (w == 1 && s == 1) || (w == 0);
+            if (isByte)
+            {
+                int8_t imm = (int8_t) GetNextByte(cpu.IP);
+                op.immediate = (int16_t) imm;
+            }
+            else
+            {
+                op.immediate = (int16_t) GetNextWord(cpu.IP);
+            }
+            
+            inst.operands[SRC] = op;
+        }
+
+        if (hasAddr)
+        {
+            EffectiveAddrExpression ex = {
+                .calculationType = Effective_addr_direct_address,
+                .displacement = (int16_t)GetNextWord(cpu.IP)
+            };
+
+            inst.operands[!d] = {
+                .type = OpType_effectiveAddrCalc,
+                .expression = ex
+            };
+        }
+
+        if (hasDisplacement)
+        {   
+            int16_t displacement = 0;
+            if (w == 1)
+            {
+                displacement = (int16_t)GetNextWord(cpu.IP);
+            }
+            else
+            {
+                int8_t inc = (int8_t)GetNextByte(cpu.IP);
+                displacement = (int16_t)inc;
+            }
+
+            // TODO: (joe) This needs to be fixed... Its a very terrible way to calculate the size of an instruction
+
+            uint16_t size = cpu.IP - inst.address;
+            inst.operands[DEST] = {
+                .type = OpType_jmp,
+                .address = (uint32_t)displacement + size
+            };
+
+            inst.flags |= IPInc;
+        }
+
+        if (hasData)
         {
             int8_t imm = (int8_t) GetNextByte(cpu.IP);
-            op.immediate = (int16_t) imm;
+            inst.operands[!d] = {
+                .type = OpType_immediate,
+                .immediate = (int16_t) imm
+            };
         }
-        else
-        {
-            op.immediate = (int16_t) GetNextWord(cpu.IP);
-        }
-        
-        inst.operands[SRC] = op;
-    }
-
-    if (hasAddr)
-    {
-        EffectiveAddrExpression ex = {
-            .calculationType = Effective_addr_direct_address,
-            .displacement = (int16_t)GetNextWord(cpu.IP)
-        };
-
-        inst.operands[!d] = {
-            .type = OpType_effectiveAddrCalc,
-            .expression = ex
-        };
-    }
-
-    if (hasDisplacement)
-    {   
-        int16_t displacement = 0;
-        if (w == 1)
-        {
-            displacement = (int16_t)GetNextWord(cpu.IP);
-        }
-        else
-        {
-            int8_t inc = (int8_t)GetNextByte(cpu.IP);
-            displacement = (int16_t)inc;
-        }
-
-        // TODO: (joe) This needs to be fixed... Its a very terrible way to calculate the size of an instruction
-
-        uint16_t size = cpu.IP - inst.address;
-
-        inst.operands[DEST] = {
-            .type = OpType_jmp,
-            .address = (uint32_t)displacement + size
-        };
-
-        inst.flags |= IPInc;
-    }
-
-    if (hasData)
-    {
-        inst.operands[!d] = {
-            .type = OpType_immediate,
-            .immediate = (int16_t) GetNextByte(cpu.IP)
-        };
     }
 
     return inst;

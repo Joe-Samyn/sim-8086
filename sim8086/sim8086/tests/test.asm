@@ -29,4 +29,4 @@ bits 16
     LOOPZ $-52
     LOOPNZ $-54
     JCXZ $-56
-    RET 
+    RET
