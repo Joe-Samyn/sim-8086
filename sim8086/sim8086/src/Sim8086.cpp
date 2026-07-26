@@ -389,14 +389,13 @@ struct Operand {
 
 struct Instruction {
     Operation op;
+    uint32_t address;
+    uint16_t size;
     uint16_t flags;
     Operand operands[2];
 };
 
 Instruction DecodedInstructions[BUFFER_SIZE];     // String instruction buffer. Holds all ASM instructions to be printed 
-uint16_t DecodedInstIp[BUFFER_SIZE];            // The IP for each instruction to be printed. 
-uint16_t LabelId[BUFFER_SIZE];          // Container holding labels and the correspinding IP. Used during printing to determine where labels should be printed in the output.
-static uint8_t LabelCount = 1;
 static uint16_t DecodedInstIndex = 0;
 
 std::ofstream OpenAsmFile(std::string name)
@@ -523,13 +522,6 @@ void WriteToConsole()
     // Print start label 
     for (int i = 0; i < DecodedInstIndex; i++)
     {
-        // Check if a label needs to be printed first. 
-        uint16_t instIP = DecodedInstIp[i];
-        if (LabelId[instIP])
-        {
-            printf("L%d: \n", LabelId[instIP]);
-        }
-
         Instruction inst = DecodedInstructions[i];
         // Print mnemonic/operation 
         printf("\t%s ", Mnemonics[inst.op]);
@@ -606,6 +598,7 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
 Instruction Decode(CPU &cpu, Entry entry)
 {
     uint8_t byte = GetCurrentByte(cpu.IP);
+    uint32_t startingAddress = cpu.IP - 1;
 
     uint8_t bitsIndex = 1;
     uint8_t usedBits = entry.bits[0].count;
@@ -673,6 +666,8 @@ Instruction Decode(CPU &cpu, Entry entry)
     Instruction inst = {};
     inst.op = entry.mnemonic;
     inst.flags |= w;
+    inst.address = startingAddress;
+    inst.size = cpu.IP - startingAddress;
 
     if (hasMod)
     {
@@ -743,9 +738,13 @@ Instruction Decode(CPU &cpu, Entry entry)
             displacement = (int16_t)inc;
         }
 
+        // TODO: (joe) This needs to be fixed... Its a very terrible way to calculate the size of an instruction
+
+        uint16_t size = cpu.IP - inst.address;
+
         inst.operands[DEST] = {
             .type = OpType_jmp,
-            .address = (uint32_t)displacement
+            .address = (uint32_t)displacement + size
         };
 
         inst.flags |= IPInc;
@@ -796,7 +795,6 @@ void Disassemble(Program &program)
                 if (result.op)
                 {
                     DecodedInstructions[DecodedInstIndex] = result;
-                    DecodedInstIp[DecodedInstIndex] = preDecodeState.IP - 1;    // IP always points to the next byte. If we want the byte that the instruction started at, we need to subtract 1. 
                     DecodedInstIndex++;
                     break;
                 }

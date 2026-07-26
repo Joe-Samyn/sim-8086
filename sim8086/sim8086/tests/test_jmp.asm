@@ -5,7 +5,7 @@ bits 16
 
 fun_one:
     jmp label
-    add cx, 18
+    ; add cx, 18
 label:
     mov bx, cx
     jmp test_function_2
