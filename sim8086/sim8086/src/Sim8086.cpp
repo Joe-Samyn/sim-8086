@@ -26,6 +26,8 @@
 #define BUFFER_SIZE 1000
 #define INST_LENGTH 30
 
+#define HasField(mask, field) (mask & (1 << field))
+
 
 static uint8_t Memory[MEMORY_SIZE];
 
@@ -626,17 +628,17 @@ Instruction Decode(CPU &cpu, Entry entry)
 {
     uint32_t startingAddress = cpu.IP - 1;
 
-    uint8_t bitsIndex = 1;
-    uint8_t usedBits = entry.bits[0].count;
+    uint8_t bitsIndex = 0;
+    uint8_t usedBits = 0;
 
     uint8_t extractedData[Field_count] = { 0 };     // Actual bits extracted from byte stream using entry Bits
     uint32_t hasBits = 0;
 
-    Bits currentBits = entry.bits[bitsIndex];
     uint8_t valid = true;
     
-    while(!(currentBits.field == Op && currentBits.count == 0))
+    while(!(entry.bits[bitsIndex].field == Op && entry.bits[bitsIndex].count == 0) && valid)
     {  
+        Bits currentBits = entry.bits[bitsIndex];
         uint8_t result = ParseDataFromByte(currentBits, cpu, usedBits);
 
         // Just break out if the opcode extension does not match because we are decoding the wrong instruction entry.
@@ -649,8 +651,6 @@ Instruction Decode(CPU &cpu, Entry entry)
         hasBits |= (1 << currentBits.field);
         usedBits += currentBits.count;
         bitsIndex++;
-
-        currentBits = entry.bits[bitsIndex];
     }
 
     Instruction inst = {};
@@ -660,20 +660,12 @@ Instruction Decode(CPU &cpu, Entry entry)
         uint8_t d = extractedData[D_bit];
         uint8_t w = extractedData[W_bit];
         uint8_t s = extractedData[S_bit];
-
-        uint32_t hasMod = (hasBits & (1 << Mod_bit));
-        uint32_t hasDisplacement = (hasBits & (1 << Displacement_bit));
-        uint32_t hasImm = (hasBits & (1 << Imm_bit));
-        uint32_t hasAddr = (hasBits & (1 << Addr_bit));
-        uint32_t hasReg = (hasBits & (1 << Reg_bit));
-        uint32_t hasData = (hasBits & (1 << Data_bit));
-
         
         inst.op = entry.mnemonic;
         inst.flags |= w;
         inst.address = startingAddress;
 
-        if (hasMod)
+        if (HasField(hasBits, Mod_bit))
         {
             uint8_t mod = extractedData[Mod_bit];
             uint8_t rm = extractedData[Rm_bit];
@@ -683,7 +675,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             inst.operands[!d] = op;
         }
 
-        if (hasReg)
+        if (HasField(hasBits, Reg_bit))
         {
             uint8_t reg = extractedData[Reg_bit];
 
@@ -697,7 +689,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             inst.operands[d] = op;
         }
 
-        if (hasImm)
+        if (HasField(hasBits, Imm_bit))
         {
             Operand op = {};
             op.type = OpType_immediate;
@@ -716,7 +708,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             inst.operands[SRC] = op;
         }
 
-        if (hasAddr)
+        if (HasField(hasBits, Addr_bit))
         {
             EffectiveAddrExpression ex = {
                 .calculationType = Effective_addr_direct_address,
@@ -729,7 +721,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             };
         }
 
-        if (hasDisplacement)
+        if (HasField(hasBits, Displacement_bit))
         {   
             int16_t displacement = 0;
             if (w == 1)
@@ -753,7 +745,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             inst.flags |= IPInc;
         }
 
-        if (hasData)
+        if (HasField(hasBits, Data_bit))
         {
             int8_t imm = (int8_t) GetNextByte(cpu.IP);
             inst.operands[!d] = {
