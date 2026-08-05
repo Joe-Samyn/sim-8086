@@ -593,10 +593,37 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
     }
 }
 
+/**
+* NOTE: Extracted from Decode to make Decode slightly easier to read. Provides no other function than that. 
+*/
+uint8_t ParseDataFromByte(Bits current, CPU &cpu, uint8_t &usedBits) {
+
+    uint8_t result = 0;
+
+    // Checking for constant bits 
+    if (current.count == 0)
+    {
+        // Get literal constant 
+        result = current.value;
+    }
+    else
+    {
+        uint8_t byte = GetCurrentByte(cpu.IP);
+        if (usedBits >= 8)
+        {
+            byte = GetNextByte(cpu.IP);
+            usedBits = 0;
+        }
+        
+        result = (byte >> current.shift) & current.mask;
+    }
+
+    return result;
+}
+
 
 Instruction Decode(CPU &cpu, Entry entry)
 {
-    uint8_t byte = GetCurrentByte(cpu.IP);
     uint32_t startingAddress = cpu.IP - 1;
 
     uint8_t bitsIndex = 1;
@@ -610,25 +637,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     
     while(!(currentBits.field == Op && currentBits.count == 0))
     {  
-        uint8_t result;
-
-        // Checking for constant bits 
-        if (currentBits.count == 0)
-        {
-            // Get literal constant 
-            result = currentBits.value;
-        }
-        else
-        {
-            if (usedBits >= 8)
-            {
-                byte = GetNextByte(cpu.IP);
-                usedBits = 0;
-            }
-            
-            result = (byte >> currentBits.shift) & currentBits.mask;
-            
-        }
+        uint8_t result = ParseDataFromByte(currentBits, cpu, usedBits);
 
         // Just break out if the opcode extension does not match because we are decoding the wrong instruction entry.
         if (currentBits.field == OpExtension && (result != currentBits.value))
