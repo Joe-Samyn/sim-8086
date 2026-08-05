@@ -782,8 +782,6 @@ void Disassemble(Program &program)
         {
             entry = InstructionTable[i];
 
-            // Break out of loop if matching opcode is found
-            // TODO: Need to replace magic '0' with proper constant like OpCode_Bits or something
             if (entry.bits[0].value == (currentByte >> (8 - entry.bits[0].count)))
             {
                 CPU preDecodeState = cpu;
