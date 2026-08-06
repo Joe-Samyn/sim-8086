@@ -33,6 +33,7 @@
 #define ImpD(value) {D_bit, value, NONE, NONE, NONE }
 #define ImpMod(value) { Mod_bit, value, NONE, NONE, NONE }
 #define ImpRm(value) { Rm_bit, value, NONE, NONE, NONE}
+#define SetFlags(flags) flags
 
 /* Instruction Table */
 INST(MOV, { B(Op, 100010), D, W, Mod, Rm, Reg } )
@@ -45,10 +46,10 @@ INST(XCHG, { B(Op, 1000011), ImpD(0b1), W, Mod, Reg, Rm })
 INST_ALT(XCHG, { B(Op, 10010), ImpD(0b0), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3}, ImpMod(0b11), ImpRm(0b000) })
 
 INST(IN, {B(Op, 1110010), ImpD(0b1), W, ImpReg(0b000), Data(BYTE) })
-INST_ALT(IN, { B(Op, 1110110), ImpD(0b1), W, ImpReg(0b000), ImpMod(0b11), ImpRm(0b010) })
+INST_ALT(IN, { B(Op, 1110110), ImpD(0b1), W, ImpReg(0b000), ImpMod(0b11), ImpRm(0b010) }, SetFlags(RmIsWide))
 
 INST(OUT, { B(Op, 1110011), ImpD(0b0), W, ImpReg(0b000), Data(BYTE) })
-INST_ALT(OUT, { B(Op, 1110111), ImpD(0b0), W, ImpReg(0b000), ImpMod(0b11), ImpRm(0b010) })
+INST_ALT(OUT, { B(Op, 1110111), ImpD(0b0), W, ImpReg(0b000), ImpMod(0b11), ImpRm(0b010) }, SetFlags(RmIsWide))
 
 INST(ADD, {B(Op, 000000), D, W, Mod, Reg, Rm})
 INST_ALT(ADD, { B(Op, 100000), S, ImpD(0b0), W, Mod, OpExtension(000), Rm, Imm })

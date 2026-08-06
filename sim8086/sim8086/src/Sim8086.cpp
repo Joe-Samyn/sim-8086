@@ -267,9 +267,17 @@ struct Bits
     uint8_t count;
 };
 
+enum Flags {
+    Wide = (1 << 0),
+    IPInc = (1 << 1),
+    CSInc = (1 << 2),
+    RmIsWide = (1 << 3)
+};
+
 struct Entry {
     Operation mnemonic;
-    Bits bits[Field::Field_count];	// bits[0] = Opcode bits TODO: Need to get rid of 16 and use proper constant like Field::Field_count 
+    Bits bits[Field::Field_count];
+    uint16_t flags;
 };
 
 Entry InstructionTable[] = {
@@ -286,9 +294,6 @@ const char* RegisterNames[Register_count][3] = {
     {"", "", "SI"},
     {"", "", "DI"}
 };
-
-
-
 
 void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
 {
@@ -379,12 +384,6 @@ enum OperandType {
     OpType_jmp,
 
     OpType_count
-};
-
-enum Flags {
-    Wide = (1 << 0),
-    IPInc = (1 << 1),
-    CSInc = (1 << 2)
 };
 
 struct Jump {
@@ -690,7 +689,8 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
             uint8_t rm = extractedData[Rm_bit];
 
             Operand op = {};
-            InterpretModRm(mod, rm, w, op, at);
+            uint8_t isWide = (entry.flags & RmIsWide) ? 1 : w;
+            InterpretModRm(mod, rm, isWide, op, at);
             inst.operands[!d] = op;
         }
 
