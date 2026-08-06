@@ -562,9 +562,9 @@ void WriteToConsole()
     }
 }
 
-void Execute(struct CPU &cpu)
+void Execute(Program &program)
 {
-    // TODO....
+    printf("Executing instructions...\n");
 }
 
 #define DIRECT_ADDRESS 0b110

@@ -2,12 +2,10 @@
 
 #include "Sim8086.cpp"
 
-#include <cstdint>
-#include <fstream>
+#include <cstring>
 #include <iostream>
-#include <cstdio>
 
-
+#define EXECUTE_MODE "-e"
 
 int main(int argc, char* argv[])
 {
@@ -17,10 +15,17 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    std::string asmFile = argv[1];
+    char* mode = argv[1];
+    std::string asmFile = argv[argc - 1];
     struct Program program = LoadProgramIntoMemory(asmFile);
 
-    Disassemble(program);
-
+    if (strcmp(mode, EXECUTE_MODE) == 0)
+    {
+        Execute(program);
+    }
+    else {
+        Disassemble(program);
+    }
+    
     return 0;
 }
