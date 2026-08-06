@@ -39,7 +39,7 @@ INST(MOV, { B(Op, 100010), D, W, Mod, Rm, Reg } )
 INST_ALT(MOV, { B(Op, 1100011), W, Mod, OpExtension(000), Rm, Imm } )
 INST_ALT(MOV, { B(Op, 1011), ImpD(0b1), { W_bit, NONE, 1, 3, 1 }, { Reg_bit, 1, 0b111, 0, 3 }, Imm } )
 INST_ALT(MOV, { B(Op, 1010000), ImpD(0b1), {W_bit, NONE, 1, 0, 1}, ImpReg(0b000), Addr } )
-INST_ALT(MOV, { B(Op, 1010001), ImpD(0b1), {W_bit, NONE, 1, 0, 1}, ImpReg(0b000), Addr } )
+INST_ALT(MOV, { B(Op, 1010001), ImpD(0b0), {W_bit, NONE, 1, 0, 1}, ImpReg(0b000), Addr } )
 
 INST(XCHG, { B(Op, 1000011), ImpD(0b1), W, Mod, Reg, Rm })
 INST_ALT(XCHG, { B(Op, 10010), ImpD(0b0), ImpW(0b1), {Reg_bit, NONE, 0b111, 0, 3}, ImpMod(0b11), ImpRm(0b000) })

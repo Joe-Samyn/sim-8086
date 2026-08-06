@@ -27,50 +27,21 @@
 #define INST_LENGTH 30
 
 #define HasField(mask, field) (mask & (1 << field))
-
+#define ComputePhysicalAddress(at) ((at.segment * 16) + at.offset)
+#define IncrementAddress(at) at.offset++
 
 static uint8_t Memory[MEMORY_SIZE];
 
-struct CPU {
-    uint16_t IP;
-    uint16_t registers[8];
+struct SegmentedAddress {
+    uint16_t segment;
+    uint16_t offset;
 };
 
-struct Program {
-    uint32_t size;
-    uint32_t startAddr;
-    uint32_t endAddr;
-};
-
-/**
- * Get the next byte from the code segment in memory and increment 
- * the instruction pointer (IP).
- */
-uint8_t GetNextByte(uint16_t &ip)
-{
-    return Memory[ip++];
-}
-
-/**
- * Get the current byte in the code segment of memory that IP points too. 
- * Note: Does not increment IP. 
- */
-uint8_t GetCurrentByte(uint16_t &ip)
-{
-    return Memory[ip - 1];
-}
-
-/**
- * Get the next word (2 bytes) from memory. Increments the IP by 2).
- *
- */
-uint16_t GetNextWord(uint16_t &ip)
-{
-    uint16_t lo = Memory[ip++];
-    uint16_t hi = Memory[ip++]; 
-    hi = (hi << 8);
-    hi = (hi | lo);
-    return hi;
+SegmentedAddress Create(uint16_t segment, uint16_t offset) {
+    return { 
+        .segment=segment, 
+        .offset=(uint16_t)offset 
+    };
 }
 
 enum RegisterIndex {
@@ -86,6 +57,47 @@ enum RegisterIndex {
 
     Register_count
 };
+
+enum SegmentRegisters {
+    CS,
+    SS,
+    DS,
+    ES,
+
+    Segment_count
+};
+
+struct CPU {
+    uint16_t IP;
+    uint16_t registers[Register_count];
+    uint16_t segmentRegisters[Segment_count];
+};
+
+struct Program {
+    uint32_t size;
+    uint32_t startAddr;
+    uint32_t endAddr;
+};
+
+uint8_t ReadByteFromMemory(SegmentedAddress at) {
+    uint32_t address = ComputePhysicalAddress(at);
+    return Memory[address];
+}
+
+uint16_t ReadWordFromMemory(SegmentedAddress at) {
+    uint32_t address = ComputePhysicalAddress(at);
+    uint8_t lo = Memory[address];
+    uint16_t hi = Memory[address+1];
+    return ((hi << 8) | lo);
+}
+
+uint8_t FetchNextInstructionByte(CPU &cpu) {
+    SegmentedAddress at = { .segment=cpu.segmentRegisters[CS], .offset=cpu.IP};
+    uint32_t address = ComputePhysicalAddress(at);
+    cpu.IP++;
+    return Memory[address];
+}
+
 
 enum Field : uint8_t
 {
@@ -145,7 +157,7 @@ struct EffectiveAddrExpression
     int16_t displacement;
 };
 
-void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpression &expression, CPU &cpu) 
+void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpression &expression, SegmentedAddress &at) 
 {
     switch(rm)
     {
@@ -202,7 +214,9 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
                 if (mod == Memory_mode_no_disp)
                 {
                     expression.calculationType = Effective_addr_direct_address; 
-                    expression.displacement = (int16_t)GetNextWord(cpu.IP);
+                    expression.displacement = (int16_t)ReadWordFromMemory(at);
+                    IncrementAddress(at);
+                    IncrementAddress(at);
                 }
                 else
                 {
@@ -555,7 +569,7 @@ void Execute(struct CPU &cpu)
 }
 
 #define DIRECT_ADDRESS 0b110
-void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &operand)
+void InterpretModRm(uint8_t mod, uint8_t rm, uint8_t w,  Operand &operand, SegmentedAddress &at)
 {
     switch(mod)
     {
@@ -563,7 +577,7 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
             {
                 operand.type = OpType_effectiveAddrCalc;
                 EffectiveAddrExpression exp = {};
-                DecodeEffectiveAddrExpression(mod, rm, exp, cpu);
+                DecodeEffectiveAddrExpression(mod, rm, exp, at);
                 exp.hasDisplacement = FALSE;
                 operand.expression = exp;
             } break;
@@ -571,8 +585,9 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
             {
                 operand.type = OpType_effectiveAddrCalc;
                 EffectiveAddrExpression exp = {};
-                DecodeEffectiveAddrExpression(mod, rm, exp, cpu);
-                int8_t disp  = (int8_t)GetNextByte(cpu.IP);
+                DecodeEffectiveAddrExpression(mod, rm, exp, at);
+                int8_t disp  = (int8_t)ReadByteFromMemory(at);
+                IncrementAddress(at);
                 exp.displacement = (int16_t)disp;
                 exp.hasDisplacement = TRUE;
                 operand.expression = exp;
@@ -581,8 +596,10 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
             {
                 operand.type = OpType_effectiveAddrCalc;
                 EffectiveAddrExpression exp = {};
-                DecodeEffectiveAddrExpression(mod, rm, exp, cpu);
-                exp.displacement = (int16_t)GetNextWord(cpu.IP);
+                DecodeEffectiveAddrExpression(mod, rm, exp, at);
+                exp.displacement = (int16_t)ReadWordFromMemory(at);
+                IncrementAddress(at);
+                IncrementAddress(at);
                 exp.hasDisplacement = TRUE;
                 operand.expression = exp;
             } break;
@@ -598,7 +615,7 @@ void InterpretModRm(CPU &cpu, uint8_t mod, uint8_t rm, uint8_t w,  Operand &oper
 /**
 * NOTE: Extracted from Decode to make Decode slightly easier to read. Provides no other function than that. 
 */
-uint8_t ParseDataFromByte(Bits current, CPU &cpu, uint8_t &usedBits) {
+uint8_t ParseDataFromByte(Bits current, uint8_t &usedBits, SegmentedAddress &cursor) {
 
     uint8_t result = 0;
 
@@ -610,10 +627,11 @@ uint8_t ParseDataFromByte(Bits current, CPU &cpu, uint8_t &usedBits) {
     }
     else
     {
-        uint8_t byte = GetCurrentByte(cpu.IP);
+        uint8_t byte = ReadByteFromMemory(cursor);
         if (usedBits >= 8)
         {
-            byte = GetNextByte(cpu.IP);
+            IncrementAddress(cursor);
+            byte = ReadByteFromMemory(cursor);
             usedBits = 0;
         }
         
@@ -624,14 +642,15 @@ uint8_t ParseDataFromByte(Bits current, CPU &cpu, uint8_t &usedBits) {
 }
 
 
-Instruction Decode(CPU &cpu, Entry entry)
+Instruction Decode(Entry entry, SegmentedAddress &at)
 {
-    uint32_t startingAddress = cpu.IP - 1;
+    Instruction inst = {};
+    inst.address = ComputePhysicalAddress(at);
 
     uint8_t bitsIndex = 0;
     uint8_t usedBits = 0;
 
-    uint8_t extractedData[Field_count] = { 0 };     // Actual bits extracted from byte stream using entry Bits
+    uint8_t extractedData[Field_count] = {};   
     uint32_t hasBits = 0;
 
     uint8_t valid = true;
@@ -639,7 +658,7 @@ Instruction Decode(CPU &cpu, Entry entry)
     while(!(entry.bits[bitsIndex].field == Op && entry.bits[bitsIndex].count == 0) && valid)
     {  
         Bits currentBits = entry.bits[bitsIndex];
-        uint8_t result = ParseDataFromByte(currentBits, cpu, usedBits);
+        uint8_t result = ParseDataFromByte(currentBits, usedBits, at);
 
         // Just break out if the opcode extension does not match because we are decoding the wrong instruction entry.
         if (currentBits.field == OpExtension && (result != currentBits.value))
@@ -653,17 +672,17 @@ Instruction Decode(CPU &cpu, Entry entry)
         bitsIndex++;
     }
 
-    Instruction inst = {};
-
     if (valid)
     {
+        // NOTE: `at` is still pointing to the last byte used in the extraction loop. This incrmenet is required to move it 
+        // to the next needed byte for instruction creation. 
+        IncrementAddress(at);
         uint8_t d = extractedData[D_bit];
         uint8_t w = extractedData[W_bit];
         uint8_t s = extractedData[S_bit];
         
         inst.op = entry.mnemonic;
         inst.flags |= w;
-        inst.address = startingAddress;
 
         if (HasField(hasBits, Mod_bit))
         {
@@ -671,7 +690,7 @@ Instruction Decode(CPU &cpu, Entry entry)
             uint8_t rm = extractedData[Rm_bit];
 
             Operand op = {};
-            InterpretModRm(cpu, mod, rm, w, op);
+            InterpretModRm(mod, rm, w, op, at);
             inst.operands[!d] = op;
         }
 
@@ -697,12 +716,15 @@ Instruction Decode(CPU &cpu, Entry entry)
             bool isByte = (w == 1 && s == 1) || (w == 0);
             if (isByte)
             {
-                int8_t imm = (int8_t) GetNextByte(cpu.IP);
+                int8_t imm = (int8_t) ReadByteFromMemory(at);
+                IncrementAddress(at);
                 op.immediate = (int16_t) imm;
             }
             else
             {
-                op.immediate = (int16_t) GetNextWord(cpu.IP);
+                op.immediate = (int16_t) ReadWordFromMemory(at);
+                IncrementAddress(at);
+                IncrementAddress(at);
             }
             
             inst.operands[SRC] = op;
@@ -712,8 +734,11 @@ Instruction Decode(CPU &cpu, Entry entry)
         {
             EffectiveAddrExpression ex = {
                 .calculationType = Effective_addr_direct_address,
-                .displacement = (int16_t)GetNextWord(cpu.IP)
+                .displacement = (int16_t)ReadWordFromMemory(at)
             };
+
+            IncrementAddress(at);
+            IncrementAddress(at);
 
             inst.operands[!d] = {
                 .type = OpType_effectiveAddrCalc,
@@ -726,17 +751,20 @@ Instruction Decode(CPU &cpu, Entry entry)
             int16_t displacement = 0;
             if (w == 1)
             {
-                displacement = (int16_t)GetNextWord(cpu.IP);
+                displacement = (int16_t)ReadWordFromMemory(at);
+                IncrementAddress(at);
+                IncrementAddress(at);
             }
             else
             {
-                int8_t inc = (int8_t)GetNextByte(cpu.IP);
+                int8_t inc = (int8_t)ReadByteFromMemory(at);
+                IncrementAddress(at);
                 displacement = (int16_t)inc;
             }
 
             // TODO: (joe) This needs to be fixed... Its a very terrible way to calculate the size of an instruction
 
-            uint16_t size = cpu.IP - inst.address;
+            uint16_t size = ComputePhysicalAddress(at) - inst.address;
             inst.operands[DEST] = {
                 .type = OpType_jmp,
                 .address = (uint32_t)displacement + size
@@ -747,35 +775,26 @@ Instruction Decode(CPU &cpu, Entry entry)
 
         if (HasField(hasBits, Data_bit))
         {
-            int8_t imm = (int8_t) GetNextByte(cpu.IP);
+            int8_t imm = (int8_t) ReadByteFromMemory(at);
+            IncrementAddress(at);
             inst.operands[!d] = {
                 .type = OpType_immediate,
                 .immediate = (int16_t) imm
             };
+
         }
     }
 
     return inst;
 }
 
-
-/**
- * Instruction Table should drive decode, not vice versa
- * An entry tells you how many bits/bytes to pull from the stream
- */
-/*
-    TODO: We should determine which buffer size is most optimal. Once the buffer is full, just flush it and start over. 
-        This would allow the program to be as long as we want without any limit on the number of instructions. Also, batching 
-        is probably more performant than leaving a giant buffer of decoded instructions in memory. 
-*/
 void Disassemble(Program &program)
 {	
     CPU cpu = { 0 };
 
     while (cpu.IP <= program.endAddr)
     {
-        uint8_t currentByte = GetNextByte(cpu.IP);
-
+        uint8_t currentByte = FetchNextInstructionByte(cpu);
         Entry entry = {};
 
         // Search Instruction table for matching instruction 
@@ -785,17 +804,15 @@ void Disassemble(Program &program)
 
             if (entry.bits[0].value == (currentByte >> (8 - entry.bits[0].count)))
             {
-                CPU preDecodeState = cpu;
-                Instruction result = Decode(cpu, entry);
+                SegmentedAddress at = Create(cpu.segmentRegisters[CS], cpu.IP - 1);
+                Instruction result = Decode(entry, at);
                 if (result.op)
                 {
                     DecodedInstructions[DecodedInstIndex] = result;
                     DecodedInstIndex++;
+                    cpu.IP = at.offset;
                     break;
                 }
-                
-                // Restore predecode CPU state before looking for another entry match
-                cpu = preDecodeState;
             }
 
         }
