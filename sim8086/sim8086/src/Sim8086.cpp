@@ -562,9 +562,41 @@ void WriteToConsole()
     }
 }
 
-void Execute(Program &program)
+void WriteToConsole(Instruction instruction) {
+
+    // Print mnemonic/operation 
+    printf("%s ", Mnemonics[instruction.op]);
+
+    // If either operand type is immediate, we should print size 
+    if ((instruction.operands[SRC].type == OpType_immediate || instruction.operands[SRC].type == OpType_none) && instruction.operands[DEST].type == OpType_effectiveAddrCalc)
+    {
+        printf("%s ", (instruction.flags & Flags::Wide) == 0 ? "byte" : "word");
+    }
+
+    // Print dest operand 
+    PrintOperand(instruction.operands[1]);
+
+    if (instruction.operands[0].type != OpType_none)
+    {
+        printf(", ");
+    }   
+
+    // Print src operand 
+    PrintOperand(instruction.operands[0]);
+
+    printf("\n");
+}
+
+void DisplayRegisterState(CPU cpu)
 {
-    printf("Executing instructions...\n");
+    printf("Register State\n");
+    for (int i = 0; i < Register_count; i++)
+    {
+        printf("%s   0x%X\n", RegisterNames[i][2], cpu.registers[i]);
+    }
+
+    printf("\n");
+    printf("\n");
 }
 
 #define DIRECT_ADDRESS 0b110
@@ -786,6 +818,80 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
     }
 
     return inst;
+}
+
+void ExecuteMov(CPU &cpu, Operand src, Operand dest) 
+{
+    // What src are we dealing with? Get the value that needs to be moved into dest 
+    uint16_t srcData = 0;
+    switch(src.type)
+    {
+        case OpType_immediate:
+            srcData = src.immediate;
+            break;
+        case OpType_effectiveAddrCalc:
+            // TODO - Caclulate address or use direct address
+            break;
+        case OpType_register:
+            srcData = cpu.registers[src.reg.index];
+            break;
+    }
+
+    // Determine destination type
+    if (dest.type == OpType_register)
+    {
+        printf("%s <-- 0x%X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], srcData);
+        cpu.registers[dest.reg.index] = srcData;
+    } 
+    else if (dest.type == OpType_effectiveAddrCalc)
+    {
+        // TODO - Calculate address and write value into memory address
+    }
+}
+
+void Execute(Program &program)
+{
+    CPU cpu = {};
+    while (cpu.IP <= program.endAddr) 
+    {
+        uint8_t currentByte = FetchNextInstructionByte(cpu);
+        Entry entry = {};
+
+        DisplayRegisterState(cpu);
+
+        // Search Instruction table for matching instruction 
+        for (int i = 0; i < ArrayCount(InstructionTable); i++)
+        {
+            entry = InstructionTable[i];
+
+            if (entry.bits[0].value == (currentByte >> (8 - entry.bits[0].count)))
+            {
+                SegmentedAddress at = Create(cpu.segmentRegisters[CS], cpu.IP - 1);
+                Instruction result = Decode(entry, at);
+                if (result.op)
+                {
+                    WriteToConsole(result);
+
+                    switch(result.op)
+                    {
+                        case Op_MOV:
+                        {
+                            Operand src = result.operands[SRC];
+                            Operand dest = result.operands[DEST];
+                            ExecuteMov(cpu, src, dest);
+                        } break;
+                    }
+
+
+                    cpu.IP = at.offset;
+                    break;
+                }
+            }
+
+        }
+
+        DisplayRegisterState(cpu);
+    }
 }
 
 void Disassemble(Program &program)
