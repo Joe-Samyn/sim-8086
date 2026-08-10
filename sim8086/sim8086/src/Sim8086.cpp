@@ -16,6 +16,12 @@
 #define HI_BITS 1
 #define FULL_BITS 2
 
+#define HI_MASK 0xFF00
+#define LO_MASK 0x00FF
+
+#define WriteLoByte(regValue, data) ((regValue & HI_MASK) | (data & LO_MASK))
+#define WriteHiByte(regValue, data) ((data << 8) | (regValue & LO_MASK))
+
 #define TRUE 1
 #define FALSE 0
 
@@ -592,7 +598,7 @@ void DisplayRegisterState(CPU cpu)
     printf("Register State\n");
     for (int i = 0; i < Register_count; i++)
     {
-        printf("%s   0x%X\n", RegisterNames[i][2], cpu.registers[i]);
+        printf("%s   0x%04X\n", RegisterNames[i][2], cpu.registers[i]);
     }
 
     printf("\n");
@@ -833,15 +839,30 @@ void ExecuteMov(CPU &cpu, Operand src, Operand dest)
             // TODO - Caclulate address or use direct address
             break;
         case OpType_register:
+        {   
+            // TODO - Parse LO/HI bits properly from register according to offset
             srcData = cpu.registers[src.reg.index];
-            break;
+        } break;
     }
 
     // Determine destination type
     if (dest.type == OpType_register)
     {
-        printf("%s <-- 0x%X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], srcData);
-        cpu.registers[dest.reg.index] = srcData;
+        printf("%s <-- 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], srcData);
+
+        RegisterAccess ra = dest.reg;
+        if (ra.offset == LO_BITS)
+        {
+            cpu.registers[ra.index] = WriteLoByte(cpu.registers[ra.index], srcData);
+        }
+        else if (ra.offset == HI_BITS)
+        {
+            cpu.registers[ra.index] = WriteHiByte(cpu.registers[ra.index], srcData);
+        }
+        else
+        {
+            cpu.registers[dest.reg.index] = srcData;
+        }
     } 
     else if (dest.type == OpType_effectiveAddrCalc)
     {
