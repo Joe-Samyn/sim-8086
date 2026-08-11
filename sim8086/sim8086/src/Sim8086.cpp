@@ -47,7 +47,24 @@ Entry InstructionTable[] = {
 #include "InstructionTable.inl"
 };
 
+uint16_t ReadFromRegister(CPU cpu, RegisterAccess ra)
+{
+    uint16_t result = 0;
+    switch(ra.offset)
+    {
+        case LO_BITS:
+            result = ReadLoByte(cpu.registers[ra.index]);
+            break;
+        case HI_BITS:
+            result = ReadHiByte(cpu.registers[ra.index]);
+            break;
+        case FULL_BITS:
+            result = cpu.registers[ra.index];
+            break;
+    }
 
+    return result;
+}
 
 void ExecuteMov(CPU &cpu, Operand src, Operand dest) 
 {
@@ -63,8 +80,7 @@ void ExecuteMov(CPU &cpu, Operand src, Operand dest)
             break;
         case OpType_register:
         {   
-            // TODO - Parse LO/HI bits properly from register according to offset
-            srcData = cpu.registers[src.reg.index];
+            srcData = ReadFromRegister(cpu, src.reg);
         } break;
     }
 
@@ -124,9 +140,7 @@ void Execute(Program &program)
                     {
                         case Op_MOV:
                         {
-                            Operand src = result.operands[SRC];
-                            Operand dest = result.operands[DEST];
-                            ExecuteMov(cpu, src, dest);
+                            ExecuteMov(cpu, result.operands[SRC], result.operands[DEST]);
                         } break;
                     }
 

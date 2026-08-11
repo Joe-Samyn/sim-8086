@@ -12,6 +12,9 @@
 #define WriteLoByte(regValue, data) ((regValue & HI_MASK) | (data & LO_MASK))
 #define WriteHiByte(regValue, data) ((data << 8) | (regValue & LO_MASK))
 
+#define ReadLoByte(regValue) (regValue & LO_MASK)
+#define ReadHiByte(regValue) ((regValue & HI_MASK) >> 8)
+
 #define TRUE 1
 #define FALSE 0
 
