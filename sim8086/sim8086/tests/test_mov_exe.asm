@@ -9,3 +9,6 @@ mov cx, bx
 mov dl, bh
 mov al, cl
 mov dh, bh
+
+mov word [120], 0x5577
+mov bh, [120]

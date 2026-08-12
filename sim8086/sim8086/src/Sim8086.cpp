@@ -12,10 +12,9 @@
 
 #define ArrayCount(array) sizeof(array)/sizeof(array[0])
 
+// NOTE - Memory is stored little endian in this simulator
 #define MEMORY_SIZE 1024 * 1024
-
 static uint8_t Memory[MEMORY_SIZE];
-
 
 uint8_t ReadByteFromMemory(SegmentedAddress at) {
     uint32_t address = ComputePhysicalAddress(at);
@@ -34,6 +33,19 @@ uint8_t FetchNextInstructionByte(CPU &cpu) {
     uint32_t address = ComputePhysicalAddress(at);
     cpu.IP++;
     return Memory[address];
+}
+
+void WriteWordToMemory(uint16_t value, SegmentedAddress at) {
+    uint32_t physicalAddress = ComputePhysicalAddress(at);
+    uint8_t lowByte = GetLowByte(value);
+    uint8_t hiByte = GetHiByte(value);
+    Memory[physicalAddress] = lowByte;
+    Memory[physicalAddress+1] = hiByte;
+}
+
+void WriteByteToMemory(uint16_t value, SegmentedAddress at) {
+    uint32_t physicalAddress = ComputePhysicalAddress(at);
+    Memory[physicalAddress] = value;
 }
 
 SegmentedAddress Create(uint16_t segment, uint16_t offset) {
@@ -66,7 +78,7 @@ uint16_t ReadFromRegister(CPU cpu, RegisterAccess ra)
     return result;
 }
 
-void ExecuteMov(CPU &cpu, Operand src, Operand dest) 
+void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size) 
 {
     // What src are we dealing with? Get the value that needs to be moved into dest 
     uint16_t srcData = 0;
@@ -76,8 +88,13 @@ void ExecuteMov(CPU &cpu, Operand src, Operand dest)
             srcData = src.immediate;
             break;
         case OpType_effectiveAddrCalc:
-            // TODO - Caclulate address or use direct address
-            break;
+        {
+            if (src.expression.calculationType == Effective_addr_direct_address)
+            {
+                SegmentedAddress physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)src.expression.displacement };
+                srcData = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
+            }
+        } break;
         case OpType_register:
         {   
             srcData = ReadFromRegister(cpu, src.reg);
@@ -107,7 +124,12 @@ void ExecuteMov(CPU &cpu, Operand src, Operand dest)
     } 
     else if (dest.type == OpType_effectiveAddrCalc)
     {
-        // TODO - Calculate address and write value into memory address
+        if (dest.expression.calculationType == Effective_addr_direct_address)
+        {
+            SegmentedAddress physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)dest.expression.displacement };
+            if (size == WIDE) WriteWordToMemory(srcData, physicalAddress);
+            else WriteByteToMemory(srcData, physicalAddress);
+        }
     }
 }
 
@@ -140,7 +162,7 @@ void Execute(Program &program)
                     {
                         case Op_MOV:
                         {
-                            ExecuteMov(cpu, result.operands[SRC], result.operands[DEST]);
+                            ExecuteMov(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
                         } break;
                     }
 

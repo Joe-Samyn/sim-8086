@@ -9,6 +9,9 @@
 #define HI_MASK 0xFF00
 #define LO_MASK 0x00FF
 
+#define GetLowByte(data) (data & LO_MASK)
+#define GetHiByte(data) ((data & HI_MASK) >> 8)
+
 #define WriteLoByte(regValue, data) ((regValue & HI_MASK) | (data & LO_MASK))
 #define WriteHiByte(regValue, data) ((data << 8) | (regValue & LO_MASK))
 
@@ -203,5 +206,9 @@ struct Instruction {
 // NOTE - These are memory operations, could be moved to its own Memory.h file. Leaving it here for now
 uint8_t ReadByteFromMemory(SegmentedAddress at);
 uint16_t ReadWordFromMemory(SegmentedAddress at);
+
+void WriteByteToMemory(uint16_t value, SegmentedAddress at);
+void WriteWordToMemory(uint16_t value, SegmentedAddress at);
+
 uint8_t FetchNextInstructionByte(CPU &cpu);
 SegmentedAddress Create(uint16_t segment, uint16_t offset);
