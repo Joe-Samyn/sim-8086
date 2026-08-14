@@ -78,6 +78,22 @@ uint16_t ReadFromRegister(CPU cpu, RegisterAccess ra)
     return result;
 }
 
+void WriteToRegister(CPU &cpu, RegisterAccess ra, uint16_t data) {
+
+    if (ra.offset == LO_BITS)
+    {
+        cpu.registers[ra.index] = WriteLoByte(cpu.registers[ra.index], data);
+    }
+    else if (ra.offset == HI_BITS)
+    {
+        cpu.registers[ra.index] = WriteHiByte(cpu.registers[ra.index], data);
+    }
+    else
+    {
+        cpu.registers[ra.index] = data;
+    }
+}
+
 void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size) 
 {
     // What src are we dealing with? Get the value that needs to be moved into dest 
@@ -107,20 +123,8 @@ void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size)
         // TODO - Print statements should only be in the IO files. This needs to get refactored into the IO files so that RegisterNames
         // can be moved to IO.cpp properly
         printf("%s <-- 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], srcData);
-
         RegisterAccess ra = dest.reg;
-        if (ra.offset == LO_BITS)
-        {
-            cpu.registers[ra.index] = WriteLoByte(cpu.registers[ra.index], srcData);
-        }
-        else if (ra.offset == HI_BITS)
-        {
-            cpu.registers[ra.index] = WriteHiByte(cpu.registers[ra.index], srcData);
-        }
-        else
-        {
-            cpu.registers[dest.reg.index] = srcData;
-        }
+        WriteToRegister(cpu, ra, srcData);
     } 
     else if (dest.type == OpType_effectiveAddrCalc)
     {
