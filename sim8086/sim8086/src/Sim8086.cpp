@@ -104,6 +104,11 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
         {
             physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)ex.displacement };
         } break;
+        case Effective_addr_bx:
+        {
+            uint16_t logicalAddr = cpu.registers[Register_b] + ex.displacement;
+            physicalAddress = {.segment=cpu.segmentRegisters[DS], .offset=logicalAddr};
+        } break;
     }
 
     return physicalAddress;
@@ -111,6 +116,7 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
 
 void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size) 
 {
+    // TODO - Make this an if-else chain because all cases will never be handled here 
     // What src are we dealing with? Get the value that needs to be moved into dest 
     uint16_t srcData = 0;
     switch(src.type)

@@ -21,7 +21,7 @@
             "program": "${workspaceFolder}/out/build/make-debug/sim8086/sim8086",
             "args": [
                 "-e",
-                "${workspaceFolder}/sim8086/tests/test_mov_exe.bin"
+                "${workspaceFolder}/sim8086/tests/test_mov_ea_exe.bin"
             ],
             "cwd": "${workspaceFolder}"
         },
