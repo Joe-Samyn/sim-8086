@@ -94,6 +94,21 @@ void WriteToRegister(CPU &cpu, RegisterAccess ra, uint16_t data) {
     }
 }
 
+/**
+* @brief Computes the physical segmented address represented by an effective address expression
+*/
+SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
+    SegmentedAddress physicalAddress;
+    switch(ex.calculationType) {
+        case Effective_addr_direct_address:
+        {
+            physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)ex.displacement };
+        } break;
+    }
+
+    return physicalAddress;
+}
+
 void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size) 
 {
     // What src are we dealing with? Get the value that needs to be moved into dest 
@@ -105,11 +120,9 @@ void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size)
             break;
         case OpType_effectiveAddrCalc:
         {
-            if (src.expression.calculationType == Effective_addr_direct_address)
-            {
-                SegmentedAddress physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)src.expression.displacement };
-                srcData = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
-            }
+            SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, src.expression);
+            srcData = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
+
         } break;
         case OpType_register:
         {   
@@ -128,12 +141,9 @@ void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size)
     } 
     else if (dest.type == OpType_effectiveAddrCalc)
     {
-        if (dest.expression.calculationType == Effective_addr_direct_address)
-        {
-            SegmentedAddress physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)dest.expression.displacement };
-            if (size == WIDE) WriteWordToMemory(srcData, physicalAddress);
-            else WriteByteToMemory(srcData, physicalAddress);
-        }
+        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, dest.expression);
+        if (size == WIDE) WriteWordToMemory(srcData, physicalAddress);
+        else WriteByteToMemory(srcData, physicalAddress);
     }
 }
 
