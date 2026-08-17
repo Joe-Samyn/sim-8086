@@ -117,6 +117,11 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
             uint16_t logicalAddr = cpu.registers[Register_di] + ex.displacement;
             physicalAddress.offset = logicalAddr;
         } break;
+        case Effective_addr_si:
+        {
+            uint16_t logicalAddr = cpu.registers[Register_si] + ex.displacement;
+            physicalAddress.offset = logicalAddr;
+        } break;
         case Effective_addr_bx_si:
         {
             uint16_t logicalAddr = cpu.registers[Register_b] + cpu.registers[Register_si] + ex.displacement;
