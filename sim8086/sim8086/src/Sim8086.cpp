@@ -103,6 +103,7 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
     };
 
     switch(ex.calculationType) {
+        case Effective_addr_count: break;
         case Effective_addr_direct_address:
         {
             physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)ex.displacement };
@@ -110,6 +111,11 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
         case Effective_addr_bx:
         {
             uint16_t logicalAddr = cpu.registers[Register_b] + ex.displacement;
+            physicalAddress.offset = logicalAddr;
+        } break;
+        case Effective_addr_bp:
+        {
+            uint16_t logicalAddr = cpu.registers[Register_bp] + ex.displacement;
             physicalAddress.offset = logicalAddr;
         } break;
         case Effective_addr_di:
@@ -135,6 +141,11 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
         case Effective_addr_bp_di:
         {
             uint16_t logicalAddr = cpu.registers[Register_bp] + cpu.registers[Register_di] + ex.displacement;
+            physicalAddress.offset = logicalAddr;
+        } break;
+        case Effective_addr_bp_si:
+        {
+            uint16_t logicalAddr = cpu.registers[Register_bp] + cpu.registers[Register_si] + ex.displacement;
             physicalAddress.offset = logicalAddr;
         } break;
     }
