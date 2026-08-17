@@ -98,7 +98,10 @@ void WriteToRegister(CPU &cpu, RegisterAccess ra, uint16_t data) {
 * @brief Computes the physical segmented address represented by an effective address expression
 */
 SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
-    SegmentedAddress physicalAddress;
+    SegmentedAddress physicalAddress = {
+        .segment=cpu.segmentRegisters[DS]
+    };
+
     switch(ex.calculationType) {
         case Effective_addr_direct_address:
         {
@@ -107,8 +110,13 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
         case Effective_addr_bx:
         {
             uint16_t logicalAddr = cpu.registers[Register_b] + ex.displacement;
-            physicalAddress = {.segment=cpu.segmentRegisters[DS], .offset=logicalAddr};
+            physicalAddress.offset = logicalAddr;
         } break;
+        case Effective_addr_bx_si:
+        {
+            uint16_t logicalAddr = cpu.registers[Register_b] + cpu.registers[Register_si] + ex.displacement;
+            physicalAddress.offset = logicalAddr;
+        }
     }
 
     return physicalAddress;
