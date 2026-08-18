@@ -13,7 +13,7 @@ The project currently focuses on decoding and disassembly of a subset of 8086 in
 
 The implementation is driven by an instruction table in [InstructionTable.inl](sim8086/sim8086/src/InstructionTable.inl), and the main entry point is [Main.cpp](sim8086/sim8086/src/Main.cpp).
 
-> Disassembly covers the instructions listed above. Execution is newer and narrower: right now only `MOV` (immediate-to-register and register-to-register, including 8-bit high/low register halves) actually updates CPU state. Every other decoded instruction is still execution-stub-only.
+> Disassembly covers the instructions listed above. Execution is newer and narrower: right now only `MOV` actually updates CPU state, but that coverage is now complete for register, immediate, and memory operands, including all eight 8086 effective-address forms. Segment-register `MOV` and every other decoded instruction are still execution-stub-only.
 
 ## Current support status
 
@@ -22,15 +22,15 @@ The implementation is driven by an instruction table in [InstructionTable.inl](s
 - [x] Disassembly: `MOV`, `ADD`, `ADC`, `SUB`, `SBB`, `CMP`, `INC`, `DEC`, `NEG`, `PUSH`, `POP`, `JMP`, and common conditional jumps (`JZ`, `JNZ`, `JGE`, `JNG`, `JA`, `JNA`, `JO`, `JNO`, `JS`, `JPE`, and related variants)
 - [x] Execution: `MOV` immediate-to-register
 - [x] Execution: `MOV` register-to-register, including 8-bit high/low byte register access (e.g. `BH`, `BL`)
+- [x] Execution: `MOV` memory operands — immediate-to-memory, memory-to-accumulator, accumulator-to-memory, and register-to/from-memory across all eight effective-address forms (`BX+SI`, `BX+DI`, `BP+SI`, `BP+DI`, `SI`, `DI`, `BP`, `BX`, direct address, and 8-/16-bit displacement variants)
 - [x] CLI `-e` flag to run a loaded program instead of disassembling it, with before/after register-state dumps per instruction
 
 ### Planned / not yet fully supported
 
 - [ ] Execution support for instructions beyond `MOV` (`ADD`, `SUB`, `CMP`, `PUSH`/`POP`, jumps, etc.)
-- [ ] Execution of memory-operand `MOV`s (effective-address calculation is decoded but not yet read/written during execution)
+- [ ] Segment-register `MOV` (`10001110`/`10001100`) — not yet decoded or executed
 - [ ] Additional 8086 instructions such as `MUL`, `DIV`, `XCHG`, `LEA`, `XLAT`, `INT`, `CALL`, `RET`, `LOOP`, and `LOOPE`/`LOOPNE`
-- [ ] Full coverage for all memory addressing forms and edge-case encodings
-- [ ] More complete handling of segment register, far-jump, and inter-segment behaviors
+- [ ] More complete handling of far-jump and inter-segment behaviors
 
 ## Repository layout
 
