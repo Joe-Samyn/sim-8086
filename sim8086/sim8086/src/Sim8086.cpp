@@ -153,27 +153,26 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
     return physicalAddress;
 }
 
+uint16_t ProcessSrcOperand(CPU &cpu, Operand src, uint8_t size) {
+    uint16_t srcData = 0;
+    if (src.type == OpType_immediate) {
+        srcData = src.immediate;
+    } 
+    else if (src.type == OpType_effectiveAddrCalc) {
+        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, src.expression);
+        srcData = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
+    } else if (src.type == OpType_register) {
+        srcData = ReadFromRegister(cpu, src.reg);
+    }
+
+    return srcData;
+}
+
 void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size) 
 {
     // TODO - Make this an if-else chain because all cases will never be handled here 
     // What src are we dealing with? Get the value that needs to be moved into dest 
-    uint16_t srcData = 0;
-    switch(src.type)
-    {
-        case OpType_immediate:
-            srcData = src.immediate;
-            break;
-        case OpType_effectiveAddrCalc:
-        {
-            SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, src.expression);
-            srcData = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
-
-        } break;
-        case OpType_register:
-        {   
-            srcData = ReadFromRegister(cpu, src.reg);
-        } break;
-    }
+    uint16_t srcData = ProcessSrcOperand(cpu, src, size);
 
     // Determine destination type
     if (dest.type == OpType_register)
