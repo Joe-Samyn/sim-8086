@@ -187,3 +187,17 @@ void DisplayRegisterState(CPU cpu)
     printf("\n");
     printf("\n");
 }
+
+void DisplayCpuFlagState(const CPU &cpu) {
+    printf("OF  DF  IF  TF  SF  ZF  AF  PF  CF\n");
+    printf("%d   %d   %d   %d   %d   %d   %d   %d   %d\n",
+        (cpu.flags & Overflow) > 0,
+        (cpu.flags & Direction) > 0,
+        (cpu.flags & Interrupt) > 0,
+        (cpu.flags & Trap) > 0,
+        (cpu.flags & Sign) > 0,
+        (cpu.flags & Zero) > 0,
+        (cpu.flags & AuxCarry) > 0,
+        (cpu.flags & Parity) > 0,
+        (cpu.flags & Carry) > 0);
+}

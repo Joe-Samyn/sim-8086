@@ -33,3 +33,4 @@ void WriteToFile();
 void WriteToConsole();
 void WriteToConsole(Instruction instruction);
 void DisplayRegisterState(CPU cpu);
+void DisplayCpuFlagState(const CPU &cpu);
