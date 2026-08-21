@@ -55,6 +55,111 @@ SegmentedAddress Create(uint16_t segment, uint16_t offset) {
     };
 }
 
+void ComputeOF(CPU &cpu, int16_t src, int16_t dest, int16_t result, uint8_t size){
+    if (size == BYTE) {
+        int8_t bSrc = (int8_t)src;
+        int8_t bDest = (int8_t)dest;
+        int8_t bResult = (int8_t) result;
+        if ((bSrc < 0 && bDest < 0 && bResult >= 0) || (bSrc > 0 & bDest > 0 && bResult <= 0)) {
+            cpu.flags |= Overflow;
+        }
+        else {
+            cpu.flags &= ~Overflow;
+        }
+    }
+    else {
+        if ((src < 0 && dest < 0 && result >= 0) || (src > 0 & dest > 0 && result <= 0)) {
+            cpu.flags |= Overflow;
+        }
+        else {
+            cpu.flags &= ~Overflow;
+        }
+    }
+}
+
+void ComputeSF(CPU &cpu, int16_t result, uint8_t size) {
+    if (size == BYTE) {
+        int8_t bResult = (int8_t)result;
+        if (bResult < 0) {
+            cpu.flags |= Sign;
+        } 
+        else {
+            cpu.flags &= ~Sign;
+        }
+    }
+    else {
+        if (result < 0) {
+            cpu.flags |= Sign;
+        } 
+        else {
+            cpu.flags &= ~Sign;
+        }
+    }
+}
+
+void ComputeZF(CPU &cpu, uint16_t result, uint8_t size) {
+    if (size == BYTE) {
+        if ((int8_t)result == 0) {
+            cpu.flags |= Zero;
+        }
+        else {
+            cpu.flags &= ~Zero;
+        }
+    } 
+    else {
+        if (result == 0) {
+            cpu.flags |= Zero;
+        }
+        else {
+            cpu.flags &= ~Zero;
+        }
+    }
+}
+
+void ComputeCF(CPU &cpu, uint16_t src, uint16_t dest, uint16_t result, uint8_t size, bool invert) {
+    if (size == BYTE) {
+        uint8_t bSrc = (uint8_t)src;
+        uint8_t bDest = (uint8_t)dest;
+        uint8_t bResult = (uint8_t) result;
+        if (invert) {
+            if (bResult < bSrc && bResult < bDest ) {
+                cpu.flags &= ~Carry;
+            }
+            else {
+                cpu.flags |= Carry;
+            }
+        }
+        else {
+            if (bResult < bSrc && bResult < bDest ) {
+                cpu.flags |= Carry;
+            }
+            else {
+                cpu.flags &= ~Carry;
+            }
+        }
+    }
+    else {
+        if (invert) {
+            if (result < src && result < dest ) {
+                cpu.flags &= ~Carry;
+            }
+            else {
+                cpu.flags |= Carry;
+            }
+        }
+        else {
+            if (result < src && result < dest ) {
+                cpu.flags |= Carry;
+            }
+            else {
+                cpu.flags &= ~Carry;
+            }
+        }
+    }
+    
+}
+
+
 Entry InstructionTable[] = {
 #include "InstructionTable.inl"
 };
@@ -153,27 +258,26 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
     return physicalAddress;
 }
 
+uint16_t ExtractDataFromSrcOperand(CPU &cpu, Operand src, uint8_t size) {
+    uint16_t srcData = 0;
+    if (src.type == OpType_immediate) {
+        srcData = src.immediate;
+    } 
+    else if (src.type == OpType_effectiveAddrCalc) {
+        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, src.expression);
+        srcData = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
+    } else if (src.type == OpType_register) {
+        srcData = ReadFromRegister(cpu, src.reg);
+    }
+
+    return srcData;
+}
+
 void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size) 
 {
     // TODO - Make this an if-else chain because all cases will never be handled here 
     // What src are we dealing with? Get the value that needs to be moved into dest 
-    uint16_t srcData = 0;
-    switch(src.type)
-    {
-        case OpType_immediate:
-            srcData = src.immediate;
-            break;
-        case OpType_effectiveAddrCalc:
-        {
-            SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, src.expression);
-            srcData = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
-
-        } break;
-        case OpType_register:
-        {   
-            srcData = ReadFromRegister(cpu, src.reg);
-        } break;
-    }
+    uint16_t srcData = ExtractDataFromSrcOperand(cpu, src, size);
 
     // Determine destination type
     if (dest.type == OpType_register)
@@ -190,6 +294,39 @@ void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size)
         if (size == WIDE) WriteWordToMemory(srcData, physicalAddress);
         else WriteByteToMemory(srcData, physicalAddress);
     }
+}
+
+void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size) {
+
+    uint16_t srcData = ExtractDataFromSrcOperand(cpu, src, size);
+    uint16_t destData = 0;
+    uint16_t result = 0;
+    if (dest.type == OpType_register)
+    {
+        destData = ReadFromRegister(cpu, dest.reg);
+        printf("%s <-- 0x%04X + 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], destData, srcData); // TODO - Print statements should only be in the IO files. This needs to get refactored into the IO files so that RegisterNames can be moved to IO.cpp properly
+        result = destData + srcData;
+        WriteToRegister(cpu, dest.reg, result);
+    } 
+    else if (dest.type == OpType_effectiveAddrCalc)
+    {
+        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, dest.expression);
+        if (size == WIDE) {
+            destData = ReadWordFromMemory(physicalAddress);
+            result = destData + srcData;
+            WriteWordToMemory(result, physicalAddress);
+        } else {
+            destData = ReadByteFromMemory(physicalAddress);
+            result = destData + srcData;
+            WriteByteToMemory(result, physicalAddress);
+        }
+    }
+
+    ComputeOF(cpu, (int16_t)srcData, (int16_t)destData, (int16_t)result, size);
+    ComputeSF(cpu, (int16_t)result, size);
+    ComputeZF(cpu, result, size);
+    ComputeCF(cpu, srcData, destData, result, size);
+    DisplayCpuFlagState(cpu);
 }
 
 // TODO - Execute and Disassembly utilize the exact same loop to iterate over instructions. This needs to be moved into the 
@@ -219,9 +356,14 @@ void Execute(Program &program)
 
                     switch(result.op)
                     {
+                        case Op_count: break;
                         case Op_MOV:
                         {
                             ExecuteMov(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
+                        } break;
+                        case Op_ADD:
+                        {
+                            ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
                         } break;
                     }
 

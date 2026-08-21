@@ -57,8 +57,21 @@ enum SegmentRegisters {
     Segment_count
 };
 
+enum CPUFlags {
+    Overflow = (1 << 0),
+    Direction = (1 << 1),
+    Interrupt = (1 << 2),
+    Trap = (1 << 3),
+    Sign = (1 << 4),
+    Zero = (1 << 5),
+    AuxCarry = (1 << 6),
+    Parity = (1 << 7),
+    Carry = (1 << 8)
+};
+
 struct CPU {
     uint16_t IP;
+    uint16_t flags;
     uint16_t registers[Register_count];
     uint16_t segmentRegisters[Segment_count];
 };
@@ -212,3 +225,7 @@ void WriteWordToMemory(uint16_t value, SegmentedAddress at);
 
 uint8_t FetchNextInstructionByte(CPU &cpu);
 SegmentedAddress Create(uint16_t segment, uint16_t offset);
+void ComputeOF(CPU &cpu, int16_t src, int16_t dest, int16_t result, uint8_t size);
+void ComputeSF(CPU &cpu, int16_t result, uint8_t size);
+void ComputeZF(CPU &cpu, uint16_t result, uint8_t size);
+void ComputeCF(CPU &cpu, uint16_t src, uint16_t dest, uint16_t result, uint8_t size, bool invert = false);
