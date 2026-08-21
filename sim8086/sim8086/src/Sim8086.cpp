@@ -55,50 +55,108 @@ SegmentedAddress Create(uint16_t segment, uint16_t offset) {
     };
 }
 
-void ComputeOF(CPU &cpu, int16_t src, int16_t dest, int16_t result){
-    if ((src < 0 && dest < 0 && result >= 0) || (src > 0 & dest > 0 && result <= 0)) {
-        cpu.flags |= Overflow;
+void ComputeOF(CPU &cpu, int16_t src, int16_t dest, int16_t result, uint8_t size){
+    if (size == BYTE) {
+        int8_t bSrc = (int8_t)src;
+        int8_t bDest = (int8_t)dest;
+        int8_t bResult = (int8_t) result;
+        if ((bSrc < 0 && bDest < 0 && bResult >= 0) || (bSrc > 0 & bDest > 0 && bResult <= 0)) {
+            cpu.flags |= Overflow;
+        }
+        else {
+            cpu.flags &= ~Overflow;
+        }
     }
     else {
-        cpu.flags &= ~Overflow;
+        if ((src < 0 && dest < 0 && result >= 0) || (src > 0 & dest > 0 && result <= 0)) {
+            cpu.flags |= Overflow;
+        }
+        else {
+            cpu.flags &= ~Overflow;
+        }
     }
 }
 
-void ComputeSF(CPU &cpu, int16_t result) {
-    if (result < 0) {
-        cpu.flags |= Sign;
+void ComputeSF(CPU &cpu, int16_t result, uint8_t size) {
+    if (size == BYTE) {
+        int8_t bResult = (int8_t)result;
+        if (bResult < 0) {
+            cpu.flags |= Sign;
+        } 
+        else {
+            cpu.flags &= ~Sign;
+        }
+    }
+    else {
+        if (result < 0) {
+            cpu.flags |= Sign;
+        } 
+        else {
+            cpu.flags &= ~Sign;
+        }
+    }
+}
+
+void ComputeZF(CPU &cpu, uint16_t result, uint8_t size) {
+    if (size == BYTE) {
+        if ((int8_t)result == 0) {
+            cpu.flags |= Zero;
+        }
+        else {
+            cpu.flags &= ~Zero;
+        }
     } 
     else {
-        cpu.flags &= ~Sign;
+        if (result == 0) {
+            cpu.flags |= Zero;
+        }
+        else {
+            cpu.flags &= ~Zero;
+        }
     }
 }
 
-void ComputeZF(CPU &cpu, uint16_t result) {
-    if (result == 0) {
-        cpu.flags |= Zero;
-    }
-    else {
-        cpu.flags &= ~Zero;
-    }
-}
-
-void ComputeCF(CPU &cpu, uint16_t src, uint16_t dest, uint16_t result, bool invert = false) {
-    if (invert) {
-        if (result < src && result < dest ) {
-            cpu.flags &= ~Carry;
+void ComputeCF(CPU &cpu, uint16_t src, uint16_t dest, uint16_t result, uint8_t size, bool invert) {
+    if (size == BYTE) {
+        uint8_t bSrc = (uint8_t)src;
+        uint8_t bDest = (uint8_t)dest;
+        uint8_t bResult = (uint8_t) result;
+        if (invert) {
+            if (bResult < bSrc && bResult < bDest ) {
+                cpu.flags &= ~Carry;
+            }
+            else {
+                cpu.flags |= Carry;
+            }
         }
         else {
-            cpu.flags |= Carry;
+            if (bResult < bSrc && bResult < bDest ) {
+                cpu.flags |= Carry;
+            }
+            else {
+                cpu.flags &= ~Carry;
+            }
         }
     }
     else {
-        if (result < src && result < dest ) {
-            cpu.flags |= Carry;
+        if (invert) {
+            if (result < src && result < dest ) {
+                cpu.flags &= ~Carry;
+            }
+            else {
+                cpu.flags |= Carry;
+            }
         }
         else {
-            cpu.flags &= ~Carry;
+            if (result < src && result < dest ) {
+                cpu.flags |= Carry;
+            }
+            else {
+                cpu.flags &= ~Carry;
+            }
         }
     }
+    
 }
 
 
@@ -264,10 +322,10 @@ void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size) {
         }
     }
 
-    ComputeOF(cpu, (int16_t)srcData, (int16_t)destData, (int16_t)result);
-    ComputeSF(cpu, (int16_t)result);
-    ComputeZF(cpu, result);
-    ComputeCF(cpu, srcData, destData, result);
+    ComputeOF(cpu, (int16_t)srcData, (int16_t)destData, (int16_t)result, size);
+    ComputeSF(cpu, (int16_t)result, size);
+    ComputeZF(cpu, result, size);
+    ComputeCF(cpu, srcData, destData, result, size);
     DisplayCpuFlagState(cpu);
 }
 
@@ -305,7 +363,7 @@ void Execute(Program &program)
                         } break;
                         case Op_ADD:
                         {
-                            ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & WIDE));
+                            ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
                         } break;
                     }
 

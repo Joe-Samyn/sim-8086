@@ -225,7 +225,7 @@ void WriteWordToMemory(uint16_t value, SegmentedAddress at);
 
 uint8_t FetchNextInstructionByte(CPU &cpu);
 SegmentedAddress Create(uint16_t segment, uint16_t offset);
-void ComputeOF(CPU &cpu, int16_t src, int16_t dest, int16_t result);
-void ComputeSF(CPU &cpu, int16_t result);
-void ComputeZF(CPU &cpu, uint16_t result);
-void ComputeCF(CPU &cpu, uint16_t src, uint16_t dest, uint16_t result, bool invert);
+void ComputeOF(CPU &cpu, int16_t src, int16_t dest, int16_t result, uint8_t size);
+void ComputeSF(CPU &cpu, int16_t result, uint8_t size);
+void ComputeZF(CPU &cpu, uint16_t result, uint8_t size);
+void ComputeCF(CPU &cpu, uint16_t src, uint16_t dest, uint16_t result, uint8_t size, bool invert = false);
