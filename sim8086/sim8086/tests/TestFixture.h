@@ -13,6 +13,9 @@ struct TestResult {
 typedef TestResult (*TestFunc)();
 typedef std::vector<TestFunc> TestArray;
 
-#define TEST(name, test) static struct TestResult name() { test return {#name, 0}; }
+#define TEST(name, test) static struct TestResult name() { \
+    test \
+    return {#name, 0}; \
+}
 #define TESTS(name) TestArray name
 #define TEST_COUNT(tests) sizeof(tests) / sizeof(TestFunc)
