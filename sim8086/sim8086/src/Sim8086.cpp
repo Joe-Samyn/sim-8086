@@ -352,7 +352,7 @@ void Execute(Program &program)
                 Instruction result = Decode(entry, at);
                 if (result.op)
                 {
-                    WriteToConsole(result);
+                    WriteInstructionToOutput(result, Console);
 
                     switch(result.op)
                     {
@@ -400,7 +400,7 @@ void Disassemble(Program &program)
                 if (result.op)
                 {
                     cpu.IP = at.offset;
-                    WriteToConsole(result);
+                    WriteInstructionToOutput(result, Console);
                     break;
                 }
             }

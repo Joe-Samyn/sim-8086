@@ -116,12 +116,12 @@ void PrintOperand(Operand op)
     }
 }
 
-void WriteToFile()
+void WriteToFile(const Instruction &instruction)
 {
     /** TODO: Write to file */
 }
 
-void WriteToConsole(Instruction instruction) {
+void WriteToConsole(const Instruction &instruction) {
 
     // Print mnemonic/operation 
     printf("%s ", Mnemonics[instruction.op]);
@@ -170,4 +170,14 @@ void DisplayCpuFlagState(const CPU &cpu) {
         (cpu.flags & AuxCarry) > 0,
         (cpu.flags & Parity) > 0,
         (cpu.flags & Carry) > 0);
+}
+
+void WriteInstructionToOutput(const Instruction &instruction, uint8_t outputLocation) {
+    if (outputLocation & File) {
+        WriteToFile(instruction);
+    }
+
+    if (outputLocation & Console) {
+        WriteToConsole(instruction);
+    }
 }

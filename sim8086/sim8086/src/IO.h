@@ -5,6 +5,11 @@
 #include <iostream>
 #include <fstream>
 
+enum OutputLocation {
+    File = (1 << 0),
+    Console = (1 << 1)
+};
+
 // TODO - Needs to be declared properly in the CPP file once references outside IO have been fixed. 
 static const char* RegisterNames[Register_count][3] = {
     {"AL", "AH", "AX"},
@@ -19,9 +24,6 @@ static const char* RegisterNames[Register_count][3] = {
 
 std::ofstream OpenAsmFile(std::string name);
 void CloseAsmFile(std::ofstream &file);
-void PrintEffectiveAddressExpression(Operand op);
-void PrintOperand(Operand op);
-void WriteToFile();
-void WriteToConsole(Instruction instruction);
 void DisplayRegisterState(CPU cpu);
 void DisplayCpuFlagState(const CPU &cpu);
+void WriteInstructionToOutput(const Instruction &instruction, uint8_t outputLocation);
