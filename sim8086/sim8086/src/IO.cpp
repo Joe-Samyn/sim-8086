@@ -121,36 +121,6 @@ void WriteToFile()
     /** TODO: Write to file */
 }
 
-void WriteToConsole() 
-{
-    // Print start label 
-    for (int i = 0; i < DecodedInstIndex; i++)
-    {
-        Instruction inst = DecodedInstructions[i];
-        // Print mnemonic/operation 
-        printf("\t%s ", Mnemonics[inst.op]);
-
-        // If either operand type is immediate, we should print size 
-        if ((inst.operands[SRC].type == OpType_immediate || inst.operands[SRC].type == OpType_none) && inst.operands[DEST].type == OpType_effectiveAddrCalc)
-        {
-            printf("%s ", (inst.flags & Flags::Wide) == 0 ? "byte" : "word");
-        }
-
-        // Print dest operand 
-        PrintOperand(inst.operands[1]);
-
-        if (inst.operands[0].type != OpType_none)
-        {
-            printf(", ");
-        }   
-
-        // Print src operand 
-        PrintOperand(inst.operands[0]);
-
-        printf("\n");
-    }
-}
-
 void WriteToConsole(Instruction instruction) {
 
     // Print mnemonic/operation 

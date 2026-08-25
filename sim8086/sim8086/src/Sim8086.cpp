@@ -399,17 +399,14 @@ void Disassemble(Program &program)
                 Instruction result = Decode(entry, at);
                 if (result.op)
                 {
-                    DecodedInstructions[DecodedInstIndex] = result;
-                    DecodedInstIndex++;
                     cpu.IP = at.offset;
+                    WriteToConsole(result);
                     break;
                 }
             }
 
         }
     }
-
-    WriteToConsole();
 }
 
 Program LoadProgramIntoMemory(std::string filePath)
