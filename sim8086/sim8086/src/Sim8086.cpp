@@ -400,7 +400,7 @@ void Disassemble(Program &program)
                 if (result.op)
                 {
                     cpu.IP = at.offset;
-                    WriteInstructionToOutput(result, Console);
+                    WriteInstructionToOutput(result, File);
                     break;
                 }
             }

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 
+const char* OutputFile; 
+
 enum OutputLocation {
     File = (1 << 0),
     Console = (1 << 1)
@@ -22,8 +24,8 @@ static const char* RegisterNames[Register_count][3] = {
     {"", "", "DI"}
 };
 
-std::ofstream OpenAsmFile(std::string name);
-void CloseAsmFile(std::ofstream &file);
+void OpenAsmFile(std::string name);
+void CloseAsmFile();
 void DisplayRegisterState(CPU cpu);
 void DisplayCpuFlagState(const CPU &cpu);
 void WriteInstructionToOutput(const Instruction &instruction, uint8_t outputLocation);
