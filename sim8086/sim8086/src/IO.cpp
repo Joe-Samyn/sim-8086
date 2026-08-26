@@ -13,7 +13,8 @@ void OpenAsmFile(std::string name)
     // TODO: Check if file failed to open.
     if (!outFile)
     {
-        std::cerr << "Could not open file" << std::endl;
+        int err = errno;
+        printf("ERROR::Could not open file. CODE: %d\n", err);
     }
 
     // Write header of asm file 
