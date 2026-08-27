@@ -207,52 +207,12 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
         .segment=cpu.segmentRegisters[DS]
     };
 
-    switch(ex.calculationType) {
-        case Effective_addr_count: break;
-        case Effective_addr_direct_address:
-        {
-            physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)ex.displacement };
-        } break;
-        case Effective_addr_bx:
-        {
-            uint16_t logicalAddr = cpu.registers[Register_b] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        } break;
-        case Effective_addr_bp:
-        {
-            uint16_t logicalAddr = cpu.registers[Register_bp] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        } break;
-        case Effective_addr_di:
-        {
-            uint16_t logicalAddr = cpu.registers[Register_di] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        } break;
-        case Effective_addr_si:
-        {
-            uint16_t logicalAddr = cpu.registers[Register_si] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        } break;
-        case Effective_addr_bx_si:
-        {
-            uint16_t logicalAddr = cpu.registers[Register_b] + cpu.registers[Register_si] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        } break;
-        case Effective_addr_bx_di:
-        {
-            uint16_t logicalAddr = cpu.registers[Register_b] + cpu.registers[Register_di] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        } break;
-        case Effective_addr_bp_di:
-        {
-            uint16_t logicalAddr = cpu.registers[Register_bp] + cpu.registers[Register_di] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        } break;
-        case Effective_addr_bp_si:
-        {
-            uint16_t logicalAddr = cpu.registers[Register_bp] + cpu.registers[Register_si] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        } break;
+    if (ex.calculationType == Effective_addr_direct_address) {
+        physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)ex.displacement };
+    }
+    else {
+        uint16_t logicalAddr = cpu.registers[ex.base.index] + cpu.registers[ex.index.index] + ex.displacement;
+        physicalAddress.offset = logicalAddr;
     }
 
     return physicalAddress;
@@ -340,7 +300,7 @@ void Execute(Program &program)
                         } break;
                         case Op_ADC:
                         {
-                            ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide),);
+                            ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide), true);
                         } break;
                     }
 
