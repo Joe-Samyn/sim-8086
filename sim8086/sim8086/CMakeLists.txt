@@ -15,7 +15,7 @@ endif()
 
 enable_testing()
 
-set(TST_SRC tests/test_main.cpp)
+set(TST_SRC tests/TestMain.cpp)
 add_executable(sim_tests ${TST_SRC})
 
 target_include_directories(sim_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

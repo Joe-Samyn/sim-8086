@@ -1,6 +1,7 @@
 
 #include "Unity.cpp"
 #include "TestDecode.cpp"
+#include "TestExecuteMOV.cpp"
 
 #include <cstdio>
 
@@ -17,7 +18,7 @@ static void RunTests(const char* name, const TestArray &fixture) {
         }
     }
 
-    printf("%s ........ %d/%d PASSED", name, passed, (int)fixture.size());
+    printf("%s ........ %d/%d PASSED\n\n", name, passed, (int)fixture.size());
 }
 
 
@@ -25,5 +26,6 @@ int main(int argc, char* argv[]) {
     
     printf("-------- Test Results ---------\n");
     RunTests("Decode Tests", DecodeTests);
+    RunTests("Execute MOV Tests", ExecuteMovTests);
     return 0;
 }

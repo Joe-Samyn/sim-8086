@@ -1,5 +1,6 @@
 
 #include "Sim8086.h"
+#include "Execute.h"
 #include "Decode.h"
 #include "IO.h"
 
@@ -249,6 +250,11 @@ uint16_t ExtractDataFromOperand(CPU &cpu, Operand src, uint8_t size) {
     return value;
 }
 
+void ExecuteMov(CPU &cpu, const Operand &src, const Operand &dest, uint8_t size) {
+    uint16_t v0 = ExtractDataFromOperand(cpu, src, size);
+    WriteDataToOperand(cpu, dest, v0, size);
+}
+
 void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry = false) {
     uint16_t v0 = ExtractDataFromOperand(cpu, src, size);
     uint16_t v1 = ExtractDataFromOperand(cpu, dest, size);
@@ -291,8 +297,7 @@ void Execute(Program &program)
                         case Op_MOV:
                         {
                             uint8_t size = (result.flags & Wide);
-                            uint16_t srcData = ExtractDataFromOperand(cpu, result.operands[SRC], size);
-                            WriteDataToOperand(cpu, result.operands[DEST], srcData, size);
+                            ExecuteMov(cpu, result.operands[SRC], result.operands[DEST], size);
                         } break;
                         case Op_ADD:
                         {
