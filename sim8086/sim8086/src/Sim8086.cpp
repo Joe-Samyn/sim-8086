@@ -258,79 +258,50 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
     return physicalAddress;
 }
 
-uint16_t ExtractDataFromSrcOperand(CPU &cpu, Operand src, uint8_t size) {
-    uint16_t srcData = 0;
+void WriteDataToOperand(CPU &cpu, const Operand &op, uint16_t data, uint8_t size) {
+    if (op.type == OpType_register) {
+        WriteToRegister(cpu, op.reg, data);
+    }
+    else if (op.type == OpType_effectiveAddrCalc) {
+        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, op.expression);
+        if (size == WIDE) {
+            WriteWordToMemory(data, physicalAddress);
+        } else {
+            WriteByteToMemory(data, physicalAddress);
+        }
+    }
+}
+
+uint16_t ExtractDataFromOperand(CPU &cpu, Operand src, uint8_t size) {
+
+    uint16_t value = 0;
     if (src.type == OpType_immediate) {
-        srcData = src.immediate;
+        value = src.immediate;
     } 
     else if (src.type == OpType_effectiveAddrCalc) {
         SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, src.expression);
-        srcData = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
-    } else if (src.type == OpType_register) {
-        srcData = ReadFromRegister(cpu, src.reg);
+        value = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
+    } 
+    else if (src.type == OpType_register) {
+        value = ReadFromRegister(cpu, src.reg);
     }
 
-    return srcData;
+    return value;
 }
 
-void ExecuteMov(CPU &cpu, Operand src, Operand dest, uint8_t size) 
-{
-    // TODO - Make this an if-else chain because all cases will never be handled here 
-    // What src are we dealing with? Get the value that needs to be moved into dest 
-    uint16_t srcData = ExtractDataFromSrcOperand(cpu, src, size);
-
-    // Determine destination type
-    if (dest.type == OpType_register)
-    {
-        // TODO - Print statements should only be in the IO files. This needs to get refactored into the IO files so that RegisterNames
-        // can be moved to IO.cpp properly
-        printf("%s <-- 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], srcData);
-        RegisterAccess ra = dest.reg;
-        WriteToRegister(cpu, ra, srcData);
-    } 
-    else if (dest.type == OpType_effectiveAddrCalc)
-    {
-        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, dest.expression);
-        if (size == WIDE) WriteWordToMemory(srcData, physicalAddress);
-        else WriteByteToMemory(srcData, physicalAddress);
-    }
-}
-
-void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size) {
-
-    uint16_t srcData = ExtractDataFromSrcOperand(cpu, src, size);
-    uint16_t destData = 0;
-    uint16_t result = 0;
-    if (dest.type == OpType_register)
-    {
-        destData = ReadFromRegister(cpu, dest.reg);
-        printf("%s <-- 0x%04X + 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], destData, srcData); // TODO - Print statements should only be in the IO files. This needs to get refactored into the IO files so that RegisterNames can be moved to IO.cpp properly
-        result = destData + srcData;
-        WriteToRegister(cpu, dest.reg, result);
-    } 
-    else if (dest.type == OpType_effectiveAddrCalc)
-    {
-        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, dest.expression);
-        if (size == WIDE) {
-            destData = ReadWordFromMemory(physicalAddress);
-            result = destData + srcData;
-            WriteWordToMemory(result, physicalAddress);
-        } else {
-            destData = ReadByteFromMemory(physicalAddress);
-            result = destData + srcData;
-            WriteByteToMemory(result, physicalAddress);
-        }
-    }
-
-    ComputeOF(cpu, (int16_t)srcData, (int16_t)destData, (int16_t)result, size);
+void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry = false) {
+    uint16_t v0 = ExtractDataFromOperand(cpu, src, size);
+    uint16_t v1 = ExtractDataFromOperand(cpu, dest, size);
+    printf("%s <-- 0x%04X + 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], v1, v0);
+    uint16_t result = v0 + v1 + useCarry;
+    ComputeOF(cpu, (int16_t)v0, (int16_t)v1, (int16_t)result, size);
     ComputeSF(cpu, (int16_t)result, size);
     ComputeZF(cpu, result, size);
-    ComputeCF(cpu, srcData, destData, result, size);
+    ComputeCF(cpu, v0, v1, result, size);
+    WriteDataToOperand(cpu, dest, result, size);
     DisplayCpuFlagState(cpu);
 }
 
-// TODO - Execute and Disassembly utilize the exact same loop to iterate over instructions. This needs to be moved into the 
-// Decode files and reused appropriately. 
 void Execute(Program &program)
 {
     CPU cpu = {};
@@ -359,11 +330,17 @@ void Execute(Program &program)
                         case Op_count: break;
                         case Op_MOV:
                         {
-                            ExecuteMov(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
+                            uint8_t size = (result.flags & Wide);
+                            uint16_t srcData = ExtractDataFromOperand(cpu, result.operands[SRC], size);
+                            WriteDataToOperand(cpu, result.operands[DEST], srcData, size);
                         } break;
                         case Op_ADD:
                         {
                             ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
+                        } break;
+                        case Op_ADC:
+                        {
+                            ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide),);
                         } break;
                     }
 
