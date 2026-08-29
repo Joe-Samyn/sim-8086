@@ -2,6 +2,7 @@
 #include "Unity.cpp"
 #include "TestDecode.cpp"
 #include "TestExecuteMOV.cpp"
+#include "TestExecuteADD.cpp"
 
 #include <cstdio>
 
@@ -27,5 +28,6 @@ int main(int argc, char* argv[]) {
     printf("-------- Test Results ---------\n");
     RunTests("Decode Tests", DecodeTests);
     RunTests("Execute MOV Tests", ExecuteMovTests);
+    RunTests("Execute ADD Tests", ExecuteAddTests);
     return 0;
 }

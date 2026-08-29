@@ -255,17 +255,17 @@ void ExecuteMov(CPU &cpu, const Operand &src, const Operand &dest, uint8_t size)
     WriteDataToOperand(cpu, dest, v0, size);
 }
 
-void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry = false) {
+void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry) {
     uint16_t v0 = ExtractDataFromOperand(cpu, src, size);
     uint16_t v1 = ExtractDataFromOperand(cpu, dest, size);
-    printf("%s <-- 0x%04X + 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], v1, v0);
+    //printf("%s <-- 0x%04X + 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], v1, v0);
     uint16_t result = v0 + v1 + useCarry;
     ComputeOF(cpu, (int16_t)v0, (int16_t)v1, (int16_t)result, size);
     ComputeSF(cpu, (int16_t)result, size);
     ComputeZF(cpu, result, size);
     ComputeCF(cpu, v0, v1, result, size);
     WriteDataToOperand(cpu, dest, result, size);
-    DisplayCpuFlagState(cpu);
+    //DisplayCpuFlagState(cpu);
 }
 
 void Execute(Program &program)
