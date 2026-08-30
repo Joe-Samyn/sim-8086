@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include <cstdint>
 
@@ -35,7 +35,7 @@ struct SegmentedAddress {
 };
 
 enum RegisterIndex {
-    
+
     Register_a,
     Register_b,
     Register_c,
@@ -105,7 +105,7 @@ struct RegisterAccess {
     uint8_t offset;     // offset in the register, 0 - low bits, 1 - high bits, 2 - full 16 bits (no offset)
 };
 
-enum ModCategory: uint8_t 
+enum ModCategory: uint8_t
 {
     Memory_mode_no_disp,
     Memory_mode_8_bit_disp,
@@ -115,7 +115,7 @@ enum ModCategory: uint8_t
     Mod_category_count
 };
 
-enum EffectiveAddressCalculation: uint8_t 
+enum EffectiveAddressCalculation: uint8_t
 {
     Effective_addr_direct_address,
 
@@ -150,6 +150,7 @@ enum Operation: uint8_t {
     Op_count
 };
 
+// TODO: Move to CPP file since its variable declaration and initialization
 const char* Mnemonics[] = {
     "none",
 #define INST(mnemonic, ...) #mnemonic,
@@ -159,7 +160,7 @@ const char* Mnemonics[] = {
 #undef INST_ALT
 };
 
-struct Bits 
+struct Bits
 {
     Field field;
     uint8_t value;
@@ -182,7 +183,7 @@ struct Entry {
 };
 
 enum OperandType {
-    OpType_none, 
+    OpType_none,
 
     OpType_register,
     OpType_effectiveAddrCalc,

@@ -13,7 +13,7 @@ The project currently focuses on decoding and disassembly of a subset of 8086 in
 
 The implementation is driven by an instruction table in [InstructionTable.inl](sim8086/sim8086/src/InstructionTable.inl), and the main entry point is [Main.cpp](sim8086/sim8086/src/Main.cpp).
 
-> Disassembly covers the instructions listed above. Execution is newer and narrower: right now only `MOV` actually updates CPU state, but that coverage is now complete for register, immediate, and memory operands, including all eight 8086 effective-address forms. Segment-register `MOV` and every other decoded instruction are still execution-stub-only.
+> Disassembly covers the instructions listed above. Execution now covers `MOV`, `ADD`, and `ADC`: `MOV` handles register, immediate, and memory operands across all eight 8086 effective-address forms; `ADD`/`ADC` compute full-register and byte-level (8-bit high/low) results with all four status flags (Overflow, Sign, Zero, Carry), including ADC's carry-in from CF. `ADD`/`ADC` immediate and memory operands run through the same extraction/write code already proven by `MOV`'s tests, but don't have dedicated test coverage of their own yet. Segment-register `MOV` and every other decoded instruction are still execution-stub-only.
 
 ## Current support status
 
@@ -23,11 +23,13 @@ The implementation is driven by an instruction table in [InstructionTable.inl](s
 - [x] Execution: `MOV` immediate-to-register
 - [x] Execution: `MOV` register-to-register, including 8-bit high/low byte register access (e.g. `BH`, `BL`)
 - [x] Execution: `MOV` memory operands — immediate-to-memory, memory-to-accumulator, accumulator-to-memory, and register-to/from-memory across all eight effective-address forms (`BX+SI`, `BX+DI`, `BP+SI`, `BP+DI`, `SI`, `DI`, `BP`, `BX`, direct address, and 8-/16-bit displacement variants)
+- [x] Execution: `ADD`/`ADC` register-to-register, at both full-register and byte-level (8-bit high/low) granularity, with Overflow/Sign/Zero/Carry flag computation and ADC's carry-in from CF
 - [x] CLI `-e` flag to run a loaded program instead of disassembling it, with before/after register-state dumps per instruction
 
 ### Planned / not yet fully supported
 
-- [ ] Execution support for instructions beyond `MOV` (`ADD`, `SUB`, `CMP`, `PUSH`/`POP`, jumps, etc.)
+- [ ] Execution support for instructions beyond `MOV`/`ADD`/`ADC` (`SUB`, `CMP`, `PUSH`/`POP`, jumps, etc.)
+- [ ] Dedicated `ADD`/`ADC` test coverage for immediate and memory operands — the code path is shared with `MOV` and already implemented, just not yet unit-tested for these instructions
 - [ ] Segment-register `MOV` (`10001110`/`10001100`) — not yet decoded or executed
 - [ ] Additional 8086 instructions such as `MUL`, `DIV`, `XCHG`, `LEA`, `XLAT`, `INT`, `CALL`, `RET`, `LOOP`, and `LOOPE`/`LOOPNE`
 - [ ] More complete handling of far-jump and inter-segment behaviors
@@ -88,7 +90,6 @@ BX   0x0000
 ...
 
 MOV BX, 1024
-BX <-- 0x0400
 
 Register State
 AX   0x0000
@@ -106,7 +107,7 @@ Run the tests with:
 ctest --test-dir build/sim8086 --output-on-failure
 ```
 
-> Note: the unit tests in [test_main.cpp](sim8086/sim8086/tests/test_main.cpp) are currently commented out pending a fix, so this reports 1/1 passed vacuously — the test binary isn't yet asserting anything.
+The suite entry point is [TestMain.cpp](sim8086/sim8086/tests/TestMain.cpp), which runs four `ASSERT_EQUAL`-based test suites: decoding ([TestDecode.cpp](sim8086/sim8086/tests/TestDecode.cpp)), `MOV` execution ([TestExecuteMOV.cpp](sim8086/sim8086/tests/TestExecuteMOV.cpp)), `ADD` execution ([TestExecuteADD.cpp](sim8086/sim8086/tests/TestExecuteADD.cpp)), and `ADC` execution ([TestExecuteADC.cpp](sim8086/sim8086/tests/TestExecuteADC.cpp)).
 
 ## Generate sample binaries
 
@@ -121,7 +122,7 @@ The repository already contains sample `.asm` and `.bin` files under [sim8086/si
 
 ## Notes
 
-This project is best viewed as a decoder/disassembler with an emerging execution engine. It is useful for exploring 8086 instruction encoding, generating readable assembly listings from raw machine code bytes, and (for `MOV`) tracing register-level program state.
+This project is best viewed as a decoder/disassembler with an emerging execution engine. It is useful for exploring 8086 instruction encoding, generating readable assembly listings from raw machine code bytes, and (for `MOV`, `ADD`, and `ADC`) tracing register-level program state.
 
 Contributions are not accepted at this time. However, anyone is welcome to fork this repository and use it as they please under the terms of the repository’s existing license.
 
