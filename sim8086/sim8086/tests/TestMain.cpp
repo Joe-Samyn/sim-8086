@@ -3,6 +3,7 @@
 #include "TestDecode.cpp"
 #include "TestExecuteMOV.cpp"
 #include "TestExecuteADD.cpp"
+#include "TestExecuteADC.cpp"
 
 #include <cstdio>
 
@@ -29,5 +30,6 @@ int main(int argc, char* argv[]) {
     RunTests("Decode Tests", DecodeTests);
     RunTests("Execute MOV Tests", ExecuteMovTests);
     RunTests("Execute ADD Tests", ExecuteAddTests);
+    RunTests("Execute ADC Tests", ExecuteAdcTests);
     return 0;
 }

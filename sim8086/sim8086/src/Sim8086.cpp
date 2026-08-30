@@ -259,7 +259,8 @@ void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry
     uint16_t v0 = ExtractDataFromOperand(cpu, src, size);
     uint16_t v1 = ExtractDataFromOperand(cpu, dest, size);
     //printf("%s <-- 0x%04X + 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], v1, v0);
-    uint16_t result = v0 + v1 + useCarry;
+    bool carry = useCarry && (cpu.flags & Carry);
+    uint16_t result = v0 + v1 + carry;
     ComputeOF(cpu, (int16_t)v0, (int16_t)v1, (int16_t)result, size);
     ComputeSF(cpu, (int16_t)result, size);
     ComputeZF(cpu, result, size);
