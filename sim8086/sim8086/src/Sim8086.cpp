@@ -269,6 +269,20 @@ void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry
     //DisplayCpuFlagState(cpu);
 }
 
+void ExecuteSub(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry) {
+    uint16_t v0 = ExtractDataFromOperand(cpu, dest, size);
+    uint16_t v1 = ExtractDataFromOperand(cpu, src, size);
+
+    uint16_t result = v0 - v1; // TODO: Need to include carry when we get to SUBB
+    WriteDataToOperand(cpu, dest, result, size);
+
+    // NOTE: v1 is inverted because dest - src == dest + twos_complement(src) in 8086
+    ComputeCF(cpu, -v1, v0, result, size, true);
+    ComputeOF(cpu, -v1, v0, result, size);
+    ComputeSF(cpu, result, size);
+    ComputeZF(cpu, result, size);
+}
+
 void Execute(Program &program)
 {
     CPU cpu = {};
@@ -307,6 +321,10 @@ void Execute(Program &program)
                         case Op_ADC:
                         {
                             ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide), true);
+                        } break;
+                        case Op_SUB:
+                        {
+                            ExecuteSub(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide), true);
                         } break;
                     }
 

@@ -4,6 +4,7 @@
 #include "TestExecuteMOV.cpp"
 #include "TestExecuteADD.cpp"
 #include "TestExecuteADC.cpp"
+#include "TestExecuteSUB.cpp"
 
 #include <cstdio>
 
@@ -31,5 +32,6 @@ int main(int argc, char* argv[]) {
     RunTests("Execute MOV Tests", ExecuteMovTests);
     RunTests("Execute ADD Tests", ExecuteAddTests);
     RunTests("Execute ADC Tests", ExecuteAdcTests);
+    RunTests("Execute SUB Tests", ExecuteSubTests);
     return 0;
 }
