@@ -453,7 +453,7 @@ TEST(ExecuteSub_ImmediateFromLoByteNoFlags, {
     Operand dest = {};
     dest.type = OpType_register;
     dest.reg.index = Register_b;
-    dest.reg.offset = FULL_BITS;
+    dest.reg.offset = BYTE;
 
     Operand src = {};
     src.type = OpType_immediate;
