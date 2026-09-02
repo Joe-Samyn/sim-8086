@@ -335,6 +335,145 @@ TEST(ExecuteSub_MemoryFromFullRegNoFlags, {
     ASSERT_EQUAL(result, exp);
 })
 
+TEST(ExecuteSub_LoByteFromMemoryNoFlags, {
+    // ARRANGE
+    CPU cpu = {};
+    cpu.registers[Register_b] = 0x0120;
+    cpu.registers[Register_si] = 0x0020;
+    cpu.registers[Register_c] = 0xFF05;
+
+    SegmentedAddress at = Create(cpu.segmentRegisters[DS], 0x0140);
+    WriteWordToMemory(0xAB08, at);
+
+    uint8_t size = BYTE;
+    bool useCarry = false;
+
+    Operand dest = {};
+    dest.type = OpType_effectiveAddrCalc;
+    dest.expression.calculationType = Effective_addr_bx_si;
+    dest.expression.base.index = Register_b;
+    dest.expression.index.index = Register_si;
+    dest.expression.hasDisplacement = FALSE;
+    dest.expression.displacement = 0;
+
+    Operand src = {};
+    src.type = OpType_register;
+    src.reg.index = Register_c;
+    src.reg.offset = LO_BITS;
+
+    uint16_t exp = 0xAB03;
+    uint8_t expLo = 0x03;
+
+    // ACT
+    ExecuteSub(cpu, src, dest, size, useCarry);
+    uint16_t result = ReadWordFromMemory(at);
+    uint8_t resultLo = ReadByteFromMemory(at);
+
+    // ASSERT
+    ASSERT_EQUAL(result, exp);
+    ASSERT_EQUAL(resultLo, expLo);
+})
+
+TEST(ExecuteSub_MemoryFromLoByteNoFlags, {
+    // ARRANGE
+    CPU cpu = {};
+    cpu.registers[Register_b] = 0x0120;
+    cpu.registers[Register_si] = 0x0020;
+    cpu.registers[Register_c] = 0xFF08;
+
+    SegmentedAddress at = Create(cpu.segmentRegisters[DS], 0x0140);
+    WriteWordToMemory(0xAB05, at);
+
+    uint8_t size = BYTE;
+    bool useCarry = false;
+
+    Operand src = {};
+    src.type = OpType_effectiveAddrCalc;
+    src.expression.calculationType = Effective_addr_bx_si;
+    src.expression.base.index = Register_b;
+    src.expression.index.index = Register_si;
+    src.expression.hasDisplacement = FALSE;
+    src.expression.displacement = 0;
+
+    Operand dest = {};
+    dest.type = OpType_register;
+    dest.reg.index = Register_c;
+    dest.reg.offset = LO_BITS;
+
+    uint16_t exp = 0xFF03;
+    uint8_t expLo = 0x03;
+
+    // ACT
+    ExecuteSub(cpu, src, dest, size, useCarry);
+    uint16_t result = cpu.registers[Register_c];
+    uint8_t resultLo = ReadLoByte(cpu.registers[Register_c]);
+
+    // ASSERT
+    ASSERT_EQUAL(result, exp);
+    ASSERT_EQUAL(resultLo, expLo);
+})
+
+TEST(ExecuteSub_ImmediateFromFullRegisterNoFlags, {
+    // ARRANGE
+    CPU cpu = {};
+    cpu.registers[Register_b] = 0x2467;
+
+    uint8_t size = WIDE;
+    bool useCarry = false;
+
+    Operand dest = {};
+    dest.type = OpType_register;
+    dest.reg.index = Register_b;
+    dest.reg.offset = FULL_BITS;
+
+    Operand src = {};
+    src.type = OpType_immediate;
+    src.immediate = 0x0132;
+
+    uint16_t exp = 0x2335;
+
+    // ACT
+    ExecuteSub(cpu, src, dest, size, useCarry);
+    uint16_t result = cpu.registers[Register_b];
+    uint16_t flags = cpu.flags;
+
+    // ASSERT
+    ASSERT_EQUAL(result, exp);
+    ASSERT_EQUAL(flags, 0);
+})
+
+TEST(ExecuteSub_ImmediateFromLoByteNoFlags, {
+    // ARRANGE
+    CPU cpu = {};
+    cpu.registers[Register_b] = 0x2467;
+
+    uint8_t size = BYTE;
+    bool useCarry = false;
+
+    Operand dest = {};
+    dest.type = OpType_register;
+    dest.reg.index = Register_b;
+    dest.reg.offset = FULL_BITS;
+
+    Operand src = {};
+    src.type = OpType_immediate;
+    src.immediate = 0x32;
+
+    uint16_t exp = 0x2435;
+    uint8_t expLo = 0x35;
+
+    // ACT
+    ExecuteSub(cpu, src, dest, size, useCarry);
+    uint16_t result = cpu.registers[Register_b];
+    uint8_t resultLo = ReadLoByte(cpu.registers[Register_b]);
+    uint16_t flags = cpu.flags;
+
+    // ASSERT
+    ASSERT_EQUAL(result, exp);
+    ASSERT_EQUAL(resultLo, expLo);
+    ASSERT_EQUAL(flags, 0);
+})
+
 TESTS(ExecuteSubTests) = {
     ExecuteSub_FullRegisterFromFullRegisterNoFlagsSet,
     ExecuteAdd_RegisterLoByteFromLoByteNoFlagsSet,
@@ -345,5 +484,9 @@ TESTS(ExecuteSubTests) = {
     ExecuteSub_LoByteRegFromHiByteRegNoFlags,
     ExecuteSub_HiByteRegFromLoByteReg,
     ExecuteSub_FullRegFromMemoryNoFlags,
-    ExecuteSub_MemoryFromFullRegNoFlags
+    ExecuteSub_MemoryFromFullRegNoFlags,
+    ExecuteSub_LoByteFromMemoryNoFlags,
+    ExecuteSub_MemoryFromLoByteNoFlags,
+    ExecuteSub_ImmediateFromFullRegisterNoFlags,
+    ExecuteSub_ImmediateFromLoByteNoFlags
 };
