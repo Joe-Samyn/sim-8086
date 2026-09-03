@@ -6,6 +6,7 @@
 #include "TestExecuteADC.cpp"
 #include "TestExecuteSUB.cpp"
 #include "TestExecuteSBB.cpp"
+#include "TestExecuteCMP.cpp"
 
 #include <cstdio>
 
@@ -35,5 +36,6 @@ int main(int argc, char* argv[]) {
     RunTests("Execute ADC Tests", ExecuteAdcTests);
     RunTests("Execute SUB Tests", ExecuteSubTests);
     RunTests("Execute SBB Tests", ExecuteSbbTests);
+    RunTests("Execute CMP Tests", ExecuteCmpTests);
     return 0;
 }

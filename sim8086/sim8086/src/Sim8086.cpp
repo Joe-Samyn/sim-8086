@@ -284,6 +284,18 @@ void ExecuteSub(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry
     ComputeZF(cpu, result, size);
 }
 
+void ExecuteCmp(CPU &cpu, Operand src, Operand dest, uint8_t size) {
+    uint16_t v0 = ExtractDataFromOperand(cpu, dest, size);
+    uint16_t v1 = ExtractDataFromOperand(cpu, src, size);
+
+    uint16_t result = v0 - v1;
+
+    ComputeCF(cpu, -v1, v0, result, size, true);
+    ComputeOF(cpu, -v1, v0, result, size);
+    ComputeSF(cpu, result, size);
+    ComputeZF(cpu, result, size);
+}
+
 void Execute(Program &program)
 {
     CPU cpu = {};
@@ -330,6 +342,10 @@ void Execute(Program &program)
                         case Op_SBB:
                         {
                             ExecuteSub(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide), true);
+                        } break;
+                        case Op_CMP:
+                        {
+                            ExecuteCmp(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
                         } break;
                     }
 
