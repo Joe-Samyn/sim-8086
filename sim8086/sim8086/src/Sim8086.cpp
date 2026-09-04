@@ -258,7 +258,6 @@ void ExecuteMov(CPU &cpu, const Operand &src, const Operand &dest, uint8_t size)
 void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry) {
     uint16_t v0 = ExtractDataFromOperand(cpu, src, size);
     uint16_t v1 = ExtractDataFromOperand(cpu, dest, size);
-    //printf("%s <-- 0x%04X + 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], v1, v0);
     bool carry = useCarry && (cpu.flags & Carry);
     uint16_t result = v0 + v1 + carry;
     ComputeOF(cpu, (int16_t)v0, (int16_t)v1, (int16_t)result, size);
@@ -266,7 +265,6 @@ void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry
     ComputeZF(cpu, result, size);
     ComputeCF(cpu, v0, v1, result, size);
     WriteDataToOperand(cpu, dest, result, size);
-    //DisplayCpuFlagState(cpu);
 }
 
 void ExecuteSub(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry) {
@@ -274,7 +272,7 @@ void ExecuteSub(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry
     uint16_t v1 = ExtractDataFromOperand(cpu, src, size);
 
     bool carry = useCarry && (cpu.flags & Carry);
-    uint16_t result = v0 - v1 - carry; // TODO: Need to include carry when we get to SUBB
+    uint16_t result = v0 - v1 - carry;
     WriteDataToOperand(cpu, dest, result, size);
 
     // NOTE: v1 is inverted because dest - src == dest + twos_complement(src) in 8086
@@ -299,12 +297,11 @@ void ExecuteCmp(CPU &cpu, Operand src, Operand dest, uint8_t size) {
 void Execute(Program &program)
 {
     CPU cpu = {};
+    DisplayRegisterState(cpu);
     while (cpu.IP <= program.endAddr) 
     {
         uint8_t currentByte = FetchNextInstructionByte(cpu);
         Entry entry = {};
-
-        DisplayRegisterState(cpu);
 
         // Search Instruction table for matching instruction 
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
@@ -356,9 +353,10 @@ void Execute(Program &program)
             }
 
         }
-
-        DisplayRegisterState(cpu);
     }
+    printf("\n");
+    DisplayCpuFlagState(cpu);
+    DisplayRegisterState(cpu);
 }
 
 void Disassemble(Program &program)

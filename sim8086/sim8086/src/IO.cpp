@@ -163,7 +163,7 @@ void PrintOperand(Operand op)
             } break;
         case OpType_immediate:
         {
-            printf("%d", op.immediate);
+            printf("0x%04X", (uint16_t)op.immediate);
         } break;
         case OpType_jmp:
         {
@@ -196,7 +196,7 @@ void WriteOperandToFile(Operand op)
             } break;
         case OpType_immediate:
         {
-            std::fprintf(outFile, "%d", op.immediate);
+            std::fprintf(outFile, "0x%04X", (uint16_t)op.immediate);
         } break;
         case OpType_jmp:
         {
@@ -269,7 +269,6 @@ void DisplayRegisterState(CPU cpu)
     }
 
     printf("\n");
-    printf("\n");
 }
 
 void DisplayCpuFlagState(const CPU &cpu) {
@@ -284,6 +283,7 @@ void DisplayCpuFlagState(const CPU &cpu) {
         (cpu.flags & AuxCarry) > 0,
         (cpu.flags & Parity) > 0,
         (cpu.flags & Carry) > 0);
+    printf("\n");
 }
 
 void WriteInstructionToOutput(const Instruction &instruction, uint8_t outputLocation) {
