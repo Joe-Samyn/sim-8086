@@ -346,7 +346,7 @@ void Execute(Program &program)
                         } break;
                     }
 
-
+                    DisplayCpuFlagState(cpu);
                     cpu.IP = at.offset;
                     break;
                 }
