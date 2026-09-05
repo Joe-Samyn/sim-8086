@@ -204,7 +204,7 @@ struct Operand {
         RegisterAccess reg;
         EffectiveAddrExpression expression;
         int16_t immediate;
-        uint32_t address;
+        int16_t displacement;
         Jump jmp;
     };
 };

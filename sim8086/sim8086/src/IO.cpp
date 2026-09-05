@@ -144,7 +144,7 @@ void WriteEffectiveAddressToFile(Operand op)
     }
 }
 
-void PrintOperand(Operand op)
+void PrintOperand(Operand op, uint8_t instSize)
 {
     switch(op.type)
     {
@@ -167,7 +167,7 @@ void PrintOperand(Operand op)
         } break;
         case OpType_jmp:
         {
-            printf("$%+d", op.address);
+            printf("$%+d", (int16_t)(op.displacement + instSize));
             
         } break;
         default:
@@ -177,7 +177,7 @@ void PrintOperand(Operand op)
     }
 }
 
-void WriteOperandToFile(Operand op)
+void WriteOperandToFile(Operand op, uint8_t instSize)
 {
     switch(op.type)
     {
@@ -200,7 +200,7 @@ void WriteOperandToFile(Operand op)
         } break;
         case OpType_jmp:
         {
-            std::fprintf(outFile, "$%+d", op.address);
+            std::fprintf(outFile, "$%+d", (int16_t)(op.displacement + instSize));
             
         } break;
         default:
@@ -222,7 +222,7 @@ void WriteToFile(const Instruction &instruction)
     }
 
     // Print dest operand 
-    WriteOperandToFile(instruction.operands[1]);
+    WriteOperandToFile(instruction.operands[1], instruction.size);
 
     if (instruction.operands[0].type != OpType_none)
     {
@@ -230,7 +230,7 @@ void WriteToFile(const Instruction &instruction)
     }   
 
     // Print src operand 
-    WriteOperandToFile(instruction.operands[0]);
+    WriteOperandToFile(instruction.operands[0], instruction.size);
 
     std::fprintf(outFile, "\n");
 }
@@ -247,7 +247,7 @@ void WriteToConsole(const Instruction &instruction) {
     }
 
     // Print dest operand 
-    PrintOperand(instruction.operands[1]);
+    PrintOperand(instruction.operands[1], instruction.size);
 
     if (instruction.operands[0].type != OpType_none)
     {
@@ -255,7 +255,7 @@ void WriteToConsole(const Instruction &instruction) {
     }   
 
     // Print src operand 
-    PrintOperand(instruction.operands[0]);
+    PrintOperand(instruction.operands[0], instruction.size);
 
     printf("\n");
 }

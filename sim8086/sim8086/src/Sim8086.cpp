@@ -294,6 +294,12 @@ void ExecuteCmp(CPU &cpu, Operand src, Operand dest, uint8_t size) {
     ComputeZF(cpu, result, size);
 }
 
+void ExecuteJnz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
+    if (zf != Zero) {
+        at.offset += dest.displacement;
+    }
+}   
+
 void Execute(Program &program)
 {
     CPU cpu = {};
@@ -344,6 +350,11 @@ void Execute(Program &program)
                         {
                             ExecuteCmp(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
                         } break;
+                        case Op_JNZ:
+                        {
+                            ExecuteJnz(at, result.operands[DEST], (cpu.flags & Zero));
+                        } break;
+
                     }
 
                     DisplayCpuFlagState(cpu);
