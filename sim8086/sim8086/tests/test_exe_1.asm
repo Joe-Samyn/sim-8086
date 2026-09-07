@@ -3,7 +3,7 @@ bits 16
     mov cx, 3 
     mov bx, 3
     cmp cx, bx
-    jz loop_two
+    jmp loop_two
 
 loop_one:
     add bx, 100

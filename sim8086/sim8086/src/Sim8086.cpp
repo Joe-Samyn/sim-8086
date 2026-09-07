@@ -294,6 +294,11 @@ void ExecuteCmp(CPU &cpu, Operand src, Operand dest, uint8_t size) {
     ComputeZF(cpu, result, size);
 }
 
+// NOTE: Only supporting in segment jumps for now. Out of segment support will come at a leter time. 
+void ExecuteJmp(SegmentedAddress &at, const Operand &dest) {
+    at.offset += dest.displacement;
+}
+
 void ExecuteJnz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
     if (zf != Zero) {
         at.offset += dest.displacement;
@@ -302,6 +307,21 @@ void ExecuteJnz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
 
 void ExecuteJz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
     if (zf) {
+        at.offset += dest.displacement;
+    }
+}
+
+/// @brief Execute Jump if greater than instruction. @see [8086 Family User's Manual](http://data.matthieu.benoit.free.fr/cross/data_sheet2/8086_family_Users_Manual.pdf),
+///        page 2-46, for JG conditional transfer semantics.
+/// @param at Current segmented address of IP
+/// @param dest Destination operand
+/// @param flags CPU flags
+void ExecuteJg(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
+    bool of = flags & Overflow;
+    bool zf = flags & Zero;
+    bool sf = flags & Sign;
+    
+    if ((of == sf) && !zf) {
         at.offset += dest.displacement;
     }
 }
@@ -355,6 +375,10 @@ void Execute(Program &program)
                         case Op_CMP:
                         {
                             ExecuteCmp(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
+                        } break;
+                        case Op_JMP:
+                        {
+                            ExecuteJmp(at, result.operands[DEST]);
                         } break;
                         case Op_JNZ:
                         {
