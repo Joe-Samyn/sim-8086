@@ -8,3 +8,4 @@ void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry
 void ExecuteSub(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry = false);
 void ExecuteCmp(CPU &cpu, Operand src, Operand dest, uint8_t size);
 void ExecuteJnz(SegmentedAddress &at, const Operand &dest, uint16_t zf);
+void ExecuteJz(SegmentedAddress &at, const Operand &dest, uint16_t zf);

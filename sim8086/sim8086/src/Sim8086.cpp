@@ -300,6 +300,12 @@ void ExecuteJnz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
     }
 }   
 
+void ExecuteJz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
+    if (zf) {
+        at.offset += dest.displacement;
+    }
+}
+
 void Execute(Program &program)
 {
     CPU cpu = {};
@@ -353,6 +359,10 @@ void Execute(Program &program)
                         case Op_JNZ:
                         {
                             ExecuteJnz(at, result.operands[DEST], (cpu.flags & Zero));
+                        } break;
+                        case Op_JZ:
+                        { 
+                            ExecuteJz(at, result.operands[DEST], (cpu.flags & Zero));
                         } break;
 
                     }
