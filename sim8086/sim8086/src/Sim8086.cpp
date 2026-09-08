@@ -330,7 +330,16 @@ void ExecuteJge(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
     bool of = flags & Overflow;
     bool sf = flags & Sign;
     
-    if ((of == sf)) {
+    if (of == sf) {
+        at.offset += dest.displacement;
+    }
+}
+
+void ExecuteJl(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
+    bool of = flags & Overflow;
+    bool sf = flags & Sign;
+    
+    if (of != sf) {
         at.offset += dest.displacement;
     }
 }
@@ -405,7 +414,10 @@ void Execute(Program &program)
                         {
                             ExecuteJge(at, result.operands[DEST], cpu.flags);
                         } break;
-
+                        case Op_JL:
+                        {
+                            ExecuteJl(at, result.operands[DEST], cpu.flags);
+                        } break;
                     }
 
                     DisplayCpuFlagState(cpu);

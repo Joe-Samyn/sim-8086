@@ -12,3 +12,4 @@ void ExecuteJnz(SegmentedAddress &at, const Operand &dest, uint16_t zf);
 void ExecuteJz(SegmentedAddress &at, const Operand &dest, uint16_t zf);
 void ExecuteJg(SegmentedAddress &at, const Operand &dest, uint16_t flags);
 void ExecuteJge(SegmentedAddress &at, const Operand &dest, uint16_t flags);
+void ExecuteJl(SegmentedAddress &at, const Operand &dest, uint16_t flags);
