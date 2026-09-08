@@ -14,3 +14,5 @@ void ExecuteJg(SegmentedAddress &at, const Operand &dest, uint16_t flags);
 void ExecuteJge(SegmentedAddress &at, const Operand &dest, uint16_t flags);
 void ExecuteJl(SegmentedAddress &at, const Operand &dest, uint16_t flags);
 void ExecuteJng(SegmentedAddress &at, const Operand &dest, uint16_t flags);
+void ExecuteLoop(CPU &cpu, SegmentedAddress &at, const Operand &dest);
+void ExecuteLoopz(CPU &cpu, SegmentedAddress &at, const Operand &dest);

@@ -354,6 +354,22 @@ void ExecuteJng(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
     }
 }
 
+void ExecuteLoop(CPU &cpu, SegmentedAddress &at, const Operand &dest) {
+    cpu.registers[Register_c] -= 1;
+
+    if (cpu.registers[Register_c] != 0) {
+        at.offset += dest.displacement;
+    }
+}
+
+void ExecuteLoopz(CPU &cpu, SegmentedAddress &at, const Operand &dest) {
+    cpu.registers[Register_c] -= 1;
+
+    if (cpu.registers[Register_c] != 0 && (cpu.flags & Zero)) {
+        at.offset += dest.displacement;
+    }
+}
+
 void Execute(Program &program)
 {
     CPU cpu = {};
@@ -424,10 +440,23 @@ void Execute(Program &program)
                         {
                             ExecuteJge(at, result.operands[DEST], cpu.flags);
                         } break;
+                        case Op_JNG:
+                        {
+                            ExecuteJng(at, result.operands[DEST], cpu.flags);
+                        } break;
                         case Op_JL:
                         {
                             ExecuteJl(at, result.operands[DEST], cpu.flags);
                         } break;
+                        case Op_LOOP:
+                        {
+                            ExecuteLoop(cpu, at, result.operands[DEST]);
+                        } break;
+                        case Op_LOOPZ:
+                        {
+                            ExecuteLoopz(cpu, at, result.operands[DEST]);
+                        } break;
+
                     }
 
                     DisplayCpuFlagState(cpu);

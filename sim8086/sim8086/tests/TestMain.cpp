@@ -14,6 +14,8 @@
 #include "TestExecuteJGE.cpp"
 #include "TestExecuteJL.cpp"
 #include "TestExecuteJNG.cpp"
+#include "TestExecuteLOOP.cpp"
+#include "TestExecuteLOOPZ.cpp"
 
 #include <cstdio>
 
@@ -51,5 +53,7 @@ int main(int argc, char* argv[]) {
     RunTests("Execute JGE Tests", ExecuteJgeTests);
     RunTests("Execute JL Tests", ExecuteJlTests);
     RunTests("Execute JNG Tests", ExecuteJngTests);
+    RunTests("Execute LOOP Tests", ExecuteLoopTests);
+    RunTests("Execute LOOPZ Tests", ExecuteLoopzTests);
     return 0;
 }
