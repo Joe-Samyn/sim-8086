@@ -93,11 +93,11 @@ INST_ALT(JMP, { B(Op, 11111111), ImpW(1), Mod, OpExtension(101), Rm })
 
 INST(JZ, { B(Op, 01110100), ImpW(0), Displacement})
 
-INST(JNGE, { B(Op, 01111100), ImpW(0), Displacement})
+INST(JL, { B(Op, 01111100), ImpW(0), Displacement})
 
 INST(JNG, { B(Op, 01111110), ImpW(0), Displacement})
 
-INST(JNAE, { B(Op, 01110010), ImpW(0), Displacement})
+INST(JB, { B(Op, 01110010), ImpW(0), Displacement})
 
 INST(JNA, { B(Op, 01110110), ImpW(0), Displacement})
 
