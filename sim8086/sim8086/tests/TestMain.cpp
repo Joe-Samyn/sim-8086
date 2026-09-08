@@ -4,6 +4,18 @@
 #include "TestExecuteMOV.cpp"
 #include "TestExecuteADD.cpp"
 #include "TestExecuteADC.cpp"
+#include "TestExecuteSUB.cpp"
+#include "TestExecuteSBB.cpp"
+#include "TestExecuteCMP.cpp"
+#include "TestExecuteJNZ.cpp"
+#include "TestExecuteJZ.cpp"
+#include "TestExecuteJMP.cpp"
+#include "TestExecuteJG.cpp"
+#include "TestExecuteJGE.cpp"
+#include "TestExecuteJL.cpp"
+#include "TestExecuteJNG.cpp"
+#include "TestExecuteLOOP.cpp"
+#include "TestExecuteLOOPZ.cpp"
 
 #include <cstdio>
 
@@ -31,5 +43,17 @@ int main(int argc, char* argv[]) {
     RunTests("Execute MOV Tests", ExecuteMovTests);
     RunTests("Execute ADD Tests", ExecuteAddTests);
     RunTests("Execute ADC Tests", ExecuteAdcTests);
+    RunTests("Execute SUB Tests", ExecuteSubTests);
+    RunTests("Execute SBB Tests", ExecuteSbbTests);
+    RunTests("Execute CMP Tests", ExecuteCmpTests);
+    RunTests("Execute JNZ Tests", ExecuteJnzTests);
+    RunTests("Execute JZ Tests", ExecuteJzTests);
+    RunTests("Execute JMP Tests", ExecuteJmpTests);
+    RunTests("Execute JG Tests", ExecuteJgTests);
+    RunTests("Execute JGE Tests", ExecuteJgeTests);
+    RunTests("Execute JL Tests", ExecuteJlTests);
+    RunTests("Execute JNG Tests", ExecuteJngTests);
+    RunTests("Execute LOOP Tests", ExecuteLoopTests);
+    RunTests("Execute LOOPZ Tests", ExecuteLoopzTests);
     return 0;
 }

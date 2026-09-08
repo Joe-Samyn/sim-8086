@@ -258,7 +258,6 @@ void ExecuteMov(CPU &cpu, const Operand &src, const Operand &dest, uint8_t size)
 void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry) {
     uint16_t v0 = ExtractDataFromOperand(cpu, src, size);
     uint16_t v1 = ExtractDataFromOperand(cpu, dest, size);
-    //printf("%s <-- 0x%04X + 0x%04X\n\n", RegisterNames[dest.reg.index][dest.reg.offset], v1, v0);
     bool carry = useCarry && (cpu.flags & Carry);
     uint16_t result = v0 + v1 + carry;
     ComputeOF(cpu, (int16_t)v0, (int16_t)v1, (int16_t)result, size);
@@ -266,18 +265,119 @@ void ExecuteAdd(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry
     ComputeZF(cpu, result, size);
     ComputeCF(cpu, v0, v1, result, size);
     WriteDataToOperand(cpu, dest, result, size);
-    //DisplayCpuFlagState(cpu);
+}
+
+void ExecuteSub(CPU &cpu, Operand src, Operand dest, uint8_t size, bool useCarry) {
+    uint16_t v0 = ExtractDataFromOperand(cpu, dest, size);
+    uint16_t v1 = ExtractDataFromOperand(cpu, src, size);
+
+    bool carry = useCarry && (cpu.flags & Carry);
+    uint16_t result = v0 - v1 - carry;
+    WriteDataToOperand(cpu, dest, result, size);
+
+    // NOTE: v1 is inverted because dest - src == dest + twos_complement(src) in 8086
+    ComputeCF(cpu, -v1, v0, result, size, true);
+    ComputeOF(cpu, -v1, v0, result, size);
+    ComputeSF(cpu, result, size);
+    ComputeZF(cpu, result, size);
+}
+
+void ExecuteCmp(CPU &cpu, Operand src, Operand dest, uint8_t size) {
+    uint16_t v0 = ExtractDataFromOperand(cpu, dest, size);
+    uint16_t v1 = ExtractDataFromOperand(cpu, src, size);
+
+    uint16_t result = v0 - v1;
+
+    ComputeCF(cpu, -v1, v0, result, size, true);
+    ComputeOF(cpu, -v1, v0, result, size);
+    ComputeSF(cpu, result, size);
+    ComputeZF(cpu, result, size);
+}
+
+// NOTE: Only supporting in segment jumps for now. Out of segment support will come at a leter time. 
+void ExecuteJmp(SegmentedAddress &at, const Operand &dest) {
+    at.offset += dest.displacement;
+}
+
+void ExecuteJnz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
+    if (zf != Zero) {
+        at.offset += dest.displacement;
+    }
+}   
+
+void ExecuteJz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
+    if (zf) {
+        at.offset += dest.displacement;
+    }
+}
+
+/// @brief Execute Jump if greater than instruction. @see [8086 Family User's Manual](http://data.matthieu.benoit.free.fr/cross/data_sheet2/8086_family_Users_Manual.pdf),
+///        page 2-46, for JG conditional transfer semantics.
+/// @param at Current segmented address of IP
+/// @param dest Destination operand
+/// @param flags CPU flags
+void ExecuteJg(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
+    bool of = flags & Overflow;
+    bool zf = flags & Zero;
+    bool sf = flags & Sign;
+    
+    if ((of == sf) && !zf) {
+        at.offset += dest.displacement;
+    }
+}
+
+void ExecuteJge(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
+    bool of = flags & Overflow;
+    bool sf = flags & Sign;
+    
+    if (of == sf) {
+        at.offset += dest.displacement;
+    }
+}
+
+void ExecuteJl(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
+    bool of = flags & Overflow;
+    bool sf = flags & Sign;
+    
+    if (of != sf) {
+        at.offset += dest.displacement;
+    }
+}
+
+void ExecuteJng(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
+    bool of = flags & Overflow;
+    bool zf = flags & Zero;
+    bool sf = flags & Sign;
+    
+    if ((of != sf) || zf) {
+        at.offset += dest.displacement;
+    }
+}
+
+void ExecuteLoop(CPU &cpu, SegmentedAddress &at, const Operand &dest) {
+    cpu.registers[Register_c] -= 1;
+
+    if (cpu.registers[Register_c] != 0) {
+        at.offset += dest.displacement;
+    }
+}
+
+void ExecuteLoopz(CPU &cpu, SegmentedAddress &at, const Operand &dest) {
+    cpu.registers[Register_c] -= 1;
+
+    if (cpu.registers[Register_c] != 0 && (cpu.flags & Zero)) {
+        at.offset += dest.displacement;
+    }
 }
 
 void Execute(Program &program)
 {
     CPU cpu = {};
+    DisplayRegisterState(cpu);
     while (cpu.IP <= program.endAddr) 
     {
         uint8_t currentByte = FetchNextInstructionByte(cpu);
         Entry entry = {};
-
-        DisplayRegisterState(cpu);
 
         // Search Instruction table for matching instruction 
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
@@ -308,18 +408,68 @@ void Execute(Program &program)
                         {
                             ExecuteAdd(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide), true);
                         } break;
+                        case Op_SUB:
+                        {
+                            ExecuteSub(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
+                        } break;
+                        case Op_SBB:
+                        {
+                            ExecuteSub(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide), true);
+                        } break;
+                        case Op_CMP:
+                        {
+                            ExecuteCmp(cpu, result.operands[SRC], result.operands[DEST], (result.flags & Wide));
+                        } break;
+                        case Op_JMP:
+                        {
+                            ExecuteJmp(at, result.operands[DEST]);
+                        } break;
+                        case Op_JNZ:
+                        {
+                            ExecuteJnz(at, result.operands[DEST], (cpu.flags & Zero));
+                        } break;
+                        case Op_JZ:
+                        { 
+                            ExecuteJz(at, result.operands[DEST], (cpu.flags & Zero));
+                        } break;
+                        case Op_JG: 
+                        {
+                            ExecuteJg(at, result.operands[DEST], cpu.flags);
+                        } break;
+                        case Op_JGE:
+                        {
+                            ExecuteJge(at, result.operands[DEST], cpu.flags);
+                        } break;
+                        case Op_JNG:
+                        {
+                            ExecuteJng(at, result.operands[DEST], cpu.flags);
+                        } break;
+                        case Op_JL:
+                        {
+                            ExecuteJl(at, result.operands[DEST], cpu.flags);
+                        } break;
+                        case Op_LOOP:
+                        {
+                            ExecuteLoop(cpu, at, result.operands[DEST]);
+                        } break;
+                        case Op_LOOPZ:
+                        {
+                            ExecuteLoopz(cpu, at, result.operands[DEST]);
+                        } break;
+
                     }
 
-
+                    DisplayCpuFlagState(cpu);
                     cpu.IP = at.offset;
                     break;
                 }
             }
 
         }
-
-        DisplayRegisterState(cpu);
     }
+    printf("\n");
+    DisplayCpuFlagState(cpu);
+    DisplayRegisterState(cpu);
 }
 
 void Disassemble(Program &program)

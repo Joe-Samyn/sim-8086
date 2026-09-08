@@ -352,10 +352,10 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
 
             // TODO: (joe) This needs to be fixed... Its a very terrible way to calculate the size of an instruction
 
-            uint16_t size = ComputePhysicalAddress(at) - inst.address;
+            inst.size = ComputePhysicalAddress(at) - inst.address;
             inst.operands[DEST] = {
                 .type = OpType_jmp,
-                .address = (uint32_t)displacement + size
+                .displacement = (int16_t)displacement
             };
 
             inst.flags |= IPInc;

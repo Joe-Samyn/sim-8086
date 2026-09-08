@@ -144,7 +144,7 @@ void WriteEffectiveAddressToFile(Operand op)
     }
 }
 
-void PrintOperand(Operand op)
+void PrintOperand(Operand op, uint8_t instSize)
 {
     switch(op.type)
     {
@@ -163,11 +163,11 @@ void PrintOperand(Operand op)
             } break;
         case OpType_immediate:
         {
-            printf("%d", op.immediate);
+            printf("0x%04X", (uint16_t)op.immediate);
         } break;
         case OpType_jmp:
         {
-            printf("$%+d", op.address);
+            printf("$%+d", (int16_t)(op.displacement + instSize));
             
         } break;
         default:
@@ -177,7 +177,7 @@ void PrintOperand(Operand op)
     }
 }
 
-void WriteOperandToFile(Operand op)
+void WriteOperandToFile(Operand op, uint8_t instSize)
 {
     switch(op.type)
     {
@@ -196,11 +196,11 @@ void WriteOperandToFile(Operand op)
             } break;
         case OpType_immediate:
         {
-            std::fprintf(outFile, "%d", op.immediate);
+            std::fprintf(outFile, "0x%04X", (uint16_t)op.immediate);
         } break;
         case OpType_jmp:
         {
-            std::fprintf(outFile, "$%+d", op.address);
+            std::fprintf(outFile, "$%+d", (int16_t)(op.displacement + instSize));
             
         } break;
         default:
@@ -222,7 +222,7 @@ void WriteToFile(const Instruction &instruction)
     }
 
     // Print dest operand 
-    WriteOperandToFile(instruction.operands[1]);
+    WriteOperandToFile(instruction.operands[1], instruction.size);
 
     if (instruction.operands[0].type != OpType_none)
     {
@@ -230,7 +230,7 @@ void WriteToFile(const Instruction &instruction)
     }   
 
     // Print src operand 
-    WriteOperandToFile(instruction.operands[0]);
+    WriteOperandToFile(instruction.operands[0], instruction.size);
 
     std::fprintf(outFile, "\n");
 }
@@ -247,7 +247,7 @@ void WriteToConsole(const Instruction &instruction) {
     }
 
     // Print dest operand 
-    PrintOperand(instruction.operands[1]);
+    PrintOperand(instruction.operands[1], instruction.size);
 
     if (instruction.operands[0].type != OpType_none)
     {
@@ -255,7 +255,7 @@ void WriteToConsole(const Instruction &instruction) {
     }   
 
     // Print src operand 
-    PrintOperand(instruction.operands[0]);
+    PrintOperand(instruction.operands[0], instruction.size);
 
     printf("\n");
 }
@@ -268,7 +268,6 @@ void DisplayRegisterState(CPU cpu)
         printf("%s   0x%04X\n", RegisterNames[i][2], cpu.registers[i]);
     }
 
-    printf("\n");
     printf("\n");
 }
 
@@ -284,6 +283,7 @@ void DisplayCpuFlagState(const CPU &cpu) {
         (cpu.flags & AuxCarry) > 0,
         (cpu.flags & Parity) > 0,
         (cpu.flags & Carry) > 0);
+    printf("\n");
 }
 
 void WriteInstructionToOutput(const Instruction &instruction, uint8_t outputLocation) {
