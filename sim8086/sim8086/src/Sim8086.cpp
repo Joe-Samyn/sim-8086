@@ -344,6 +344,16 @@ void ExecuteJl(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
     }
 }
 
+void ExecuteJng(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
+    bool of = flags & Overflow;
+    bool zf = flags & Zero;
+    bool sf = flags & Sign;
+    
+    if ((of != sf) || zf) {
+        at.offset += dest.displacement;
+    }
+}
+
 void Execute(Program &program)
 {
     CPU cpu = {};

@@ -13,6 +13,7 @@
 #include "TestExecuteJG.cpp"
 #include "TestExecuteJGE.cpp"
 #include "TestExecuteJL.cpp"
+#include "TestExecuteJNG.cpp"
 
 #include <cstdio>
 
@@ -49,5 +50,6 @@ int main(int argc, char* argv[]) {
     RunTests("Execute JG Tests", ExecuteJgTests);
     RunTests("Execute JGE Tests", ExecuteJgeTests);
     RunTests("Execute JL Tests", ExecuteJlTests);
+    RunTests("Execute JNG Tests", ExecuteJngTests);
     return 0;
 }
