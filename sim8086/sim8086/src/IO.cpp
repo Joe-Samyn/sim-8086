@@ -163,7 +163,7 @@ void PrintOperand(Operand op, uint8_t instSize)
             } break;
         case OpType_immediate:
         {
-            printf("0x%04X", (uint16_t)op.immediate);
+            printf("0x%04X (%d)", (uint16_t)op.immediate, op.immediate);
         } break;
         case OpType_jmp:
         {
@@ -265,7 +265,7 @@ void DisplayRegisterState(CPU cpu)
     printf("Register State\n");
     for (int i = 0; i < Register_count; i++)
     {
-        printf("%s   0x%04X\n", RegisterNames[i][2], cpu.registers[i]);
+        printf("%s   0x%04X (%d)\n", RegisterNames[i][2], cpu.registers[i], cpu.registers[i]);
     }
 
     printf("\n");

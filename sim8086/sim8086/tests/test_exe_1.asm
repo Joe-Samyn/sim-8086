@@ -1,16 +1,19 @@
 bits 16
 
-    mov cx, 3 
-    mov bx, 3
-    cmp cx, bx
-    jmp loop_two
+    mov dx, 10
+    mov bp, 1000
 
-loop_one:
-    add bx, 100
-    sub cx, 1 
-    jnz loop_one 
+init_loop:
+    mov [bp + si], si
+    add si, 2
+    cmp dx, si 
+    jnz init_loop 
 
-loop_two:
-    add bx, 10
-    sub cx, 1
-    jnz loop_two
+    mov si, 0
+sum_loop:
+    add bx, [bp + si]
+    add si, 2
+    cmp dx, si 
+    jnz sum_loop 
+
+
