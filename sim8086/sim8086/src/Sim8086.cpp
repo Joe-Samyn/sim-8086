@@ -50,9 +50,9 @@ void WriteByteToMemory(uint16_t value, SegmentedAddress at) {
 }
 
 SegmentedAddress Create(uint16_t segment, uint16_t offset) {
-    return { 
-        .segment=segment, 
-        .offset=(uint16_t)offset 
+    return {
+        .segment=segment,
+        .offset=(uint16_t)offset
     };
 }
 
@@ -83,7 +83,7 @@ void ComputeSF(CPU &cpu, int16_t result, uint8_t size) {
         int8_t bResult = (int8_t)result;
         if (bResult < 0) {
             cpu.flags |= Sign;
-        } 
+        }
         else {
             cpu.flags &= ~Sign;
         }
@@ -91,7 +91,7 @@ void ComputeSF(CPU &cpu, int16_t result, uint8_t size) {
     else {
         if (result < 0) {
             cpu.flags |= Sign;
-        } 
+        }
         else {
             cpu.flags &= ~Sign;
         }
@@ -106,7 +106,7 @@ void ComputeZF(CPU &cpu, uint16_t result, uint8_t size) {
         else {
             cpu.flags &= ~Zero;
         }
-    } 
+    }
     else {
         if (result == 0) {
             cpu.flags |= Zero;
@@ -157,7 +157,7 @@ void ComputeCF(CPU &cpu, uint16_t src, uint16_t dest, uint16_t result, uint8_t s
             }
         }
     }
-    
+
 }
 
 
@@ -212,8 +212,14 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
         physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)ex.displacement };
     }
     else {
-        uint16_t logicalAddr = cpu.registers[ex.base.index] + cpu.registers[ex.index.index] + ex.displacement;
-        physicalAddress.offset = logicalAddr;
+        if (ex.index.index == Register_none) {
+            uint16_t logicalAddr = cpu.registers[ex.base.index] + ex.displacement;
+            physicalAddress.offset = logicalAddr;
+        }
+        else {
+            uint16_t logicalAddr = cpu.registers[ex.base.index] + cpu.registers[ex.index.index] + ex.displacement;
+            physicalAddress.offset = logicalAddr;
+        }
     }
 
     return physicalAddress;
@@ -238,11 +244,11 @@ uint16_t ExtractDataFromOperand(CPU &cpu, Operand src, uint8_t size) {
     uint16_t value = 0;
     if (src.type == OpType_immediate) {
         value = src.immediate;
-    } 
+    }
     else if (src.type == OpType_effectiveAddrCalc) {
         SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, src.expression);
         value = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
-    } 
+    }
     else if (src.type == OpType_register) {
         value = ReadFromRegister(cpu, src.reg);
     }
@@ -294,7 +300,7 @@ void ExecuteCmp(CPU &cpu, Operand src, Operand dest, uint8_t size) {
     ComputeZF(cpu, result, size);
 }
 
-// NOTE: Only supporting in segment jumps for now. Out of segment support will come at a leter time. 
+// NOTE: Only supporting in segment jumps for now. Out of segment support will come at a leter time.
 void ExecuteJmp(SegmentedAddress &at, const Operand &dest) {
     at.offset += dest.displacement;
 }
@@ -303,7 +309,7 @@ void ExecuteJnz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
     if (zf != Zero) {
         at.offset += dest.displacement;
     }
-}   
+}
 
 void ExecuteJz(SegmentedAddress &at, const Operand &dest, uint16_t zf) {
     if (zf) {
@@ -320,7 +326,7 @@ void ExecuteJg(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
     bool of = flags & Overflow;
     bool zf = flags & Zero;
     bool sf = flags & Sign;
-    
+
     if ((of == sf) && !zf) {
         at.offset += dest.displacement;
     }
@@ -329,7 +335,7 @@ void ExecuteJg(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
 void ExecuteJge(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
     bool of = flags & Overflow;
     bool sf = flags & Sign;
-    
+
     if (of == sf) {
         at.offset += dest.displacement;
     }
@@ -338,7 +344,7 @@ void ExecuteJge(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
 void ExecuteJl(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
     bool of = flags & Overflow;
     bool sf = flags & Sign;
-    
+
     if (of != sf) {
         at.offset += dest.displacement;
     }
@@ -348,7 +354,7 @@ void ExecuteJng(SegmentedAddress &at, const Operand &dest, uint16_t flags) {
     bool of = flags & Overflow;
     bool zf = flags & Zero;
     bool sf = flags & Sign;
-    
+
     if ((of != sf) || zf) {
         at.offset += dest.displacement;
     }
@@ -373,13 +379,13 @@ void ExecuteLoopz(CPU &cpu, SegmentedAddress &at, const Operand &dest) {
 void Execute(Program &program)
 {
     CPU cpu = {};
-    DisplayRegisterState(cpu);
-    while (cpu.IP <= program.endAddr) 
+    // DisplayRegisterState(cpu);
+    while (cpu.IP <= program.endAddr)
     {
         uint8_t currentByte = FetchNextInstructionByte(cpu);
         Entry entry = {};
 
-        // Search Instruction table for matching instruction 
+        // Search Instruction table for matching instruction
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
         {
             entry = InstructionTable[i];
@@ -390,7 +396,7 @@ void Execute(Program &program)
                 Instruction result = Decode(entry, at);
                 if (result.op)
                 {
-                    WriteInstructionToOutput(result, Console);
+                    // WriteInstructionToOutput(result, Console);
 
                     switch(result.op)
                     {
@@ -429,10 +435,10 @@ void Execute(Program &program)
                             ExecuteJnz(at, result.operands[DEST], (cpu.flags & Zero));
                         } break;
                         case Op_JZ:
-                        { 
+                        {
                             ExecuteJz(at, result.operands[DEST], (cpu.flags & Zero));
                         } break;
-                        case Op_JG: 
+                        case Op_JG:
                         {
                             ExecuteJg(at, result.operands[DEST], cpu.flags);
                         } break;
@@ -459,7 +465,7 @@ void Execute(Program &program)
 
                     }
 
-                    DisplayCpuFlagState(cpu);
+                    // DisplayCpuFlagState(cpu);
                     cpu.IP = at.offset;
                     break;
                 }
@@ -468,12 +474,13 @@ void Execute(Program &program)
         }
     }
     printf("\n");
-    DisplayCpuFlagState(cpu);
-    DisplayRegisterState(cpu);
+    // DisplayCpuFlagState(cpu);
+    // DisplayRegisterState(cpu);
+    WriteMemoryToFile(Memory);
 }
 
 void Disassemble(Program &program)
-{	
+{
     CPU cpu = { 0 };
 
     while (cpu.IP <= program.endAddr)
@@ -481,7 +488,7 @@ void Disassemble(Program &program)
         uint8_t currentByte = FetchNextInstructionByte(cpu);
         Entry entry = {};
 
-        // Search Instruction table for matching instruction 
+        // Search Instruction table for matching instruction
         for (int i = 0; i < ArrayCount(InstructionTable); i++)
         {
             entry = InstructionTable[i];
@@ -523,5 +530,5 @@ Program LoadProgramIntoMemory(std::string filePath)
         .startAddr=0,
         .endAddr=length - 1
     };
-    return program; 
+    return program;
 }

@@ -45,6 +45,8 @@ enum RegisterIndex {
     Register_si,
     Register_di,
 
+    Register_none, 
+    
     Register_count
 };
 

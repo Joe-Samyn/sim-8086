@@ -46,12 +46,14 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
                 expression.calculationType = Effective_addr_si;
                 expression.base.index = Register_si;
                 expression.base.offset = FULL_BITS;
+                expression.index.index = Register_none;
             } break;
         case 0b101:
             {
                 expression.calculationType = Effective_addr_di;
                 expression.base.index = Register_di;
                 expression.base.offset = FULL_BITS;
+                expression.index.index = Register_none;
             } break;
         case 0b110:
             {
@@ -67,6 +69,7 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
                     expression.calculationType = Effective_addr_bp;
                     expression.base.index = Register_bp;
                     expression.base.offset = FULL_BITS;
+                    expression.index.index = Register_none;
                 }
             }break;
         case 0b111:
@@ -74,6 +77,7 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
                 expression.calculationType = Effective_addr_bx;
                 expression.base.index = Register_b;
                 expression.base.offset = FULL_BITS;
+                expression.index.index = Register_none;
             } break; 
     }
 }

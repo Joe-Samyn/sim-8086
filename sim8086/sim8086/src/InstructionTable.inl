@@ -53,7 +53,7 @@ INST_ALT(OUT, { B(Op, 1110111), ImpD(0b0), W, ImpReg(0b000), ImpMod(0b11), ImpRm
 
 INST(ADD, {B(Op, 000000), D, W, Mod, Reg, Rm})
 INST_ALT(ADD, { B(Op, 100000), S, ImpD(0b0), W, Mod, OpExtension(000), Rm, Imm })
-INST_ALT(ADD, { B(Op, 0001010), ImpD(0b0), W, ImpReg(0b000), Imm })
+INST_ALT(ADD, { B(Op, 0000010), ImpD(0b0), W, ImpReg(0b000), Imm })
 
 INST(ADC, {B(Op, 000100), D, W, Mod, Reg, Rm})
 INST_ALT(ADC, { B(Op, 100000), S, ImpD(0b0), W, Mod, OpExtension(010), Rm, Imm })

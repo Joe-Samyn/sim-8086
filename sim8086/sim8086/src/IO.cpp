@@ -4,7 +4,8 @@
 #include <format>
 #include <cstdio>
 
-std::FILE* outFile; 
+std::FILE* outFile;
+const char* MemoryFile = "/Users/joey/Projects/sim-8086/sim8086/sim8086/tests/memory_out.data";
 
 void OpenAsmFile(std::string name)
 {
@@ -17,7 +18,7 @@ void OpenAsmFile(std::string name)
         printf("ERROR::Could not open file. CODE: %d\n", err);
     }
 
-    // Write header of asm file 
+    // Write header of asm file
     std::fprintf(outFile, "bits 16\n\n");
 }
 
@@ -32,7 +33,7 @@ void PrintEffectiveAddressExpression(Operand op)
     {
         case Effective_addr_direct_address:
             {
-                printf("[%d]", op.expression.displacement); 
+                printf("[%d]", op.expression.displacement);
             } break;
         case Effective_addr_bx_si:
         case Effective_addr_bx_di:
@@ -46,7 +47,7 @@ void PrintEffectiveAddressExpression(Operand op)
                     printf("[%s + %s]", base, index);
                 }
                 else
-                {   
+                {
                     if (op.expression.displacement < 0)
                     {
                         printf("[%s + %s - %d]", base, index, -op.expression.displacement);
@@ -73,14 +74,14 @@ void PrintEffectiveAddressExpression(Operand op)
                     {
                         printf("[%s - %d]", base, -op.expression.displacement);
                     }
-                    else 
+                    else
                     {
                         printf("[%s + %d]", base, op.expression.displacement);
                     }
                 }
             } break;
             case Effective_addr_count:
-            { 
+            {
             } break;
     }
 }
@@ -91,7 +92,7 @@ void WriteEffectiveAddressToFile(Operand op)
     {
         case Effective_addr_direct_address:
             {
-                std::fprintf(outFile, "[%d]", op.expression.displacement); 
+                std::fprintf(outFile, "[%d]", op.expression.displacement);
             } break;
         case Effective_addr_bx_si:
         case Effective_addr_bx_di:
@@ -105,7 +106,7 @@ void WriteEffectiveAddressToFile(Operand op)
                     std::fprintf(outFile, "[%s + %s]", base, index);
                 }
                 else
-                {   
+                {
                     if (op.expression.displacement < 0)
                     {
                         std::fprintf(outFile, "[%s + %s - %d]", base, index, -op.expression.displacement);
@@ -132,14 +133,14 @@ void WriteEffectiveAddressToFile(Operand op)
                     {
                         std::fprintf(outFile, "[%s - %d]", base, -op.expression.displacement);
                     }
-                    else 
+                    else
                     {
                         std::fprintf(outFile, "[%s + %d]", base, op.expression.displacement);
                     }
                 }
             } break;
             case Effective_addr_count:
-            { 
+            {
             } break;
     }
 }
@@ -155,7 +156,7 @@ void PrintOperand(Operand op, uint8_t instSize)
         case OpType_register:
             {
                 const char* name = RegisterNames[op.reg.index][op.reg.offset];
-                printf("%s", name);		
+                printf("%s", name);
             } break;
         case OpType_effectiveAddrCalc:
             {
@@ -168,7 +169,7 @@ void PrintOperand(Operand op, uint8_t instSize)
         case OpType_jmp:
         {
             printf("$%+d", (int16_t)(op.displacement + instSize));
-            
+
         } break;
         default:
             {
@@ -188,7 +189,7 @@ void WriteOperandToFile(Operand op, uint8_t instSize)
         case OpType_register:
             {
                 const char* name = RegisterNames[op.reg.index][op.reg.offset];
-                std::fprintf(outFile, "%s", name);		
+                std::fprintf(outFile, "%s", name);
             } break;
         case OpType_effectiveAddrCalc:
             {
@@ -201,7 +202,7 @@ void WriteOperandToFile(Operand op, uint8_t instSize)
         case OpType_jmp:
         {
             std::fprintf(outFile, "$%+d", (int16_t)(op.displacement + instSize));
-            
+
         } break;
         default:
             {
@@ -212,24 +213,24 @@ void WriteOperandToFile(Operand op, uint8_t instSize)
 
 void WriteToFile(const Instruction &instruction)
 {
-    // Print mnemonic/operation 
+    // Print mnemonic/operation
     std::fprintf(outFile, "%s ", Mnemonics[instruction.op]);
 
-    // If either operand type is immediate, we should print size 
+    // If either operand type is immediate, we should print size
     if ((instruction.operands[SRC].type == OpType_immediate || instruction.operands[SRC].type == OpType_none) && instruction.operands[DEST].type == OpType_effectiveAddrCalc)
     {
         std::fprintf(outFile, "%s ", (instruction.flags & Flags::Wide) == 0 ? "byte" : "word");
     }
 
-    // Print dest operand 
+    // Print dest operand
     WriteOperandToFile(instruction.operands[1], instruction.size);
 
     if (instruction.operands[0].type != OpType_none)
     {
         std::fprintf(outFile, ", ");
-    }   
+    }
 
-    // Print src operand 
+    // Print src operand
     WriteOperandToFile(instruction.operands[0], instruction.size);
 
     std::fprintf(outFile, "\n");
@@ -237,24 +238,24 @@ void WriteToFile(const Instruction &instruction)
 
 void WriteToConsole(const Instruction &instruction) {
 
-    // Print mnemonic/operation 
+    // Print mnemonic/operation
     printf("%s ", Mnemonics[instruction.op]);
 
-    // If either operand type is immediate, we should print size 
+    // If either operand type is immediate, we should print size
     if ((instruction.operands[SRC].type == OpType_immediate || instruction.operands[SRC].type == OpType_none) && instruction.operands[DEST].type == OpType_effectiveAddrCalc)
     {
         printf("%s ", (instruction.flags & Flags::Wide) == 0 ? "byte" : "word");
     }
 
-    // Print dest operand 
+    // Print dest operand
     PrintOperand(instruction.operands[1], instruction.size);
 
     if (instruction.operands[0].type != OpType_none)
     {
         printf(", ");
-    }   
+    }
 
-    // Print src operand 
+    // Print src operand
     PrintOperand(instruction.operands[0], instruction.size);
 
     printf("\n");
@@ -294,4 +295,20 @@ void WriteInstructionToOutput(const Instruction &instruction, uint8_t outputLoca
     if (outputLocation & Console) {
         WriteToConsole(instruction);
     }
+}
+
+void WriteMemoryToFile(uint8_t *memory) {
+    uint32_t size = 1024 * 1024;
+
+    std::FILE* memoryFile = std::fopen(MemoryFile, "wb");
+
+    // TODO: Check if file failed to open.
+    if (!memoryFile)
+    {
+        int err = errno;
+        printf("ERROR::Could not open file. CODE: %d\n", err);
+    }
+
+    // Write header of asm file
+    fwrite(memory, 1, size, memoryFile);
 }
