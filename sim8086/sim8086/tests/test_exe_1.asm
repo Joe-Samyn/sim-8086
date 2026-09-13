@@ -1,19 +1,28 @@
+; Author: Joe Samyn
+; Program: Creates a color gradient visual in memory using RGBA format.
+; Note: In the simulator we are running this program on, all registers are initialized to 0 by default. So, its safe to assume
+; the registers already are zeroed.
+
 bits 16
 
-    mov dx, 10
-    mov bp, 1000
+; Initialize the variables
+mov cx, 64
+mov bp, 256
 
-init_loop:
-    mov [bp + si], si
-    add si, 2
-    cmp dx, si 
-    jnz init_loop 
+outer_loop:
+    mov dx, 64
 
-    mov si, 0
-sum_loop:
-    add bx, [bp + si]
-    add si, 2
-    cmp dx, si 
-    jnz sum_loop 
+    inner_loop:
+        mov byte [bp], al
+        mov byte [bp + 1], bl
+        mov byte [bp + 2], 0
+        mov byte [bp + 3], 255
 
+        add bp, 4
+        add al, 1
 
+        sub dx, 1
+        jnz inner_loop
+
+    add bl, 1
+    loop outer_loop
