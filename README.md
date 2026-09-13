@@ -1,6 +1,6 @@
 # sim8086
 
-sim8086 is a small 8086 instruction decoder, disassembler, and (partial) simulator written in modern C++. It loads a binary program image, walks the instruction stream, and either prints a readable assembly-style listing or executes the instructions against an in-memory CPU/register model.
+sim8086 is an Intel 8086 instruction decoder, disassembler, and partial CPU simulator written in modern C++.
 
 ## What it does
 
