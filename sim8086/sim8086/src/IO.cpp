@@ -4,6 +4,20 @@
 #include <format>
 #include <cstdio>
 
+/**
+ * TODO: IO was not a first class citizen of this project. It was a means to validate functionality until tests
+ * were put in place. It needs to be revisted now that we have a working disassembler and execution pipeline and
+ * built properly.
+ *
+ * Things to determine:
+ *  - How does console/file IO work?
+ *  - How do we want to display CPU state?
+ *  - How do we enable/disable output levels? Does everything get output all the time when on?
+ *  - Can we have different verbosity levels for output?
+ *  - What happens when we have a UI wrapping this? How do we output to the UI?
+ *  - How do we handle Memory dumps?
+ */
+
 std::FILE* outFile;
 const char* MemoryFile = "/Users/joey/Projects/sim-8086/sim8086/sim8086/tests/memory_out.data";
 
@@ -27,6 +41,10 @@ void CloseAsmFile()
     std::fclose(outFile);
 }
 
+/**
+ * TODO: Is this faster than just a conditional? It would be interesting to look at the assembly here and
+ * see what Switch statement with this many cases resolving to one case looks like.
+ */
 void PrintEffectiveAddressExpression(Operand op)
 {
     switch(op.expression.calculationType)

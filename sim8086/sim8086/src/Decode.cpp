@@ -1,7 +1,10 @@
 #include "Decode.h"
 
-
-void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpression &expression, SegmentedAddress &at) 
+/**
+ * TODO: Can we simplify this? Set the Type only. Execution should have a table/function to lookup the correct values in the registers.
+ * disassembly should have its own lookup table to get the string representation.
+ */
+void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpression &expression, SegmentedAddress &at)
 {
     switch(rm)
     {
@@ -59,7 +62,7 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
             {
                 if (mod == Memory_mode_no_disp)
                 {
-                    expression.calculationType = Effective_addr_direct_address; 
+                    expression.calculationType = Effective_addr_direct_address;
                     expression.displacement = (int16_t)ReadWordFromMemory(at);
                     IncrementAddress(at);
                     IncrementAddress(at);
@@ -78,10 +81,14 @@ void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpress
                 expression.base.index = Register_b;
                 expression.base.offset = FULL_BITS;
                 expression.index.index = Register_none;
-            } break; 
+            } break;
     }
 }
 
+/**
+ * TODO: Can be made much simpler. We already have register "codes" from the manual. Use the register code as is in manual. This will eliminate
+ * the switch statement.
+ */
 void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
 {
     switch(reg)
@@ -90,22 +97,22 @@ void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
             {
                 regAccess.index = Register_a;
                 regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
-            } break; 
+            } break;
         case 0b001:
             {
                 regAccess.index = Register_c;
-                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;	
+                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
             } break;
         case 0b010:
             {
                 regAccess.index = Register_d;
-                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;	
-            } break;  
+                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
+            } break;
         case 0b011:
             {
                 regAccess.index = Register_b;
-                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;	
-            } break;  
+                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
+            } break;
         case 0b100:
             {
                 if (w == 0)
@@ -161,6 +168,10 @@ void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
     }
 }
 
+/**
+ * TODO: Analyze this fuction more. Each of these statements is performing a lot of work. Can we simplify this and reduce need for a switch
+ * this verbose?
+ */
 void InterpretModRm(uint8_t mod, uint8_t rm, uint8_t w,  Operand &operand, SegmentedAddress &at)
 {
     switch(mod)
@@ -199,22 +210,22 @@ void InterpretModRm(uint8_t mod, uint8_t rm, uint8_t w,  Operand &operand, Segme
             {
                 operand.type = OpType_register;
                 operand.reg = {};
-                DecodeRegister(rm, w, operand.reg);	
+                DecodeRegister(rm, w, operand.reg);
             } break;
     }
 }
 
 /**
-* NOTE: Extracted from Decode to make Decode slightly easier to read. Provides no other function than that. 
+* NOTE: Extracted from Decode to make Decode slightly easier to read. Provides no other function than that.
 */
 uint8_t ParseDataFromByte(Bits current, uint8_t &usedBits, SegmentedAddress &cursor) {
 
     uint8_t result = 0;
 
-    // Checking for constant bits 
+    // Checking for constant bits
     if (current.count == 0)
     {
-        // Get literal constant 
+        // Get literal constant
         result = current.value;
     }
     else
@@ -226,13 +237,29 @@ uint8_t ParseDataFromByte(Bits current, uint8_t &usedBits, SegmentedAddress &cur
             byte = ReadByteFromMemory(cursor);
             usedBits = 0;
         }
-        
+
         result = (byte >> current.shift) & current.mask;
     }
 
     return result;
 }
 
+/**
+ * TODO: Decode is really a coordinator function. Worth looking into splitting out parts of decode into separate functions
+ * for readability, testability.
+ *
+ * Ex:
+ * // Write integration style test for all of Decode(..)
+ * Decode:
+ *  Setup function variables
+ *
+ *  ParseBits(..)   // Testable on its own
+ *
+ *  BuildInstruction(..)    // Testable on its own
+ *
+ *  return Instruction;
+ *
+ */
 Instruction Decode(Entry entry, SegmentedAddress &at)
 {
     Instruction inst = {};
@@ -241,13 +268,13 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
     uint8_t bitsIndex = 0;
     uint8_t usedBits = 0;
 
-    uint8_t extractedData[Field_count] = {};   
+    uint8_t extractedData[Field_count] = {};
     uint32_t hasBits = 0;
 
     uint8_t valid = true;
-    
+
     while(!(entry.bits[bitsIndex].field == Op && entry.bits[bitsIndex].count == 0) && valid)
-    {  
+    {
         Bits currentBits = entry.bits[bitsIndex];
         uint8_t result = ParseDataFromByte(currentBits, usedBits, at);
 
@@ -256,22 +283,29 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
         {
             valid = false;
         }
-        
+
         extractedData[currentBits.field] = result;
         hasBits |= (1 << currentBits.field);
         usedBits += currentBits.count;
         bitsIndex++;
     }
 
+    /**
+     * TODO: This is very verbose.. If not for performance, I would like to analyze this and see if we can make it simpler from a readability
+     * standpoint.
+     *
+     * The number of conditionals in this flow do make me think there could be a high number of branch mispredictions. So, eliminating as
+     * many branches as possible or making branches more predictable may be worth it.
+     */
     if (valid)
     {
-        // NOTE: `at` is still pointing to the last byte used in the extraction loop. This incrmenet is required to move it 
-        // to the next needed byte for instruction creation. 
+        // NOTE: `at` is still pointing to the last byte used in the extraction loop. This incrmenet is required to move it
+        // to the next needed byte for instruction creation.
         IncrementAddress(at);
         uint8_t d = extractedData[D_bit];
         uint8_t w = extractedData[W_bit];
         uint8_t s = extractedData[S_bit];
-        
+
         inst.op = entry.mnemonic;
         inst.flags |= w;
 
@@ -294,7 +328,7 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
             DecodeRegister(reg, w, a);
             Operand op = {
                 .type = OpType_register,
-                .reg = a		
+                .reg = a
             };
 
             inst.operands[d] = op;
@@ -318,7 +352,7 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
                 IncrementAddress(at);
                 IncrementAddress(at);
             }
-            
+
             inst.operands[SRC] = op;
         }
 
@@ -339,7 +373,7 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
         }
 
         if (HasField(hasBits, Displacement_bit))
-        {   
+        {
             int16_t displacement = 0;
             if (w == 1)
             {

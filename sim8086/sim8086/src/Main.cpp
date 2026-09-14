@@ -7,7 +7,17 @@
 
 #define EXECUTE_MODE "-e"
 
-// TODO: All needs to be fixed. The flags system is not robust. 
+/**
+ * TODO: the command line interface needs to be planned out properly. It was simply a means to an end to validate functionality.
+ * Now that the simulator is working properly in disassembly/execution, the CLI needs proper attention.
+ *  - Define functionality the simulator supports
+ *  - Define flag/functionality mappings
+ *  - Create --help flag to explain how simulator works
+ *  - Handle flags properly, with error handling
+ *  - Determine how error handling will work since we are building for general users.
+ */
+
+// TODO: All needs to be fixed. The flags system is not robust.
 int main(int argc, char* argv[])
 {
     if (argc < 3)
@@ -32,7 +42,7 @@ int main(int argc, char* argv[])
     else {
         Disassemble(program);
     }
-    
+
     CloseAsmFile();
 
     return 0;

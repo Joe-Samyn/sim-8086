@@ -9,7 +9,14 @@
 #include <iostream>
 #include <cstdio>
 
-
+/**
+ * TODO: Need to determine how this will work with a UI.
+ *  - How do we inspect/display Memory contents?
+ *  - How do we inspect/display Register contents?
+ *  - How does error handling work?
+ *  - All paths need to be reinspected for errors, and errors need to be handled properly. Most of what is supported
+ *      right now assumes `happy path`.
+ */
 
 #define ArrayCount(array) sizeof(array)/sizeof(array[0])
 
@@ -225,6 +232,7 @@ SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
     return physicalAddress;
 }
 
+// TODO: Make just simply WriteData(...). The ToOperand piece is confusing and misleading.
 void WriteDataToOperand(CPU &cpu, const Operand &op, uint16_t data, uint8_t size) {
     if (op.type == OpType_register) {
         WriteToRegister(cpu, op.reg, data);
@@ -256,6 +264,9 @@ uint16_t ExtractDataFromOperand(CPU &cpu, Operand src, uint8_t size) {
     return value;
 }
 
+/**
+ * TODO: Move all Execute<inst>(...) to an Execute.cpp file. This file should just be representations of 8086 HW (Memory, CPU, Registers, etc.)
+ */
 void ExecuteMov(CPU &cpu, const Operand &src, const Operand &dest, uint8_t size) {
     uint16_t v0 = ExtractDataFromOperand(cpu, src, size);
     WriteDataToOperand(cpu, dest, v0, size);

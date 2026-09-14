@@ -45,8 +45,8 @@ enum RegisterIndex {
     Register_si,
     Register_di,
 
-    Register_none, 
-    
+    Register_none,
+
     Register_count
 };
 
@@ -152,7 +152,7 @@ enum Operation: uint8_t {
     Op_count
 };
 
-// TODO: Move to CPP file since its variable declaration and initialization
+// TODO: Determine where to host constant variables like this.
 const char* Mnemonics[] = {
     "none",
 #define INST(mnemonic, ...) #mnemonic,
