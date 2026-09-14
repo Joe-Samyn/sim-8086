@@ -3,7 +3,8 @@
         {
             "name": "Mac",
             "compileCommands": "${workspaceFolder}/out/build/make-debug/compile_commands.json",
-            "intelliSenseMode": "macos-clang-arm64"
+            "intelliSenseMode": "macos-clang-arm64",
+            "includePath": ["${workspaceFolder}/sim8086/**"]
         }
     ],
     "version": 4
