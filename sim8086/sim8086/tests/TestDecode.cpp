@@ -57,20 +57,16 @@ TEST(DecodeEffectiveAddrExpression_SuccessfullyDecodesRmModIntoEffectiveAddrExpr
     uint8_t mod = Memory_mode_8_bit_disp;
     uint8_t rm = 0b110;
     SegmentedAddress at = Create(0, 0);
-    EffectiveAddrExpression exp = {};
-    exp.calculationType = Effective_addr_bp;
-    exp.base.index = Register_bp;
-    exp.base.offset = FULL_BITS;
+    Operand exp = {};
+    exp.ea = Bp;
 
-    EffectiveAddrExpression res = {};
+    Operand res = {};
 
     // Act
-    DecodeEffectiveAddrExpression(mod, rm, res, at);
+    DecodeEAExpression(mod, rm, res, at);
 
     // Assert
-    ASSERT_EQUAL(res.calculationType, exp.calculationType);
-    ASSERT_EQUAL(res.base.index, exp.base.index);
-    ASSERT_EQUAL(res.base.offset, exp.base.offset);
+    ASSERT_EQUAL(res.ea, exp.ea);
 })
 
 TEST(DecodeEffectiveAddrExpression_SuccessfullyDecodesDirectAddressIntoEffectiveAddrExpression, {
@@ -81,13 +77,13 @@ TEST(DecodeEffectiveAddrExpression_SuccessfullyDecodesDirectAddressIntoEffective
     int16_t expDisplacement = 1234;
     WriteWordToMemory((uint16_t)expDisplacement, at);
 
-    EffectiveAddrExpression res = {};
+    Operand res = {};
 
     // Act
-    DecodeEffectiveAddrExpression(mod, rm, res, at);
+    DecodeEAExpression(mod, rm, res, at);
 
     // Assert
-    ASSERT_EQUAL(res.calculationType, Effective_addr_direct_address);
+    ASSERT_EQUAL(res.ea, Direct_address);
     ASSERT_EQUAL(res.displacement, expDisplacement);
     ASSERT_EQUAL(at.offset, 2);
 })
@@ -117,8 +113,8 @@ TEST(InterpretModRm_SuccessfullyInterpretsMemoryMode, {
 
     // Assert
     ASSERT_EQUAL(res.type, OpType_effectiveAddrCalc);
-    ASSERT_EQUAL(res.expression.calculationType, Effective_addr_bx_si);
-    ASSERT_EQUAL(res.expression.hasDisplacement, FALSE);
+    ASSERT_EQUAL(res.ea, Bx_si);
+    ASSERT_EQUAL(res.displacement, 0);
     ASSERT_EQUAL(at.offset, 0);
 })
 
@@ -137,9 +133,8 @@ TEST(InterpretModRm_SuccesfullyInterprets8BitDisplacementMode, {
 
     // Assert
     ASSERT_EQUAL(res.type, OpType_effectiveAddrCalc);
-    ASSERT_EQUAL(res.expression.calculationType, Effective_addr_bx_si);
-    ASSERT_EQUAL(res.expression.hasDisplacement, TRUE);
-    ASSERT_EQUAL(res.expression.displacement, (int16_t)expDisplacement);
+    ASSERT_EQUAL(res.ea, Bx_si);
+    ASSERT_EQUAL(res.displacement, (int16_t)expDisplacement);
     ASSERT_EQUAL(at.offset, 1);
 })
 
@@ -158,9 +153,8 @@ TEST(InterpretModRm_SuccessfullyInterprets16BitDisplacementMode, {
 
     // Assert
     ASSERT_EQUAL(res.type, OpType_effectiveAddrCalc);
-    ASSERT_EQUAL(res.expression.calculationType, Effective_addr_bx_si);
-    ASSERT_EQUAL(res.expression.hasDisplacement, TRUE);
-    ASSERT_EQUAL(res.expression.displacement, expDisplacement);
+    ASSERT_EQUAL(res.ea, Bx_si);
+    ASSERT_EQUAL(res.displacement, expDisplacement);
     ASSERT_EQUAL(at.offset, 2);
 })
 

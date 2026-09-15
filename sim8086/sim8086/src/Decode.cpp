@@ -1,89 +1,31 @@
 #include "Decode.h"
+#include "Sim8086.h"
+
+#include <assert.h>
 
 /**
- * TODO: Can we simplify this? Set the Type only. Execution should have a table/function to lookup the correct values in the registers.
- * disassembly should have its own lookup table to get the string representation.
+ * Determine the type of effective adddress expression encoded in MOD/RM bits and assign the correct type
+ * to the operand.
  */
-void DecodeEffectiveAddrExpression(uint8_t mod, uint8_t rm, EffectiveAddrExpression &expression, SegmentedAddress &at)
-{
-    switch(rm)
-    {
-        case 0b000:
-            {
-                expression.calculationType = Effective_addr_bx_si;
-                expression.base.index = Register_b;
-                expression.base.offset = FULL_BITS ;
+void DecodeEAExpression(uint8_t mod, uint8_t rm, Operand &op, SegmentedAddress &at) {
+    // MOD should never == Register_mode if we are in this function
+    assert(mod != Register_mode);
 
-                expression.index.index = Register_si;
-                expression.index.offset = FULL_BITS;
-            } break;
-        case 0b001:
-            {
-                expression.calculationType = Effective_addr_bx_di;
-                expression.base.index = Register_b;
-                expression.base.offset = FULL_BITS;
-
-                expression.index.index = Register_di;
-                expression.index.offset = FULL_BITS;
-            } break;
-        case 0b010:
-            {
-                expression.calculationType = Effective_addr_bp_si;
-                expression.base.index = Register_bp;
-                expression.base.offset = FULL_BITS;
-
-                expression.index.index = Register_si;
-                expression.index.offset = FULL_BITS;
-            } break;
-        case 0b011:
-            {
-                expression.calculationType = Effective_addr_bp_di;
-                expression.base.index = Register_bp;
-                expression.base.offset = FULL_BITS;
-
-                expression.index.index = Register_di;
-                expression.index.offset = FULL_BITS;
-            } break;
-        case 0b100:
-            {
-                expression.calculationType = Effective_addr_si;
-                expression.base.index = Register_si;
-                expression.base.offset = FULL_BITS;
-                expression.index.index = Register_none;
-            } break;
-        case 0b101:
-            {
-                expression.calculationType = Effective_addr_di;
-                expression.base.index = Register_di;
-                expression.base.offset = FULL_BITS;
-                expression.index.index = Register_none;
-            } break;
-        case 0b110:
-            {
-                if (mod == Memory_mode_no_disp)
-                {
-                    expression.calculationType = Effective_addr_direct_address;
-                    expression.displacement = (int16_t)ReadWordFromMemory(at);
-                    IncrementAddress(at);
-                    IncrementAddress(at);
-                }
-                else
-                {
-                    expression.calculationType = Effective_addr_bp;
-                    expression.base.index = Register_bp;
-                    expression.base.offset = FULL_BITS;
-                    expression.index.index = Register_none;
-                }
-            }break;
-        case 0b111:
-            {
-                expression.calculationType = Effective_addr_bx;
-                expression.base.index = Register_b;
-                expression.base.offset = FULL_BITS;
-                expression.index.index = Register_none;
-            } break;
+    if (rm == 0b110 && mod == Memory_mode_no_disp) {
+        op.ea = Direct_address;
+        op.displacement = (int16_t)ReadWordFromMemory(at);
+        at.offset += 2;
+    }
+    else {
+        op.ea = (EAType)(rm + 1);
+        if (mod != Memory_mode_no_disp)
+        {
+            op.displacement = mod == Memory_mode_8_bit_disp ? (int16_t)((int8_t)ReadByteFromMemory(at)) : (int16_t)ReadWordFromMemory(at);
+            at.offset += mod;
+        }
     }
 }
+
 
 /**
  * TODO: Can be made much simpler. We already have register "codes" from the manual. Use the register code as is in manual. This will eliminate
@@ -168,50 +110,18 @@ void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
     }
 }
 
-/**
- * TODO: Analyze this fuction more. Each of these statements is performing a lot of work. Can we simplify this and reduce need for a switch
- * this verbose?
- */
 void InterpretModRm(uint8_t mod, uint8_t rm, uint8_t w,  Operand &operand, SegmentedAddress &at)
 {
-    switch(mod)
+    // NOTE: New code we are testing
+    if (mod == Register_mode) {
+        operand.type = OpType_register;
+        operand.reg = {};
+        DecodeRegister(rm, w, operand.reg);
+    }
+    else
     {
-        case Memory_mode_no_disp:
-            {
-                operand.type = OpType_effectiveAddrCalc;
-                EffectiveAddrExpression exp = {};
-                DecodeEffectiveAddrExpression(mod, rm, exp, at);
-                exp.hasDisplacement = FALSE;
-                operand.expression = exp;
-            } break;
-        case Memory_mode_8_bit_disp:
-            {
-                operand.type = OpType_effectiveAddrCalc;
-                EffectiveAddrExpression exp = {};
-                DecodeEffectiveAddrExpression(mod, rm, exp, at);
-                int8_t disp  = (int8_t)ReadByteFromMemory(at);
-                IncrementAddress(at);
-                exp.displacement = (int16_t)disp;
-                exp.hasDisplacement = TRUE;
-                operand.expression = exp;
-            } break;
-        case Memory_mode_16_bit_disp:
-            {
-                operand.type = OpType_effectiveAddrCalc;
-                EffectiveAddrExpression exp = {};
-                DecodeEffectiveAddrExpression(mod, rm, exp, at);
-                exp.displacement = (int16_t)ReadWordFromMemory(at);
-                IncrementAddress(at);
-                IncrementAddress(at);
-                exp.hasDisplacement = TRUE;
-                operand.expression = exp;
-            } break;
-        case Register_mode:
-            {
-                operand.type = OpType_register;
-                operand.reg = {};
-                DecodeRegister(rm, w, operand.reg);
-            } break;
+        operand.type = OpType_effectiveAddrCalc;
+        DecodeEAExpression(mod, rm, operand, at);
     }
 }
 
@@ -358,18 +268,9 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
 
         if (HasField(hasBits, Addr_bit))
         {
-            EffectiveAddrExpression ex = {
-                .calculationType = Effective_addr_direct_address,
-                .displacement = (int16_t)ReadWordFromMemory(at)
-            };
-
-            IncrementAddress(at);
-            IncrementAddress(at);
-
-            inst.operands[!d] = {
-                .type = OpType_effectiveAddrCalc,
-                .expression = ex
-            };
+            Operand op = {};
+            InterpretModRm(Memory_mode_no_disp, 0b110, w, op, at);
+            inst.operands[!d] = op;
         }
 
         if (HasField(hasBits, Displacement_bit))

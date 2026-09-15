@@ -1,7 +1,6 @@
 #include "IO.h"
 #include "Sim8086.h"
 
-#include <format>
 #include <cstdio>
 
 /**
@@ -39,6 +38,36 @@ void OpenAsmFile(std::string name)
 void CloseAsmFile()
 {
     std::fclose(outFile);
+}
+
+void PrintEAExpressionToConsole(const Operand &op) {
+    if (op.ea == Direct_address)
+    {
+        fprintf(outFile, "[%d]", op.displacement);
+    }
+    else if (op.displacement != 0)
+    {
+        printf("[%s%+d]", EAExpressions[op.ea], op.displacement);
+    }
+    else
+    {
+        printf("[%s]", EAExpressions[op.ea]);
+    }
+}
+
+void PrintEAExpressionToFile(const Operand &op) {
+    if (op.ea == Direct_address)
+    {
+        fprintf(outFile, "[%d]", op.displacement);
+    }
+    else if (op.displacement != 0)
+    {
+        fprintf(outFile, "[%s%+d]", EAExpressions[op.ea], op.displacement);
+    }
+    else
+    {
+        fprintf(outFile, "[%s]", EAExpressions[op.ea]);
+    }
 }
 
 /**
@@ -178,7 +207,7 @@ void PrintOperand(Operand op, uint8_t instSize)
             } break;
         case OpType_effectiveAddrCalc:
             {
-                PrintEffectiveAddressExpression(op);
+                PrintEAExpressionToConsole(op);
             } break;
         case OpType_immediate:
         {
@@ -211,7 +240,7 @@ void WriteOperandToFile(Operand op, uint8_t instSize)
             } break;
         case OpType_effectiveAddrCalc:
             {
-                WriteEffectiveAddressToFile(op);
+                PrintEAExpressionToFile(op);
             } break;
         case OpType_immediate:
         {

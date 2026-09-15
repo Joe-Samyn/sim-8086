@@ -133,6 +133,24 @@ enum EffectiveAddressCalculation: uint8_t
     Effective_addr_count
 };
 
+/**
+ * Types of effective address calculations supported on the Intel 8086 processor.
+ */
+enum EAType: uint8_t {
+    Direct_address,
+
+    Bx_si,
+    Bx_di,
+    Bp_si,
+    Bp_di,
+    Si,
+    Di,
+    Bp,
+    Bx,
+
+    EAType_count
+};
+
 struct EffectiveAddrExpression
 {
     EffectiveAddressCalculation calculationType;
@@ -202,11 +220,13 @@ struct Jump {
 
 struct Operand {
     OperandType type;
+    int16_t displacement;
+    
     union {
         RegisterAccess reg;
         EffectiveAddrExpression expression;
+        EAType ea;
         int16_t immediate;
-        int16_t displacement;
         Jump jmp;
     };
 };
