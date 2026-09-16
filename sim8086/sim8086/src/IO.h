@@ -5,14 +5,14 @@
 #include <iostream>
 #include <fstream>
 
-const char* OutputFile; 
+const char* OutputFile;
 
 enum OutputLocation {
     File = (1 << 0),
     Console = (1 << 1)
 };
 
-// TODO - Needs to be declared properly in the CPP file once references outside IO have been fixed. 
+// TODO - Needs to be declared properly in the CPP file once references outside IO have been fixed.
 static const char* RegisterNames[Register_count][3] = {
     {"AL", "AH", "AX"},
     {"BL", "BH", "BX"},
@@ -24,8 +24,21 @@ static const char* RegisterNames[Register_count][3] = {
     {"", "", "DI"}
 };
 
+static const char* EAExpressions[EAType_count] = {
+    "DIRECT_ADDRESS_ERROR",
+    "BX+SI",
+    "BX+DI",
+    "BP+SI",
+    "BP+DI",
+    "SI",
+    "DI",
+    "BP",
+    "BX"
+};
+
 void OpenAsmFile(std::string name);
 void CloseAsmFile();
 void DisplayRegisterState(CPU cpu);
 void DisplayCpuFlagState(const CPU &cpu);
 void WriteInstructionToOutput(const Instruction &instruction, uint8_t outputLocation);
+void WriteMemoryToFile(uint8_t* memory);

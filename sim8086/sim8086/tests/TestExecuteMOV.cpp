@@ -242,8 +242,8 @@ TEST(ExecuteMov_DirectAddressToFullRegister, {
 
     Operand src = {};
     src.type = OpType_effectiveAddrCalc;
-    src.expression.calculationType = Effective_addr_direct_address;
-    src.expression.displacement = 0x0100;
+    src.ea = Direct_address;
+    src.displacement = 0x0100;
 
     Operand dest = {};
     dest.type = OpType_register;
@@ -271,8 +271,8 @@ TEST(ExecuteMov_DirectAddressToLoByte, {
 
     Operand src = {};
     src.type = OpType_effectiveAddrCalc;
-    src.expression.calculationType = Effective_addr_direct_address;
-    src.expression.displacement = 0x0200;
+    src.ea = Direct_address;
+    src.displacement = 0x0200;
 
     Operand dest = {};
     dest.type = OpType_register;
@@ -303,8 +303,8 @@ TEST(ExecuteMov_DirectAddressToHiByte, {
 
     Operand src = {};
     src.type = OpType_effectiveAddrCalc;
-    src.expression.calculationType = Effective_addr_direct_address;
-    src.expression.displacement = 0x0300;
+    src.ea = Direct_address;
+    src.displacement = 0x0300;
 
     Operand dest = {};
     dest.type = OpType_register;
@@ -337,11 +337,8 @@ TEST(ExecuteMov_EffectiveAddressToFullRegister, {
 
     Operand src = {};
     src.type = OpType_effectiveAddrCalc;
-    src.expression.calculationType = Effective_addr_bx_si;
-    src.expression.base.index = Register_b;
-    src.expression.index.index = Register_si;
-    src.expression.hasDisplacement = TRUE;
-    src.expression.displacement = 0x10;
+    src.ea = Bx_si;
+    src.displacement = 0x10;
 
     Operand dest = {};
     dest.type = OpType_register;
@@ -372,11 +369,8 @@ TEST(ExecuteMov_EffectiveAddressToLowByte, {
 
     Operand src = {};
     src.type = OpType_effectiveAddrCalc;
-    src.expression.calculationType = Effective_addr_bx_si;
-    src.expression.base.index = Register_b;
-    src.expression.index.index = Register_si;
-    src.expression.hasDisplacement = TRUE;
-    src.expression.displacement = 0x10;
+    src.ea = Bx_si;
+    src.displacement = 0x10;
 
     Operand dest = {};
     dest.type = OpType_register;
@@ -410,11 +404,8 @@ TEST(ExecuteMov_EffectiveAddressToHiByte, {
 
     Operand src = {};
     src.type = OpType_effectiveAddrCalc;
-    src.expression.calculationType = Effective_addr_bx_si;
-    src.expression.base.index = Register_b;
-    src.expression.index.index = Register_si;
-    src.expression.hasDisplacement = TRUE;
-    src.expression.displacement = 0x10;
+    src.ea = Bx_si;
+    src.displacement = 0x10;
 
     Operand dest = {};
     dest.type = OpType_register;
@@ -450,11 +441,8 @@ TEST(ExecuteMov_FullRegisterToEffectiveAddress, {
 
     Operand dest = {};
     dest.type = OpType_effectiveAddrCalc;
-    dest.expression.calculationType = Effective_addr_bx_di;
-    dest.expression.base.index = Register_b;
-    dest.expression.index.index = Register_di;
-    dest.expression.hasDisplacement = FALSE;
-    dest.expression.displacement = 0;
+    dest.ea = Bx_di;
+    dest.displacement = 0;
 
     int exp = 0x4321;
 
@@ -483,11 +471,8 @@ TEST(ExecuteMov_LoByteOfRegisterToEffectiveAddress, {
 
     Operand dest = {};
     dest.type = OpType_effectiveAddrCalc;
-    dest.expression.calculationType = Effective_addr_bx_di;
-    dest.expression.base.index = Register_b;
-    dest.expression.index.index = Register_di;
-    dest.expression.hasDisplacement = FALSE;
-    dest.expression.displacement = 0;
+    dest.ea = Bx_di;
+    dest.displacement = 0;
 
     int exp = 0x77;
 
@@ -516,11 +501,8 @@ TEST(ExecuteMov_HiByteOfRegisterToEffectiveAddress, {
 
     Operand dest = {};
     dest.type = OpType_effectiveAddrCalc;
-    dest.expression.calculationType = Effective_addr_bx_di;
-    dest.expression.base.index = Register_b;
-    dest.expression.index.index = Register_di;
-    dest.expression.hasDisplacement = FALSE;
-    dest.expression.displacement = 0;
+    dest.ea = Bx_di;
+    dest.displacement = 0;
 
     int exp = 0x88;
 

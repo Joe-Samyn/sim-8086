@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "Sim8086.h"
 #include <cstdint>
@@ -16,3 +16,4 @@ void ExecuteJl(SegmentedAddress &at, const Operand &dest, uint16_t flags);
 void ExecuteJng(SegmentedAddress &at, const Operand &dest, uint16_t flags);
 void ExecuteLoop(CPU &cpu, SegmentedAddress &at, const Operand &dest);
 void ExecuteLoopz(CPU &cpu, SegmentedAddress &at, const Operand &dest);
+SegmentedAddress ComputePhysicalFromEA(const Operand &op, const CPU &cpu);

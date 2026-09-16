@@ -45,6 +45,8 @@ enum RegisterIndex {
     Register_si,
     Register_di,
 
+    Register_none,
+
     Register_count
 };
 
@@ -115,29 +117,22 @@ enum ModCategory: uint8_t
     Mod_category_count
 };
 
-enum EffectiveAddressCalculation: uint8_t
-{
-    Effective_addr_direct_address,
+/**
+ * Types of effective address calculations supported on the Intel 8086 processor.
+ */
+enum EAType: uint8_t {
+    Direct_address,
 
-    Effective_addr_bx_si,
-    Effective_addr_bx_di,
-    Effective_addr_bp_si,
-    Effective_addr_bp_di,
-    Effective_addr_si,
-    Effective_addr_di,
-    Effective_addr_bx,
-    Effective_addr_bp,
+    Bx_si,
+    Bx_di,
+    Bp_si,
+    Bp_di,
+    Si,
+    Di,
+    Bp,
+    Bx,
 
-    Effective_addr_count
-};
-
-struct EffectiveAddrExpression
-{
-    EffectiveAddressCalculation calculationType;
-    RegisterAccess base;
-    RegisterAccess index;
-    uint8_t hasDisplacement;
-    int16_t displacement;
+    EAType_count
 };
 
 enum Operation: uint8_t {
@@ -150,7 +145,7 @@ enum Operation: uint8_t {
     Op_count
 };
 
-// TODO: Move to CPP file since its variable declaration and initialization
+// TODO: Determine where to host constant variables like this.
 const char* Mnemonics[] = {
     "none",
 #define INST(mnemonic, ...) #mnemonic,
@@ -200,11 +195,12 @@ struct Jump {
 
 struct Operand {
     OperandType type;
+    int16_t displacement;
+
     union {
         RegisterAccess reg;
-        EffectiveAddrExpression expression;
+        EAType ea;
         int16_t immediate;
-        int16_t displacement;
         Jump jmp;
     };
 };

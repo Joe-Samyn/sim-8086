@@ -1,129 +1,124 @@
 # sim8086
 
-sim8086 is a small 8086 instruction decoder, disassembler, and (partial) simulator written in modern C++. It loads a binary program image, walks the instruction stream, and either prints a readable assembly-style listing or executes the instructions against an in-memory CPU/register model.
+sim8086 is an Intel 8086 instruction decoder, disassembler, and partial CPU simulator written in C++20.
 
-## What it does
+## Current support
 
-The project currently focuses on decoding and disassembly of a subset of 8086 instructions, including:
+Decoding and execution have different levels of support. The instruction table is in [InstructionTable.inl](sim8086/sim8086/src/InstructionTable.inl), and execution dispatch is in [Sim8086.cpp](sim8086/sim8086/src/Sim8086.cpp).
 
-- Data movement: `MOV`
-- Arithmetic: `ADD`, `ADC`, `SUB`, `SBB`, `CMP`, `DEC`, `NEG`, `INC`
-- Stack: `PUSH`, `POP`
-- Control flow: `JMP` and common conditional jumps such as `JZ`, `JNZ`, `JGE`, `JNG`, `JA`, `JNA`, `JO`, `JNO`, `JS`, `JPE`, and related variants
+| Instruction group | Decoding / disassembly | Execution |
+| --- | --- | --- |
+| Data movement | `MOV`, `XCHG` | `MOV` with general-purpose registers, immediates, and memory |
+| Arithmetic | `ADD`, `ADC`, `SUB`, `SBB`, `CMP`, `INC`, `DEC`, `NEG` | `ADD`, `ADC`, `SUB`, `SBB`, `CMP` |
+| Stack | `PUSH`, `POP` | Not implemented |
+| I/O | `IN`, `OUT` | Not implemented |
+| Jumps | `JMP` and conditional jumps | Relative `JMP`, `JZ`, `JNZ`, `JG`, `JGE`, `JL`, `JNG` |
+| Loops | `LOOP`, `LOOPZ`, `LOOPNZ`, `JCXZ` | `LOOP`, `LOOPZ` |
 
-The implementation is driven by an instruction table in [InstructionTable.inl](sim8086/sim8086/src/InstructionTable.inl), and the main entry point is [Main.cpp](sim8086/sim8086/src/Main.cpp).
+Support is partial: an instruction's presence in the table does not guarantee that every encoding or operand form is implemented. The table also contains `RET` entries, but return support is incomplete and there is no execution handler.
 
-> Disassembly covers the instructions listed above. Execution now covers `MOV`, `ADD`, and `ADC`: `MOV` handles register, immediate, and memory operands across all eight 8086 effective-address forms; `ADD`/`ADC` compute full-register and byte-level (8-bit high/low) results with all four status flags (Overflow, Sign, Zero, Carry), including ADC's carry-in from CF. `ADD`/`ADC` immediate and memory operands run through the same extraction/write code already proven by `MOV`'s tests, but don't have dedicated test coverage of their own yet. Segment-register `MOV` and every other decoded instruction are still execution-stub-only.
+Arithmetic execution supports word and byte operands, including high/low byte registers, and computes Overflow, Sign, Zero, and Carry flags. `ADC` and `SBB` consume the incoming Carry flag; `CMP` updates flags without writing the subtraction result.
 
-## Current support status
+Memory operands use an `EAType` enum and displacement shared by decoding, disassembly, and execution. Execution handles eight register-based addressing forms (`BX+SI`, `BX+DI`, `BP+SI`, `BP+DI`, `SI`, `DI`, `BP`, `BX`) plus direct addressing, with 8-/16-bit displacement decoding. Existing memory execution tests cover direct addressing, `BX+SI`, and `BX+DI`; they do not exhaustively validate every form.
 
-### Implemented / supported today
+### Current limitations
 
-- [x] Disassembly: `MOV`, `ADD`, `ADC`, `SUB`, `SBB`, `CMP`, `INC`, `DEC`, `NEG`, `PUSH`, `POP`, `JMP`, and common conditional jumps (`JZ`, `JNZ`, `JGE`, `JNG`, `JA`, `JNA`, `JO`, `JNO`, `JS`, `JPE`, and related variants)
-- [x] Execution: `MOV` immediate-to-register
-- [x] Execution: `MOV` register-to-register, including 8-bit high/low byte register access (e.g. `BH`, `BL`)
-- [x] Execution: `MOV` memory operands — immediate-to-memory, memory-to-accumulator, accumulator-to-memory, and register-to/from-memory across all eight effective-address forms (`BX+SI`, `BX+DI`, `BP+SI`, `BP+DI`, `SI`, `DI`, `BP`, `BX`, direct address, and 8-/16-bit displacement variants)
-- [x] Execution: `ADD`/`ADC` register-to-register, at both full-register and byte-level (8-bit high/low) granularity, with Overflow/Sign/Zero/Carry flag computation and ADC's carry-in from CF
-- [x] CLI `-e` flag to run a loaded program instead of disassembling it, with before/after register-state dumps per instruction
-
-### Planned / not yet fully supported
-
-- [ ] Execution support for instructions beyond `MOV`/`ADD`/`ADC` (`SUB`, `CMP`, `PUSH`/`POP`, jumps, etc.)
-- [ ] Dedicated `ADD`/`ADC` test coverage for immediate and memory operands — the code path is shared with `MOV` and already implemented, just not yet unit-tested for these instructions
-- [ ] Segment-register `MOV` (`10001110`/`10001100`) — not yet decoded or executed
-- [ ] Additional 8086 instructions such as `MUL`, `DIV`, `XCHG`, `LEA`, `XLAT`, `INT`, `CALL`, `RET`, `LOOP`, and `LOOPE`/`LOOPNE`
-- [ ] More complete handling of far-jump and inter-segment behaviors
+- Effective-address calculation always selects `DS`, including BP-based forms; default `SS` selection and segment overrides are not implemented.
+- Segment-register `MOV` is not decoded or executed.
+- Indirect and far/inter-segment jumps are not fully supported by execution.
+- Arithmetic flag handling is incomplete; Auxiliary Carry and Parity are not computed.
+- Decoded instructions without execution handlers are skipped rather than reported as unsupported.
+- Instructions such as `MUL`, `DIV`, `LEA`, `XLAT`, `INT`, and `CALL` remain unimplemented.
+- CLI argument validation, output handling, and configurable tracing/memory dumps still need work.
 
 ## Repository layout
 
-This is a nested CMake project (two `sim8086` directories deep) — worth knowing before the build section below:
+This is a nested CMake project. There is no `CMakeLists.txt` at the repository root.
 
-- [sim8086/CMakeLists.txt](sim8086/CMakeLists.txt) — top-level CMake project file (there is no `CMakeLists.txt` at the repo root)
-- [sim8086/sim8086/CMakeLists.txt](sim8086/sim8086/CMakeLists.txt) — subproject build rules and test registration
+- [sim8086/CMakeLists.txt](sim8086/CMakeLists.txt) — top-level CMake project
+- [sim8086/sim8086/CMakeLists.txt](sim8086/sim8086/CMakeLists.txt) — executable targets and test registration
 - [sim8086/sim8086/src](sim8086/sim8086/src) — implementation and instruction table
-- [sim8086/sim8086/tests](sim8086/sim8086/tests) — sample assembly and binary fixtures plus the unit test entry point
+- [sim8086/sim8086/tests](sim8086/sim8086/tests) — unit tests, assembly/binary fixtures, and disassembly round-trip scripts
 
 ## Build
 
-This project uses CMake. The top-level `CMakeLists.txt` lives in `sim8086/`, not the repo root, so point `-S` there:
+Requires CMake 3.10 or newer and a C++20 compiler. From the repository root:
 
 ```bash
 cmake -S sim8086 -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j2
 ```
 
-The verified build output in this workspace produces:
+With a single-configuration generator, the executables are:
 
-- [build/sim8086/sim8086](build/sim8086/sim8086) — the simulator CLI
-- [build/sim8086/sim_tests](build/sim8086/sim_tests) — the unit test binary
+- `build/sim8086/sim8086` — simulator CLI
+- `build/sim8086/sim_tests` — unit test runner
 
 ## Run the simulator
 
-The CLI expects a binary file as input, and an optional `-e` flag to execute instead of disassemble:
+Use an explicit mode, input binary, and output filename:
+
+```text
+sim8086 -d <input.bin> <output.asm>
+sim8086 -e <input.bin> <output.asm>
+```
+
+The current parser recognizes `-e` for execution and treats other mode strings as disassembly. Always supply all three arguments and use an output path distinct from the input: the output file is opened for writing before the input is loaded.
+
+From the repository root:
 
 ```bash
-# Disassemble (default)
-./build/sim8086/sim8086 ./sim8086/sim8086/tests/test_jmp.bin
+# Disassemble to a file
+./build/sim8086/sim8086 -d ./sim8086/sim8086/tests/decodeTests_JMP/test_jmp.bin ./disassembly.asm
 
-# Execute
-./build/sim8086/sim8086 -e ./sim8086/sim8086/tests/test_mov_exe.bin
+# Execute (see the memory-dump prerequisite below)
+./build/sim8086/sim8086 -e ./sim8086/sim8086/tests/test_mov_exe.bin ./execution.asm
 ```
 
-Disassembly produces a listing such as:
+Disassembly writes a NASM-style listing with a `bits 16` header. Relative jump targets use `$` expressions relative to the start of the instruction, rather than generated labels.
 
-```asm
-	JMP $+2
-	MOV BX, CX
-	JMP $+2
-	MOV CX, DX
-	JMP $-8
-```
+Execution tracing calls are currently commented out, so execution does not print per-instruction register or flag traces. The output assembly file is still required by the current CLI, but contains only the header in execution mode.
 
-Jump targets are printed using the `$` syntax (offset relative to the start of the jump instruction itself) rather than as generated labels.
-
-Execution prints the register state before and after each instruction as it runs, e.g.:
-
-```
-Register State
-AX   0x0000
-BX   0x0000
-...
-
-MOV BX, 1024
-
-Register State
-AX   0x0000
-BX   0x0400
-...
-```
+**Before executing on another checkout:** update `MemoryFile` in [IO.cpp](sim8086/sim8086/src/IO.cpp) to a writable destination and rebuild. Execution writes a 1 MiB memory dump there; the current value is a hard-coded developer path ending in `tests/memory_out.data`. Failed dump-file creation is not handled safely yet.
 
 ## Test
 
-The project registers a CTest target for the simulator test executable.
-
-Run the tests with:
+Run the unit test executable directly to see individual results:
 
 ```bash
-ctest --test-dir build/sim8086 --output-on-failure
+./build/sim8086/sim_tests
 ```
 
-The suite entry point is [TestMain.cpp](sim8086/sim8086/tests/TestMain.cpp), which runs four `ASSERT_EQUAL`-based test suites: decoding ([TestDecode.cpp](sim8086/sim8086/tests/TestDecode.cpp)), `MOV` execution ([TestExecuteMOV.cpp](sim8086/sim8086/tests/TestExecuteMOV.cpp)), `ADD` execution ([TestExecuteADD.cpp](sim8086/sim8086/tests/TestExecuteADD.cpp)), and `ADC` execution ([TestExecuteADC.cpp](sim8086/sim8086/tests/TestExecuteADC.cpp)).
+CTest is registered in the subproject:
+
+```bash
+ctest --test-dir build/sim8086 --verbose
+```
+
+The runner currently returns zero even when assertions fail. Inspect the printed `FAILED` lines and suite totals; CTest's exit status alone does not establish that the assertions passed.
+
+[TestMain.cpp](sim8086/sim8086/tests/TestMain.cpp) runs 99 tests across 16 suites: decoding; `MOV`, `ADD`, `ADC`, `SUB`, `SBB`, and `CMP`; `JNZ`, `JZ`, `JMP`, `JG`, `JGE`, `JL`, and `JNG`; and `LOOP`/`LOOPZ`.
+
+Coverage includes register/byte operations, arithmetic flags, selected memory operands, and taken/not-taken branches. Dedicated immediate and memory execution tests for `ADD`/`ADC`, comprehensive effective-address cases, and complete segmentation behavior remain gaps.
+
+The `decodeTests_*` directories also contain NASM-based disassembly round-trip scripts. These are separate from the CTest unit-test target; check [globals.sh](sim8086/sim8086/tests/globals.sh) for the simulator path before running them.
 
 ## Generate sample binaries
 
-If you want to create your own binaries for testing, you can assemble `.asm` files with NASM. For example:
+NASM is needed to assemble fixtures or run the disassembly round-trip scripts, but is not required to build the C++ targets.
+
+From the repository root:
 
 ```bash
-cd sim8086/sim8086/tests
-nasm test_jmp.asm -o test_jmp.bin
+nasm ./sim8086/sim8086/tests/decodeTests_JMP/test_jmp.asm -o ./sim8086/sim8086/tests/decodeTests_JMP/test_jmp.bin
 ```
 
-The repository already contains sample `.asm` and `.bin` files under [sim8086/sim8086/tests](sim8086/sim8086/tests).
+The repository already includes sample `.asm` and `.bin` files under [tests](sim8086/sim8086/tests).
 
 ## Notes
 
-This project is best viewed as a decoder/disassembler with an emerging execution engine. It is useful for exploring 8086 instruction encoding, generating readable assembly listings from raw machine code bytes, and (for `MOV`, `ADD`, and `ADC`) tracing register-level program state.
+This project is useful for exploring 8086 instruction encoding, disassembling raw machine code, and experimenting with a partial execution engine. It is not a complete 8086 emulator.
 
-Contributions are not accepted at this time. However, anyone is welcome to fork this repository and use it as they please under the terms of the repository’s existing license.
+Contributions are not accepted at this time. However, anyone is welcome to fork this repository and use it as they please under the terms of the repository's existing license.
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
