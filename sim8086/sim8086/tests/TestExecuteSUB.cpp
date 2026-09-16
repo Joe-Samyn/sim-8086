@@ -5,7 +5,7 @@
 #include "Execute.h"
 
 TEST(ExecuteSub_FullRegisterFromFullRegisterNoFlagsSet, {
-    // ARRANGE 
+    // ARRANGE
    CPU cpu = {};
    cpu.registers[Register_b] = 0x5;
    cpu.registers[Register_c] = 0x2;
@@ -37,7 +37,7 @@ TEST(ExecuteSub_FullRegisterFromFullRegisterNoFlagsSet, {
 })
 
 TEST(ExecuteAdd_RegisterLoByteFromLoByteNoFlagsSet, {
-     // ARRANGE 
+     // ARRANGE
    CPU cpu = {};
    cpu.registers[Register_b] = 0xAB05;
    cpu.registers[Register_c] = 0xCD02;
@@ -278,11 +278,8 @@ TEST(ExecuteSub_FullRegFromMemoryNoFlags, {
 
     Operand dest = {};
     dest.type = OpType_effectiveAddrCalc;
-    dest.expression.calculationType = Effective_addr_bx_si;
-    dest.expression.base.index = Register_b;
-    dest.expression.index.index = Register_si;
-    dest.expression.hasDisplacement = FALSE;
-    dest.expression.displacement = 0;
+    dest.ea = Bx_si;
+    dest.displacement = 0;
 
     Operand src = {};
     src.type = OpType_register;
@@ -314,11 +311,8 @@ TEST(ExecuteSub_MemoryFromFullRegNoFlags, {
 
     Operand src = {};
     src.type = OpType_effectiveAddrCalc;
-    src.expression.calculationType = Effective_addr_bx_si;
-    src.expression.base.index = Register_b;
-    src.expression.index.index = Register_si;
-    src.expression.hasDisplacement = FALSE;
-    src.expression.displacement = 0;
+    src.ea = Bx_si;
+    src.displacement = 0;
 
     Operand dest = {};
     dest.type = OpType_register;
@@ -350,11 +344,8 @@ TEST(ExecuteSub_LoByteFromMemoryNoFlags, {
 
     Operand dest = {};
     dest.type = OpType_effectiveAddrCalc;
-    dest.expression.calculationType = Effective_addr_bx_si;
-    dest.expression.base.index = Register_b;
-    dest.expression.index.index = Register_si;
-    dest.expression.hasDisplacement = FALSE;
-    dest.expression.displacement = 0;
+    dest.ea = Bx_si;
+    dest.displacement = 0;
 
     Operand src = {};
     src.type = OpType_register;
@@ -389,11 +380,8 @@ TEST(ExecuteSub_MemoryFromLoByteNoFlags, {
 
     Operand src = {};
     src.type = OpType_effectiveAddrCalc;
-    src.expression.calculationType = Effective_addr_bx_si;
-    src.expression.base.index = Register_b;
-    src.expression.index.index = Register_si;
-    src.expression.hasDisplacement = FALSE;
-    src.expression.displacement = 0;
+    src.ea = Bx_si;
+    src.displacement = 0;
 
     Operand dest = {};
     dest.type = OpType_register;

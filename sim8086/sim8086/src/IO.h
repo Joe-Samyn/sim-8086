@@ -24,6 +24,18 @@ static const char* RegisterNames[Register_count][3] = {
     {"", "", "DI"}
 };
 
+static const char* EAExpressions[EAType_count] = {
+    "DIRECT_ADDRESS_ERROR",
+    "BX+SI",
+    "BX+DI",
+    "BP+SI",
+    "BP+DI",
+    "SI",
+    "DI",
+    "BP",
+    "BX"
+};
+
 void OpenAsmFile(std::string name);
 void CloseAsmFile();
 void DisplayRegisterState(CPU cpu);

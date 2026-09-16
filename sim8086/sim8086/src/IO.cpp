@@ -1,7 +1,6 @@
 #include "IO.h"
 #include "Sim8086.h"
 
-#include <format>
 #include <cstdio>
 
 /**
@@ -41,125 +40,33 @@ void CloseAsmFile()
     std::fclose(outFile);
 }
 
-/**
- * TODO: Is this faster than just a conditional? It would be interesting to look at the assembly here and
- * see what Switch statement with this many cases resolving to one case looks like.
- */
-void PrintEffectiveAddressExpression(Operand op)
-{
-    switch(op.expression.calculationType)
+void PrintEAExpressionToConsole(const Operand &op) {
+    if (op.ea == Direct_address)
     {
-        case Effective_addr_direct_address:
-            {
-                printf("[%d]", op.expression.displacement);
-            } break;
-        case Effective_addr_bx_si:
-        case Effective_addr_bx_di:
-        case Effective_addr_bp_si:
-        case Effective_addr_bp_di:
-            {
-                const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
-                const char* index = RegisterNames[op.expression.index.index][op.expression.index.offset];
-                if (op.expression.hasDisplacement == FALSE)
-                {
-                    printf("[%s + %s]", base, index);
-                }
-                else
-                {
-                    if (op.expression.displacement < 0)
-                    {
-                        printf("[%s + %s - %d]", base, index, -op.expression.displacement);
-                    }
-                    else
-                    {
-                        printf("[%s + %s + %d]", base, index, op.expression.displacement);
-                    }
-                }
-            } break;
-        case Effective_addr_si:
-        case Effective_addr_di:
-        case Effective_addr_bx:
-        case Effective_addr_bp:
-            {
-                const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
-                if (op.expression.displacement == 0)
-                {
-                    printf("[%s]", base);
-                }
-                else
-                {
-                    if (op.expression.displacement < 0)
-                    {
-                        printf("[%s - %d]", base, -op.expression.displacement);
-                    }
-                    else
-                    {
-                        printf("[%s + %d]", base, op.expression.displacement);
-                    }
-                }
-            } break;
-            case Effective_addr_count:
-            {
-            } break;
+        fprintf(outFile, "[%d]", op.displacement);
+    }
+    else if (op.displacement != 0)
+    {
+        printf("[%s%+d]", EAExpressions[op.ea], op.displacement);
+    }
+    else
+    {
+        printf("[%s]", EAExpressions[op.ea]);
     }
 }
 
-void WriteEffectiveAddressToFile(Operand op)
-{
-    switch(op.expression.calculationType)
+void PrintEAExpressionToFile(const Operand &op) {
+    if (op.ea == Direct_address)
     {
-        case Effective_addr_direct_address:
-            {
-                std::fprintf(outFile, "[%d]", op.expression.displacement);
-            } break;
-        case Effective_addr_bx_si:
-        case Effective_addr_bx_di:
-        case Effective_addr_bp_si:
-        case Effective_addr_bp_di:
-            {
-                const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
-                const char* index = RegisterNames[op.expression.index.index][op.expression.index.offset];
-                if (op.expression.hasDisplacement == FALSE)
-                {
-                    std::fprintf(outFile, "[%s + %s]", base, index);
-                }
-                else
-                {
-                    if (op.expression.displacement < 0)
-                    {
-                        std::fprintf(outFile, "[%s + %s - %d]", base, index, -op.expression.displacement);
-                    }
-                    else
-                    {
-                        std::fprintf(outFile, "[%s + %s + %d]", base, index, op.expression.displacement);
-                    }
-                }
-            } break;
-        case Effective_addr_si:
-        case Effective_addr_di:
-        case Effective_addr_bx:
-        case Effective_addr_bp:
-            {
-                const char* base = RegisterNames[op.expression.base.index][op.expression.base.offset];
-                if (op.expression.displacement == 0)
-                {
-                    std::fprintf(outFile, "[%s]", base);
-                }
-                else
-                {
-                    if (op.expression.displacement < 0)
-                    {
-                        std::fprintf(outFile, "[%s - %d]", base, -op.expression.displacement);
-                    }
-                    else
-                    {
-                        std::fprintf(outFile, "[%s + %d]", base, op.expression.displacement);
-                    }
-                }
-            } break;
-            case Effective_addr_count:
-            {
-            } break;
+        fprintf(outFile, "[%d]", op.displacement);
+    }
+    else if (op.displacement != 0)
+    {
+        fprintf(outFile, "[%s%+d]", EAExpressions[op.ea], op.displacement);
+    }
+    else
+    {
+        fprintf(outFile, "[%s]", EAExpressions[op.ea]);
     }
 }
 
@@ -178,7 +85,7 @@ void PrintOperand(Operand op, uint8_t instSize)
             } break;
         case OpType_effectiveAddrCalc:
             {
-                PrintEffectiveAddressExpression(op);
+                PrintEAExpressionToConsole(op);
             } break;
         case OpType_immediate:
         {
@@ -211,7 +118,7 @@ void WriteOperandToFile(Operand op, uint8_t instSize)
             } break;
         case OpType_effectiveAddrCalc:
             {
-                WriteEffectiveAddressToFile(op);
+                PrintEAExpressionToFile(op);
             } break;
         case OpType_immediate:
         {

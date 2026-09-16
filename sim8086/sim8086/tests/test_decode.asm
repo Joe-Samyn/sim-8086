@@ -1,3 +1,3 @@
 bits 16
 
-add al, 1
+mov ax, [18]
