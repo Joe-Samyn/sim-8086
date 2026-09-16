@@ -208,28 +208,66 @@ void WriteToRegister(CPU &cpu, RegisterAccess ra, uint16_t data) {
 }
 
 /**
-* @brief Computes the physical segmented address represented by an effective address expression
-*/
-SegmentedAddress ComputeEffectiveAddress(CPU cpu, EffectiveAddrExpression ex) {
-    SegmentedAddress physicalAddress = {
-        .segment=cpu.segmentRegisters[DS]
-    };
+ * Computes the physical address from the effective address expression.
+ */
+SegmentedAddress ComputePhysicalFromEA(const Operand &op, const CPU &cpu) {
 
-    if (ex.calculationType == Effective_addr_direct_address) {
-        physicalAddress = { .segment=cpu.segmentRegisters[DS], .offset=(uint16_t)ex.displacement };
-    }
-    else {
-        if (ex.index.index == Register_none) {
-            uint16_t logicalAddr = cpu.registers[ex.base.index] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        }
-        else {
-            uint16_t logicalAddr = cpu.registers[ex.base.index] + cpu.registers[ex.index.index] + ex.displacement;
-            physicalAddress.offset = logicalAddr;
-        }
+    SegmentedAddress address = Create(cpu.segmentRegisters[DS], 0);
+
+    switch(op.ea)
+    {
+    case Direct_address:
+    {
+        address.offset = op.displacement;
+    } break;
+    case Bx_si:
+    {
+        uint16_t bx = cpu.registers[Register_b];
+        uint16_t si = cpu.registers[Register_si];
+        address.offset = bx + si + op.displacement;
+    } break;
+    case Bx_di:
+    {
+        uint16_t bx = cpu.registers[Register_b];
+        uint16_t di = cpu.registers[Register_di];
+        address.offset = bx + di + op.displacement;
+    } break;
+    case Bp_di:
+    {
+        uint16_t bp = cpu.registers[Register_bp];
+        uint16_t di = cpu.registers[Register_di];
+        address.offset = bp + di + op.displacement;
+    } break;
+    case Bp_si:
+    {
+        uint16_t bp = cpu.registers[Register_bp];
+        uint16_t si = cpu.registers[Register_si];
+        address.offset = bp + si + op.displacement;
+    } break;
+    case Bx:
+    {
+        uint16_t bx = cpu.registers[Register_b];
+        address.offset = bx + op.displacement;
+    } break;
+    case Si:
+    {
+        uint16_t si = cpu.registers[Register_si];
+        address.offset = si + op.displacement;
+    } break;
+    case Di:
+    {
+        uint16_t di = cpu.registers[Register_di];
+        address.offset = di + op.displacement;
+    } break;
+    case Bp:
+    {
+        uint16_t bp = cpu.registers[Register_bp];
+        address.offset = bp + op.displacement;
+    } break;
+    case EAType_count: {}break;
     }
 
-    return physicalAddress;
+    return address;
 }
 
 // TODO: Make just simply WriteData(...). The ToOperand piece is confusing and misleading.
@@ -238,7 +276,7 @@ void WriteDataToOperand(CPU &cpu, const Operand &op, uint16_t data, uint8_t size
         WriteToRegister(cpu, op.reg, data);
     }
     else if (op.type == OpType_effectiveAddrCalc) {
-        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, op.expression);
+        SegmentedAddress physicalAddress = ComputePhysicalFromEA(op, cpu);
         if (size == WIDE) {
             WriteWordToMemory(data, physicalAddress);
         } else {
@@ -254,7 +292,7 @@ uint16_t ExtractDataFromOperand(CPU &cpu, Operand src, uint8_t size) {
         value = src.immediate;
     }
     else if (src.type == OpType_effectiveAddrCalc) {
-        SegmentedAddress physicalAddress = ComputeEffectiveAddress(cpu, src.expression);
+        SegmentedAddress physicalAddress = ComputePhysicalFromEA(src, cpu);
         value = size == WIDE ? ReadWordFromMemory(physicalAddress) : ReadByteFromMemory(physicalAddress);
     }
     else if (src.type == OpType_register) {

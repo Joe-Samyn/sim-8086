@@ -117,22 +117,6 @@ enum ModCategory: uint8_t
     Mod_category_count
 };
 
-enum EffectiveAddressCalculation: uint8_t
-{
-    Effective_addr_direct_address,
-
-    Effective_addr_bx_si,
-    Effective_addr_bx_di,
-    Effective_addr_bp_si,
-    Effective_addr_bp_di,
-    Effective_addr_si,
-    Effective_addr_di,
-    Effective_addr_bx,
-    Effective_addr_bp,
-
-    Effective_addr_count
-};
-
 /**
  * Types of effective address calculations supported on the Intel 8086 processor.
  */
@@ -149,15 +133,6 @@ enum EAType: uint8_t {
     Bx,
 
     EAType_count
-};
-
-struct EffectiveAddrExpression
-{
-    EffectiveAddressCalculation calculationType;
-    RegisterAccess base;
-    RegisterAccess index;
-    uint8_t hasDisplacement;
-    int16_t displacement;
 };
 
 enum Operation: uint8_t {
@@ -221,10 +196,9 @@ struct Jump {
 struct Operand {
     OperandType type;
     int16_t displacement;
-    
+
     union {
         RegisterAccess reg;
-        EffectiveAddrExpression expression;
         EAType ea;
         int16_t immediate;
         Jump jmp;
