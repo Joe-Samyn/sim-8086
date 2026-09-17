@@ -80,7 +80,8 @@ void PrintOperand(Operand op, uint8_t instSize)
         } break;
         case OpType_register:
             {
-                const char* name = RegisterNames[op.reg.index][op.reg.offset];
+                uint8_t offset = op.reg.offset == FULL_BITS;
+                const char* name = RegisterNames[op.reg.index][offset];
                 printf("%s", name);
             } break;
         case OpType_effectiveAddrCalc:
@@ -113,7 +114,8 @@ void WriteOperandToFile(Operand op, uint8_t instSize)
         } break;
         case OpType_register:
             {
-                const char* name = RegisterNames[op.reg.index][op.reg.offset];
+                uint8_t offset = op.reg.offset == FULL_BITS;
+                const char* name = RegisterNames[op.reg.index][offset];
                 std::fprintf(outFile, "%s", name);
             } break;
         case OpType_effectiveAddrCalc:
@@ -191,7 +193,7 @@ void DisplayRegisterState(CPU cpu)
     printf("Register State\n");
     for (int i = 0; i < Register_count; i++)
     {
-        printf("%s   0x%04X (%d)\n", RegisterNames[i][2], cpu.registers[i], cpu.registers[i]);
+        printf("%s   0x%04X (%d)\n", RegisterNames[i][1], cpu.registers[i], cpu.registers[i]);
     }
 
     printf("\n");

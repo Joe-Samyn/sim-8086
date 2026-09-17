@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "Sim8086.h"
 
@@ -10,4 +10,4 @@ Instruction Decode(Entry entry, SegmentedAddress &at);
 uint8_t ParseDataFromByte(Bits current, uint8_t &usedBits, SegmentedAddress &cursor);
 void InterpretModRm(uint8_t mod, uint8_t rm, uint8_t w,  Operand &operand, SegmentedAddress &at);
 void DecodeEAExpression(uint8_t mod, uint8_t rm, Operand &op, SegmentedAddress &at);
-void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess);
+void DecodeRegister(uint8_t regRm, uint8_t w, Operand &op);

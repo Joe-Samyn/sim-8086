@@ -181,7 +181,7 @@ uint16_t ReadFromRegister(CPU cpu, RegisterAccess ra)
             result = ReadLoByte(cpu.registers[ra.index]);
             break;
         case HI_BITS:
-            result = ReadHiByte(cpu.registers[ra.index]);
+            result = ReadHiByte(cpu.registers[ra.index - 4]);
             break;
         case FULL_BITS:
             result = cpu.registers[ra.index];
@@ -199,7 +199,8 @@ void WriteToRegister(CPU &cpu, RegisterAccess ra, uint16_t data) {
     }
     else if (ra.offset == HI_BITS)
     {
-        cpu.registers[ra.index] = WriteHiByte(cpu.registers[ra.index], data);
+        // We subtract 4 because HI is encoded as 0b100 - 0b111 which is register SP - DI.
+        cpu.registers[ra.index - 4] = WriteHiByte(cpu.registers[ra.index - 4], data);
     }
     else
     {

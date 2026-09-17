@@ -13,15 +13,15 @@ enum OutputLocation {
 };
 
 // TODO - Needs to be declared properly in the CPP file once references outside IO have been fixed.
-static const char* RegisterNames[Register_count][3] = {
-    {"AL", "AH", "AX"},
-    {"BL", "BH", "BX"},
-    {"CL", "CH", "CX"},
-    {"DL", "DH", "DX"},
-    {"", "", "SP"},
-    {"", "", "BP"},
-    {"", "", "SI"},
-    {"", "", "DI"}
+static const char* RegisterNames[Register_count][2] = {
+    {"AL", "AX"},
+    {"CL", "CX"},
+    {"DL", "DX"},
+    {"BL", "BX"},
+    {"AH", "SP"},
+    {"CH", "BP"},
+    {"DH", "SI"},
+    {"BH", "DI"}
 };
 
 static const char* EAExpressions[EAType_count] = {

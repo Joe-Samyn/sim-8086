@@ -26,97 +26,35 @@ void DecodeEAExpression(uint8_t mod, uint8_t rm, Operand &op, SegmentedAddress &
     }
 }
 
-
 /**
- * TODO: Can be made much simpler. We already have register "codes" from the manual. Use the register code as is in manual. This will eliminate
- * the switch statement.
+ * Decode register information from Reg or R/M bits.
  */
-void DecodeRegister(uint8_t reg, uint8_t w, RegisterAccess &regAccess)
+void DecodeRegister(uint8_t regRm, uint8_t w, Operand &op)
 {
-    switch(reg)
-    {
-        case 0b000:
-            {
-                regAccess.index = Register_a;
-                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
-            } break;
-        case 0b001:
-            {
-                regAccess.index = Register_c;
-                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
-            } break;
-        case 0b010:
-            {
-                regAccess.index = Register_d;
-                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
-            } break;
-        case 0b011:
-            {
-                regAccess.index = Register_b;
-                regAccess.offset = (w == 0) ? LO_BITS : FULL_BITS;
-            } break;
-        case 0b100:
-            {
-                if (w == 0)
-                {
-                    regAccess.index = Register_a;
-                    regAccess.offset = HI_BITS;
-                }
-                else
-                {
-                    regAccess.index = Register_sp;
-                    regAccess.offset = FULL_BITS;
-                }
-            } break;
-        case 0b101:
-            {
-                if (w == 0)
-                {
-                    regAccess.index = Register_c;
-                    regAccess.offset = HI_BITS;
-                }
-                else
-                {
-                    regAccess.index = Register_bp;
-                    regAccess.offset = FULL_BITS;
-                }
-            } break;
-        case 0b110:
-            {
-                if (w == 0)
-                {
-                    regAccess.index = Register_d;
-                    regAccess.offset = HI_BITS;
-                }
-                else
-                {
-                    regAccess.index = Register_si;
-                    regAccess.offset = FULL_BITS;
-                }
-            } break;
-        case 0b111:
-            {
-                if (w == 0)
-                {
-                    regAccess.index = Register_b;
-                    regAccess.offset = HI_BITS;
-                }
-                else
-                {
-                    regAccess.index = Register_di;
-                    regAccess.offset = FULL_BITS;
-                }
-            } break;
+    RegisterAccess ra = {
+        .index = regRm,
+        .offset = 0
+    };
+
+    if (regRm >= 4) {
+        ra.offset = w == 0 ? HI_BITS : FULL_BITS;
     }
+    else {
+        ra.offset = w == 0 ? LO_BITS : FULL_BITS;
+    }
+
+    op = {
+        .type = OpType_register,
+        .reg = ra
+    };
+
 }
 
 void InterpretModRm(uint8_t mod, uint8_t rm, uint8_t w,  Operand &operand, SegmentedAddress &at)
 {
     // NOTE: New code we are testing
     if (mod == Register_mode) {
-        operand.type = OpType_register;
-        operand.reg = {};
-        DecodeRegister(rm, w, operand.reg);
+        DecodeRegister(rm, w, operand);
     }
     else
     {
@@ -232,15 +170,8 @@ Instruction Decode(Entry entry, SegmentedAddress &at)
 
         if (HasField(hasBits, Reg_bit))
         {
-            uint8_t reg = extractedData[Reg_bit];
-
-            RegisterAccess a = {};
-            DecodeRegister(reg, w, a);
-            Operand op = {
-                .type = OpType_register,
-                .reg = a
-            };
-
+            Operand op = {};
+            DecodeRegister(extractedData[Reg_bit], w, op);
             inst.operands[d] = op;
         }
 

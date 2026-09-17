@@ -206,7 +206,7 @@ TEST(ExecuteSub_LoByteRegFromHiByteRegNoFlags, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.index = Register_di; // Register BH is encoded as DI, see manual
     dest.reg.offset = HI_BITS;
 
     Operand src = {};
@@ -245,7 +245,7 @@ TEST(ExecuteSub_HiByteRegFromLoByteReg, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.index = Register_bp; // CH is encoded as BP when w == 0
     src.reg.offset = HI_BITS;
 
     uint16_t exp = 0xFF05;
