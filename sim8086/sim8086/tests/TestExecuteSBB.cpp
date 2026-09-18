@@ -15,12 +15,12 @@ TEST(ExecuteSBB_FullRegFromFullRegCarryIsZero, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = 0x1111;
@@ -45,12 +45,12 @@ TEST(ExecuteSub_FullRegFromFullRegCarryIsOne, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = 0x6421;
@@ -75,12 +75,12 @@ TEST(ExecuteSub_LoByteFromLoByteCarryIsOne, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = LO_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = LO_BITS;
 
     uint16_t exp = 0x2410;
