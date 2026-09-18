@@ -13,9 +13,9 @@ outer_loop:
     mov dx, 64
 
     inner_loop:
-        mov byte [bp], al
-        mov byte [bp + 1], bl
-        mov byte [bp + 2], 0
+        mov byte [bp], bl
+        mov byte [bp + 1], 0
+        mov byte [bp + 2], al
         mov byte [bp + 3], 255
 
         add bp, 4

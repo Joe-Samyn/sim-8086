@@ -32,7 +32,7 @@ void DecodeEAExpression(uint8_t mod, uint8_t rm, Operand &op, SegmentedAddress &
 void DecodeRegister(uint8_t regRm, uint8_t w, Operand &op)
 {
     RegisterAccess ra = {
-        .index = regRm,
+        .code = regRm,
         .offset = 0
     };
 

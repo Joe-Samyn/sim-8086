@@ -22,12 +22,12 @@ TEST(ExecuteAdd_FullRegisterToFullRegisterWithCarryCfIsOne, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0x2357;
@@ -50,12 +50,12 @@ TEST(ExecuteAdd_FullRegisterToFullRegisterWithCarryCfIsZero, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0x2356;
@@ -79,12 +79,12 @@ TEST(ExecuteAdd_LoByteToLoByteWithCarryCfIsOne, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = LO_BITS;
 
     int exp = 0xCD36;

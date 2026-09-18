@@ -15,7 +15,7 @@ TEST(ExecuteMov_ExecutesImmediateToFullRegister, {
 
     Operand dest;
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = FULL_BITS;
 
     int exp = 120;
@@ -42,7 +42,7 @@ TEST(ExecuteMov_ExecutesImmediateToLowBytesOfRegister, {
 
     Operand dest;
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = LO_BITS;
 
     int exp = 25;
@@ -68,7 +68,7 @@ TEST(ExecuteMov_ExecutesImmediateToHiBytesOfRegister, {
 
     Operand dest;
     dest.type = OpType_register;
-    dest.reg.index = Register_sp;
+    dest.reg.code = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int exp = 25;
@@ -90,12 +90,12 @@ TEST(ExecuteMov_FullRegisterToFullRegisterMov, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0x1234;
@@ -118,12 +118,12 @@ TEST(ExecuteMov_LoByteToLoByteRegisterMov, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = LO_BITS;
 
     int expLo = 0xAB;
@@ -149,12 +149,12 @@ TEST(ExecuteMov_HiByteToHiByteMov, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_di;
+    src.reg.code = Register_di;
     src.reg.offset = HI_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_sp;
+    dest.reg.code = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int expHi = 0x99;
@@ -180,12 +180,12 @@ TEST(ExecuteMov_HiByteToLoByte, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_di;
+    src.reg.code = Register_di;
     src.reg.offset = HI_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = LO_BITS;
 
     int expLo = 0x77;
@@ -211,12 +211,12 @@ TEST(ExecuteMov_LoByteToHiByte, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_sp;
+    dest.reg.code = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int expHi = 0x33;
@@ -247,7 +247,7 @@ TEST(ExecuteMov_DirectAddressToFullRegister, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0xBEEF;
@@ -276,7 +276,7 @@ TEST(ExecuteMov_DirectAddressToLoByte, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = LO_BITS;
 
     int expLo = 0x7A;
@@ -308,7 +308,7 @@ TEST(ExecuteMov_DirectAddressToHiByte, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_sp;
+    dest.reg.code = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int expHi = 0x3C;
@@ -342,7 +342,7 @@ TEST(ExecuteMov_EffectiveAddressToFullRegister, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0xABCD;
@@ -374,7 +374,7 @@ TEST(ExecuteMov_EffectiveAddressToLowByte, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = LO_BITS;
 
     int expLo = 0x5E;
@@ -409,7 +409,7 @@ TEST(ExecuteMov_EffectiveAddressToHiByte, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_sp;
+    dest.reg.code = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int expHi = 0x88;
@@ -436,7 +436,7 @@ TEST(ExecuteMov_FullRegisterToEffectiveAddress, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_a;
+    src.reg.code = Register_a;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
@@ -466,7 +466,7 @@ TEST(ExecuteMov_LoByteOfRegisterToEffectiveAddress, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_a;
+    src.reg.code = Register_a;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
@@ -496,7 +496,7 @@ TEST(ExecuteMov_HiByteOfRegisterToEffectiveAddress, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_sp;
+    src.reg.code = Register_sp;
     src.reg.offset = HI_BITS;
 
     Operand dest = {};

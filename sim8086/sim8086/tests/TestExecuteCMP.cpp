@@ -14,12 +14,12 @@ TEST(ExecuteCmp_NoFlagsSet, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = 0;
@@ -48,12 +48,12 @@ TEST(ExecuteCmp_SetCFFlag, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = Carry | Sign;
@@ -82,12 +82,12 @@ TEST(ExecuteCmp_SetZF, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = Zero;
@@ -116,12 +116,12 @@ TEST(ExecuteCmp_SetOF, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = Overflow;
@@ -151,12 +151,12 @@ TEST(ExecuteCmp_SetSF, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = Sign;

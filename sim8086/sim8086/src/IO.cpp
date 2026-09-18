@@ -81,7 +81,7 @@ void PrintOperand(Operand op, uint8_t instSize)
         case OpType_register:
             {
                 uint8_t offset = op.reg.offset == FULL_BITS;
-                const char* name = RegisterNames[op.reg.index][offset];
+                const char* name = RegisterNames[op.reg.code][offset];
                 printf("%s", name);
             } break;
         case OpType_effectiveAddrCalc:
@@ -115,7 +115,7 @@ void WriteOperandToFile(Operand op, uint8_t instSize)
         case OpType_register:
             {
                 uint8_t offset = op.reg.offset == FULL_BITS;
-                const char* name = RegisterNames[op.reg.index][offset];
+                const char* name = RegisterNames[op.reg.code][offset];
                 std::fprintf(outFile, "%s", name);
             } break;
         case OpType_effectiveAddrCalc:

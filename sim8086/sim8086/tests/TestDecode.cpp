@@ -13,7 +13,7 @@ TEST(DecodeRegister_DecodesWideRegisterSuccessfully, {
     uint8_t reg = 0b00;
     uint8_t size = WIDE;
     Operand exp = {};
-    exp.reg.index = Register_a;
+    exp.reg.code = Register_a;
     exp.reg.offset = FULL_BITS;
     Operand res = {};
 
@@ -21,7 +21,7 @@ TEST(DecodeRegister_DecodesWideRegisterSuccessfully, {
     DecodeRegister(reg, size, res);
 
     // Assert
-    ASSERT_EQUAL(res.reg.index, exp.reg.index);
+    ASSERT_EQUAL(res.reg.code, exp.reg.code);
     ASSERT_EQUAL(res.reg.offset, exp.reg.offset);
 })
 
@@ -30,7 +30,7 @@ TEST(DecodeRegister_DecodesByteRegisterSuccessfully, {
     uint8_t reg = 0b00;
     uint8_t size = BYTE;
     Operand exp = {};
-    exp.reg.index = Register_a;
+    exp.reg.code = Register_a;
     exp.reg.offset = LO_BITS;
 
     Operand res = {};
@@ -39,7 +39,7 @@ TEST(DecodeRegister_DecodesByteRegisterSuccessfully, {
     DecodeRegister(reg, size, res);
 
     // Assert
-    ASSERT_EQUAL(res.reg.index, exp.reg.index);
+    ASSERT_EQUAL(res.reg.code, exp.reg.code);
     ASSERT_EQUAL(res.reg.offset, exp.reg.offset);
 })
 
@@ -170,7 +170,7 @@ TEST(InterpretModRm_SuccessfullyInterpretsRegisterMode, {
 
     // Assert
     ASSERT_EQUAL(res.type, OpType_register);
-    ASSERT_EQUAL(res.reg.index, Register_b);
+    ASSERT_EQUAL(res.reg.code, Register_b);
     ASSERT_EQUAL(res.reg.offset, FULL_BITS);
 })
 

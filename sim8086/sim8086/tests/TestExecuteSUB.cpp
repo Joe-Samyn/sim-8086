@@ -15,12 +15,12 @@ TEST(ExecuteSub_FullRegisterFromFullRegisterNoFlagsSet, {
 
    Operand dest = {};
    dest.type = OpType_register;
-   dest.reg.index = Register_b;
+   dest.reg.code = Register_b;
    dest.reg.offset = FULL_BITS;
 
    Operand src = {};
    src.type = OpType_register;
-   src.reg.index = Register_c;
+   src.reg.code = Register_c;
    src.reg.offset = FULL_BITS;
 
    uint16_t exp = 0x0003;
@@ -47,12 +47,12 @@ TEST(ExecuteAdd_RegisterLoByteFromLoByteNoFlagsSet, {
 
    Operand dest = {};
    dest.type = OpType_register;
-   dest.reg.index = Register_b;
+   dest.reg.code = Register_b;
    dest.reg.offset = LO_BITS;
 
    Operand src = {};
    src.type = OpType_register;
-   src.reg.index = Register_c;
+   src.reg.code = Register_c;
    src.reg.offset = LO_BITS;
 
    uint16_t exp = 0xAB03;
@@ -82,12 +82,12 @@ TEST(ExecuteSub_FullRegFromFullRegCFSet, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = 0x9A33;
@@ -113,12 +113,12 @@ TEST(ExecuteSub_FullRegFromFullRegOFSet, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = 0x3C56;
@@ -144,12 +144,12 @@ TEST(ExecuteSub_FullRegisterFromFullRegisterSFSet, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = 0xFF01;
@@ -175,12 +175,12 @@ TEST(ExecuteSub_FullRegisterFromFullRegisterZFSet, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = 0;
@@ -206,12 +206,12 @@ TEST(ExecuteSub_LoByteRegFromHiByteRegNoFlags, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_di; // Register BH is encoded as DI, see manual
+    dest.reg.code = Register_di; // Register BH is encoded as DI, see manual
     dest.reg.offset = HI_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = LO_BITS;
 
     uint16_t exp = 0x05FF;
@@ -240,12 +240,12 @@ TEST(ExecuteSub_HiByteRegFromLoByteReg, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = LO_BITS;
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_bp; // CH is encoded as BP when w == 0
+    src.reg.code = Register_bp; // CH is encoded as BP when w == 0
     src.reg.offset = HI_BITS;
 
     uint16_t exp = 0xFF05;
@@ -283,7 +283,7 @@ TEST(ExecuteSub_FullRegFromMemoryNoFlags, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     uint16_t exp = 0x0003;
@@ -316,7 +316,7 @@ TEST(ExecuteSub_MemoryFromFullRegNoFlags, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = FULL_BITS;
 
     uint16_t exp = 0x0003;
@@ -349,7 +349,7 @@ TEST(ExecuteSub_LoByteFromMemoryNoFlags, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = LO_BITS;
 
     uint16_t exp = 0xAB03;
@@ -385,7 +385,7 @@ TEST(ExecuteSub_MemoryFromLoByteNoFlags, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = LO_BITS;
 
     uint16_t exp = 0xFF03;
@@ -411,7 +411,7 @@ TEST(ExecuteSub_ImmediateFromFullRegisterNoFlags, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     Operand src = {};
@@ -440,7 +440,7 @@ TEST(ExecuteSub_ImmediateFromLoByteNoFlags, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = LO_BITS;
 
     Operand src = {};

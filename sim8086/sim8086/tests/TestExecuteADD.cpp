@@ -15,12 +15,12 @@ TEST(ExecuteAdd_FullRegisterToFullRegisterNoFlagsSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_a;
+    src.reg.code = Register_a;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0x18AB;
@@ -43,12 +43,12 @@ TEST(ExecuteAdd_FullRegisterToFullRegisterCarryFlagSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.code = Register_a;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0x1918;
@@ -75,12 +75,12 @@ TEST(ExecuteAdd_FullRegisterToFullRegisterOverflowFlagSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0x84BC;
@@ -107,12 +107,12 @@ TEST(ExecuteAdd_FullRegisterToFullRegisterZeroFlagSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0;
@@ -137,12 +137,12 @@ TEST(ExecuteAdd_FullRegisterToFullRegisterSignFlagSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = FULL_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.code = Register_b;
     dest.reg.offset = FULL_BITS;
 
     int exp = 0xF005;
@@ -167,12 +167,12 @@ TEST(ExecuteAdd_LoRegisterToLoRegisterAddNoFlagsSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = LO_BITS;
 
     int exp = 0x03;
@@ -196,12 +196,12 @@ TEST(ExecuteAdd_LoByteToLoByteCarryFlagSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = LO_BITS;
 
     int exp = 0xAB01;
@@ -229,12 +229,12 @@ TEST(ExecuteAdd_LoByteToLoByteSignFlagSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = LO_BITS;
 
     int exp = 0xABF2;
@@ -262,12 +262,12 @@ TEST(ExecuteAdd_LoByteToLoByteOverflowFlagSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = LO_BITS;
 
     int exp = 0x11AB;
@@ -295,12 +295,12 @@ TEST(ExecuteAdd_LoByteToLoByteZeroFlagSet, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.code = Register_b;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = LO_BITS;
 
     int exp = 0x1100;
@@ -328,12 +328,12 @@ TEST(ExecuteAdd_LoByteToHiByte, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_c;
+    src.reg.code = Register_c;
     src.reg.offset = LO_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_di;
+    dest.reg.code = Register_di;
     dest.reg.offset = HI_BITS;
 
     int exp = 0x21AB;
@@ -359,12 +359,12 @@ TEST(ExecuteAdd_HiByteToLoByte, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_di;
+    src.reg.code = Register_di;
     src.reg.offset = HI_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_c;
+    dest.reg.code = Register_c;
     dest.reg.offset = LO_BITS;
 
     int exp = 0xCD23;

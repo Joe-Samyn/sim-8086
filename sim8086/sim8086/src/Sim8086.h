@@ -103,7 +103,7 @@ enum Field : uint8_t
 };
 
 struct RegisterAccess {
-    uint8_t index;      // index of the register in the 8086 manual. For example, register AX/AL is 000 while register CX/CL is 001
+    uint8_t code;      // index of the register in the 8086 manual. For example, register AX/AL is 000 while register CX/CL is 001
     uint8_t offset;     // offset in the register, 0 - low bits, 1 - high bits, 2 - full 16 bits (no offset)
 };
 
