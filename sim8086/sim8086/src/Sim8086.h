@@ -37,9 +37,9 @@ struct SegmentedAddress {
 enum RegisterIndex {
 
     Register_a,
-    Register_b,
     Register_c,
     Register_d,
+    Register_b,
     Register_sp,
     Register_bp,
     Register_si,

@@ -333,7 +333,7 @@ TEST(ExecuteAdd_LoByteToHiByte, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_b;
+    dest.reg.index = Register_di;
     dest.reg.offset = HI_BITS;
 
     int exp = 0x21AB;
@@ -359,7 +359,7 @@ TEST(ExecuteAdd_HiByteToLoByte, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.index = Register_di;
     src.reg.offset = HI_BITS;
 
     Operand dest = {};

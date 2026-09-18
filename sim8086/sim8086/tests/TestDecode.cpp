@@ -12,36 +12,35 @@ TEST(DecodeRegister_DecodesWideRegisterSuccessfully, {
     // Arrange
     uint8_t reg = 0b00;
     uint8_t size = WIDE;
-    RegisterAccess exp;
-    exp.index = Register_a;
-    exp.offset = FULL_BITS;
-
-    RegisterAccess res;
+    Operand exp = {};
+    exp.reg.index = Register_a;
+    exp.reg.offset = FULL_BITS;
+    Operand res = {};
 
     // Act
     DecodeRegister(reg, size, res);
 
     // Assert
-    ASSERT_EQUAL(res.index, exp.index);
-    ASSERT_EQUAL(res.offset, exp.offset);
+    ASSERT_EQUAL(res.reg.index, exp.reg.index);
+    ASSERT_EQUAL(res.reg.offset, exp.reg.offset);
 })
 
 TEST(DecodeRegister_DecodesByteRegisterSuccessfully, {
     // Arrange
     uint8_t reg = 0b00;
     uint8_t size = BYTE;
-    RegisterAccess exp;
-    exp.index = Register_a;
-    exp.offset = LO_BITS;
+    Operand exp = {};
+    exp.reg.index = Register_a;
+    exp.reg.offset = LO_BITS;
 
-    RegisterAccess res;
+    Operand res = {};
 
     // Act
     DecodeRegister(reg, size, res);
 
     // Assert
-    ASSERT_EQUAL(res.index, exp.index);
-    ASSERT_EQUAL(res.offset, exp.offset);
+    ASSERT_EQUAL(res.reg.index, exp.reg.index);
+    ASSERT_EQUAL(res.reg.offset, exp.reg.offset);
 })
 
 // TEST(DecodeRegister_RaisesErrorOnInvalidRegister, {

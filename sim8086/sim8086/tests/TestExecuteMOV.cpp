@@ -68,8 +68,8 @@ TEST(ExecuteMov_ExecutesImmediateToHiBytesOfRegister, {
 
     Operand dest;
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
-    dest.reg.offset =HI_BITS;
+    dest.reg.index = Register_sp;
+    dest.reg.offset = HI_BITS;
 
     int exp = 25;
 
@@ -149,12 +149,12 @@ TEST(ExecuteMov_HiByteToHiByteMov, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.index = Register_di;
     src.reg.offset = HI_BITS;
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.index = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int expHi = 0x99;
@@ -180,7 +180,7 @@ TEST(ExecuteMov_HiByteToLoByte, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_b;
+    src.reg.index = Register_di;
     src.reg.offset = HI_BITS;
 
     Operand dest = {};
@@ -216,7 +216,7 @@ TEST(ExecuteMov_LoByteToHiByte, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.index = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int expHi = 0x33;
@@ -308,7 +308,7 @@ TEST(ExecuteMov_DirectAddressToHiByte, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.index = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int expHi = 0x3C;
@@ -409,7 +409,7 @@ TEST(ExecuteMov_EffectiveAddressToHiByte, {
 
     Operand dest = {};
     dest.type = OpType_register;
-    dest.reg.index = Register_a;
+    dest.reg.index = Register_sp;
     dest.reg.offset = HI_BITS;
 
     int expHi = 0x88;
@@ -496,7 +496,7 @@ TEST(ExecuteMov_HiByteOfRegisterToEffectiveAddress, {
 
     Operand src = {};
     src.type = OpType_register;
-    src.reg.index = Register_a;
+    src.reg.index = Register_sp;
     src.reg.offset = HI_BITS;
 
     Operand dest = {};
